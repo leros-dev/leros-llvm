@@ -1,4 +1,5 @@
-//===- LerosMCTargetDesc.h - Leros Target Descriptions --------------*- C++ -*-===//
+//===- LerosMCTargetDesc.h - Leros Target Descriptions --------------*- C++
+//-*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
