@@ -12,6 +12,10 @@
 //===----------------------------------------------------------------------===//
 
 let Namespace = "Leros" in {
+// Declare the accumulator
+def ACC : Register<"acc">, DwarfRegNum<[-1]>;
+
+
 class LerosReg<bits<5> Enc, string n> : Register<n> {
     let HWEncoding{4-0} = Enc;
 }
