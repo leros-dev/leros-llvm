@@ -14,8 +14,8 @@
 #ifndef LLVM_LIB_TARGET_Leros_LerosTARGETMACHINE_H
 #define LLVM_LIB_TARGET_Leros_LerosTARGETMACHINE_H
 
-#include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "LerosSubtarget.h"
+#include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Target/TargetMachine.h"
@@ -35,8 +35,7 @@ public:
     return &Subtarget;
   }
 
-  virtual TargetPassConfig* createPassConfig(llvm::legacy::PassManagerBase &PM);
-
+  virtual TargetPassConfig *createPassConfig(llvm::legacy::PassManagerBase &PM);
 };
 }
 

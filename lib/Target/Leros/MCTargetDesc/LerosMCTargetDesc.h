@@ -23,6 +23,7 @@ class Target;
 
 Target &getTheLeros16Target();
 Target &getTheLeros32Target();
+Target &getTheLeros64Target();
 
 } // end namespace llvm
 

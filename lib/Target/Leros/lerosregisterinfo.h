@@ -24,31 +24,6 @@ namespace llvm {
 struct LerosRegisterInfo : public LerosGenRegisterInfo {
 
   LerosRegisterInfo(unsigned HwMode);
-
-  const uint32_t *getCallPreservedMask(const MachineFunction &MF,
-                                       CallingConv::ID) const override;
-
-  BitVector getReservedRegs(const MachineFunction &MF) const override;
-
-  const uint32_t *getNoPreservedMask() const override;
-
-  void eliminateFrameIndex(MachineBasicBlock::iterator MI, int SPAdj,
-                           unsigned FIOperandNum,
-                           RegScavenger *RS = nullptr) const override;
-
-  unsigned getFrameRegister(const MachineFunction &MF) const override;
-
-  bool requiresRegisterScavenging(const MachineFunction &MF) const override {
-    return true;
-  }
-
-  bool requiresFrameIndexScavenging(const MachineFunction &MF) const override {
-    return true;
-  }
-
-  bool trackLivenessAfterRegAlloc(const MachineFunction &) const override {
-    return true;
-  }
 };
 }
 

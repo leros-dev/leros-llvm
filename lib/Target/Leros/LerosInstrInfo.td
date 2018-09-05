@@ -53,25 +53,27 @@ def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
 // Instruction class definitions
 
 // Instructions with dependency: Acc -> (Acc, Imm)
-class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr>
-    : LerosImmInst<opcode, (outs ACC), (ins ACC, uimm8:$imm8), 
-        opcodestr, "$imm8">;
+let Constraints = "$acci = $acco" in {
+    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr>
+        : LerosImmInst<opcode, (outs ACC:$acco), (ins ACC:$acci, uimm8:$imm8), 
+            opcodestr, "$imm8">;
 
-// Instructions with dependency: Acc -> (Acc, Reg)
-class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr>
-    : LerosImmInst<opcode, (outs ACC), (ins ACC, GPR:$r),
-        opcodestr, "$r">;
+    // Instructions with dependency: Acc -> (Acc, Reg)
+    class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr>
+        : LerosImmInst<opcode, (outs ACC:$acco), (ins ACC:$acci, GPR:$r),
+            opcodestr, "$r">;
+}
 
-// Instructions with dependency: Reg -> (Acc)
-class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
-    : LerosImmInst<opcode, (outs GPR:$r), (ins ACC),
-        opcodestr, "$r">;
-
+    // Instructions with dependency: Reg -> (Acc)
+    class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
+        : LerosImmInst<opcode, (outs GPR:$r), (ins ACC:$acc),
+            opcodestr, "$r">;
 
 multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string TGName, string opcodestr>{
-    def TGName#_I  : INSTR_AccAccImm<opcode, opcodestr>;
-    def TGName#_R  : INSTR_AccAccReg<opcode, opcodestr>; 
+    def #TGName#_I  : INSTR_AccAccImm<opcode, opcodestr>;
+    def #TGName#_R  : INSTR_AccAccReg<opcode, opcodestr>; 
 }
+
 
 class INSTR_Branch<LerosBOpcode opcode, string opcodestr>
     : LerosBranchInst<opcode, (outs), (ins uimm8:$imm8), opcodestr, "$imm8">{
@@ -102,19 +104,19 @@ def BRN     : INSTR_Branch<OPC_BRN, "brn">;
 
 // Instructions where format is specific to the instruction
 
-def LDADDR  : LerosInst<(outs GPR:$r), (ins ACC), "ldaddr", "$r", []>{
+def LDADDR  : LerosInst<(outs GPR:$r), (ins ACC:$acc), "ldaddr", "$r", []>{
     let Inst{15-11} = OPC_LDADDR.Value;
 }
 
-def LDIND : LerosInst<(outs ACC), (ins GPR:$r), "ldind", "$r", []>{
+def LDIND : LerosInst<(outs ACC:$acc), (ins GPR:$r), "ldind", "$r", []>{
     let Inst{15-11} = OPC_LDIND.Value;
 }
 
-def STIND : LerosInst<(outs GPR:$r), (ins ACC), "stind", "$r", []>{
+def STIND : LerosInst<(outs GPR:$r), (ins ACC:$acc), "stind", "$r", []>{
     let Inst{15-11} = OPC_STIND.Value;
 }
 
-def JAL     : LerosInst<(outs GPR:$r), (ins ACC), "jal", "$r", []>{
+def JAL     : LerosInst<(outs GPR:$r), (ins ACC:$acc), "jal", "$r", []>{
     let Inst{15-11} = OPC_JAL.Value;
 }
 

@@ -29,7 +29,7 @@ extern "C" void LLVMInitializeLerosTarget() {
   RegisterTargetMachine<LerosTargetMachine> Y(getTheLeros64Target());
 }
 
-static std::string computeDataLayout(const Triple &TT) {
+static StringRef computeDataLayout(const Triple &TT) {
   if (TT.isArch16Bit()) {
     return "e-p16:16-i1:8:16-i8:8:16-i16:16-i32:16:32-i64:16:64";
   } else if (TT.isArch32Bit()) {
@@ -39,15 +39,29 @@ static std::string computeDataLayout(const Triple &TT) {
   }
 }
 
+static Reloc::Model getEffectiveRelocModel(const Triple &TT,
+                                           Optional<Reloc::Model> RM) {
+  if (!RM.hasValue())
+    return Reloc::Static;
+  return *RM;
+}
+
+static CodeModel::Model getEffectiveCodeModel(Optional<CodeModel::Model> CM) {
+  if (CM)
+    return *CM;
+  return CodeModel::Small;
+}
+
 LerosTargetMachine::LerosTargetMachine(const Target &T, const Triple &TT,
                                        StringRef CPU, StringRef FS,
                                        const TargetOptions &Options,
                                        Optional<Reloc::Model> RM,
                                        Optional<CodeModel::Model> CM,
                                        CodeGenOpt::Level OL, bool JIT)
-    : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options, RM, CM,
-                        OL),
-      Subtarget(TT, CPU, FS, *this) {
+    : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
+                        getEffectiveRelocModel(TT, RM),
+                        getEffectiveCodeModel(CM), OL),
+      Subtarget(TT, CPU, FS) {
   initAsmInfo();
 }
 

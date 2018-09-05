@@ -13,7 +13,13 @@
 
 #include "LerosSubtarget.h"
 
-using namespace llvm;
+#define DEBUG_TYPE "leros-subtarget"
+
+#define GET_SUBTARGETINFO_TARGET_DESC
+#define GET_SUBTARGETINFO_CTOR
+#include "LerosGenSubtargetInfo.inc"
+
+namespace llvm {
 
 void LerosSubtarget::initializeSubtargetDependencies(StringRef CPU,
                                                      StringRef FS,
@@ -31,9 +37,9 @@ void LerosSubtarget::initializeSubtargetDependencies(StringRef CPU,
   ParseSubtargetFeatures(CPUName, FS);
 }
 
-LerosSubtarget::LerosSubtarget(const Triple &TT, const std::string &CPU,
-                               const std::string &FS, const TargetMachine &TM)
+LerosSubtarget::LerosSubtarget(const Triple &TT, StringRef CPU, StringRef FS)
     : LerosGenSubtargetInfo(TT, CPU, FS) {
 
   initializeSubtargetDependencies(CPU, FS, TT);
+}
 }
