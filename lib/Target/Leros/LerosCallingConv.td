@@ -1,4 +1,4 @@
-//===-- LerosCallingConv.td - Calling Conventions Leros ----*- tablegen -*-===//
+//===-- LerosCallingConv.td - Calling Conventions Leros ----*- tabLerosen -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -10,3 +10,31 @@
 // This describes the calling conventions for the Leros architecture.
 //
 //===----------------------------------------------------------------------===//
+
+//===----------------------------------------------------------------------===//
+// Leros Return Value Calling Convention
+//===----------------------------------------------------------------------===//
+def RetCC_Leros : CallingConv
+<[
+  // i32 are returned in registers R4-R60
+  CCIfType<[i32], CCAssignToReg<[R4, R5, R6, R7]>>,
+
+  // Integer values get stored in stack slots that are 4 bytes in
+  // size and 4-byte aligned.
+  CCIfType<[i32], CCAssignToStack<4, 4>>
+]>;
+
+//===----------------------------------------------------------------------===//
+// Leros Argument Calling Conventions
+//===----------------------------------------------------------------------===//
+def CC_Leros : CallingConv<[
+  // Promote i8/i16 arguments to i32.
+  CCIfType<[i8, i16], CCPromoteToType<i32>>,
+
+  // The first 4 integer arguments are passed in arg/return registers.
+  CCIfType<[i32], CCAssignToReg<[R4, R5, R6, R7]>>,
+
+  // Integer values get stored in stack slots that are 4 bytes in
+  // size and 4-byte aligned.
+  CCIfType<[i32], CCAssignToStack<4, 4>>
+]>;

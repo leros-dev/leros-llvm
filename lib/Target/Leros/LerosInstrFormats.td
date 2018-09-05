@@ -7,25 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Base classes for the high- and low byte specifications of the leros instructions
-class 
-
 // Opcodes for instructions operating on the Accumulator or a Register
-class LerosImmRegOpcode<bits<7> val {
+class LerosImmRegOpcode<bits<7> val> {
     bits<7>Value = val;
 }
 
 // Opcode class for branch instructions
-class LerosBOpcode<bits<8> val {
+class LerosBOpcode<bits<8> val> {
     bits<8>Value = val;
 }
 
 // Opcode class for indirect load/store and jal operations
-class LerosLSOpcode<bits<5> val {
+class LerosLSOpcode<bits<5> val> {
     bits<5>Value = val;
 }
 
-class LerosJalOpcode<bits<5> val{
+class LerosJalOpcode<bits<5> val>{
     bits<5>Value = val;
 }
 
@@ -68,12 +65,15 @@ def OPC_JAL     : LerosJalOpcode<0b01000>;
 
 class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern> : Instruction {
   field bits<16> Inst;
+  bits<8> RegOrImm;
+
+  let Inst{7-0} = RegOrImm;
 
   let Namespace = "Leros";
 
   dag OutOperandList = outs;
   dag InOperandList = ins;
-  let AsmString = opcodestr # "\t" # argstr;;
+  let AsmString = opcodestr # "\t" # argstr;
   let Pattern = pattern;
 }
 
@@ -83,43 +83,16 @@ class LerosImmRegInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcode
 }
 
 class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodestr, string argstr>
-    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr, []>{
-
-    bits<8> reg;
-
-    let Inst{8} = 0
-    let Inst{7-0} = reg;
+    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr>{
+    let Inst{8} = 0;
 }
 
 class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr>
-    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr, []>{
-
-    bits<8> imm8;
-
-    let Inst{8} = 1
-    let Inst{7-0} = imm8;
+    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr>{
+    let Inst{8} = 1;
 }
 
 class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr>
-    : LerosInstr<outs, ins, opcodestr, argstr, []>{
-        bits<8> imm8;
-
-        let Instr{15-8} = opcode.Value;
-        let Instr{7-0} = imm8;
-    } 
-
-class LerosIndLSInst<LerosLSOpcode opcode, dag outs, dag ins, string opcodestr, string argstr>
-    : LerosInstr<outs, ins, opcodestr, argstr, []>{
-        bits<8> reg;
-
-        let Instr{15-8} = opcode.Value;
-        let Instr{7-0} = reg;
-    }
-
-class LerosJalInst<LerosJalOpcode opcode, dag outs, dag ins, string opcodestr, string argstr>
-    : LerosInstr<outs, ins, opcodestr, argstr, []>{
-        bits<8> reg;
-
-        let Instr{15-8} = opcode.Value;
-        let Instr{7-0} = reg;
-    }
+    : LerosInst<outs, ins, opcodestr, argstr, []>{
+    let Inst{15-8} = opcode.Value;
+} 

@@ -14,6 +14,38 @@
 include "LerosInstrFormats.td"
 
 //===----------------------------------------------------------------------===//
+// Operands
+//===----------------------------------------------------------------------===//
+
+class ImmAsmOperand<string prefix, int width, string suffix> : AsmOperandClass {
+  let Name = prefix # "Imm" # width # suffix;
+  let RenderMethod = "addImmOperands";
+  let DiagnosticType = !strconcat("Invalid", Name);
+}
+
+class SImmAsmOperand<int width, string suffix = "">
+    : ImmAsmOperand<"S", width, suffix> {
+}
+
+class UImmAsmOperand<int width, string suffix = "">
+    : ImmAsmOperand<"U", width, suffix> {
+}
+
+// Leros only has two forms of immediate operands - a signed and unsigned 
+// byte-sized immediate.
+// Both operands are mapped to XLenVT for calls
+def uimm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<8>(Imm);}]> {
+  let ParserMatchClass = UImmAsmOperand<5>;
+  let DecoderMethod = "decodeUImmOperand<8>";
+}
+
+def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
+  let ParserMatchClass = SImmAsmOperand<5>;
+  let DecoderMethod = "decodeSImmOperand<8>";
+}
+
+
+//===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
 
@@ -22,7 +54,7 @@ include "LerosInstrFormats.td"
 
 // Instructions with dependency: Acc -> (Acc, Imm)
 class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr>
-    : LerosImmInst<opcode, (outs ACC), (ins ACC, TODO: some immediate...), 
+    : LerosImmInst<opcode, (outs ACC), (ins ACC, uimm8:$imm8), 
         opcodestr, "$imm8">;
 
 // Instructions with dependency: Acc -> (Acc, Reg)
@@ -36,37 +68,29 @@ class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
         opcodestr, "$r">;
 
 
-multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string TGName string opcodestr>{
+multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string TGName, string opcodestr>{
     def TGName#_I  : INSTR_AccAccImm<opcode, opcodestr>;
     def TGName#_R  : INSTR_AccAccReg<opcode, opcodestr>; 
 }
 
-class INSTR_Branch<LerosBOpcode opcode, string opcodestr>{
-    : LerosBranchInst<opcode, [], (ins TODO: some immediate...), opcodestr, "$imm8">;
-}
-
-class INSTR_IndLS<LerosBOpcode opcode, string opcodestr>{
-    : LerosBranchInst<opcode, [], (outs ACC), (ins GPR:$r), opcodestr, "$r">;
-}
-
-class INSTR_Jal<LerosJalOpcode opcode, string opcodestr>{
-    : LerosBranchInst<opcode, [], (outs GRP:$r), (ins GPR:$r), opcodestr, "$r">;
+class INSTR_Branch<LerosBOpcode opcode, string opcodestr>
+    : LerosBranchInst<opcode, (outs), (ins uimm8:$imm8), opcodestr, "$imm8">{
 }
 
 
 // Instruction declarations
-defm INSTR_ImmReg<OPC_NOP     , "nop">;
-defm INSTR_ImmReg<OPC_ADD     , "add">;
-defm INSTR_ImmReg<OPC_SUB     , "sub">;
-defm INSTR_ImmReg<OPC_SHR     , "shr">;
-defm INSTR_ImmReg<OPC_UNUSED  , "">;
-defm INSTR_ImmReg<OPC_LOAD    , "load">;
-defm INSTR_ImmReg<OPC_AND     , "and">;
-defm INSTR_ImmReg<OPC_OR      , "or">;
-defm INSTR_ImmReg<OPC_XOR     , "xor">;
-defm INSTR_ImmReg<OPC_LOADH   , "loadh">;
-defm INSTR_ImmReg<OPC_OUT     , "out">;
-defm INSTR_ImmReg<OPC_IN      , "in">;
+defm : INSTR_ImmReg<OPC_NOP     , "INSTR_NOP",    "nop">;
+defm : INSTR_ImmReg<OPC_ADD     , "INSTR_ADD",    "add">;
+defm : INSTR_ImmReg<OPC_SUB     , "INSTR_SUB",    "sub">;
+defm : INSTR_ImmReg<OPC_SHR     , "INSTR_SHR",    "shr">;
+defm : INSTR_ImmReg<OPC_UNUSED  , "INSTR_UNUSED", "">;
+defm : INSTR_ImmReg<OPC_LOAD    , "INSTR_LOAD",   "load">;
+defm : INSTR_ImmReg<OPC_AND     , "INSTR_AND",    "and">;
+defm : INSTR_ImmReg<OPC_OR      , "INSTR_OR",     "or">;
+defm : INSTR_ImmReg<OPC_XOR     , "INSTR_XOR",    "xor">;
+defm : INSTR_ImmReg<OPC_LOADH   , "INSTR_LOADH",  "loadh">;
+defm : INSTR_ImmReg<OPC_OUT     , "INSTR_OUT",    "out">;
+defm : INSTR_ImmReg<OPC_IN      , "INSTR_IN",     "in">;
 
 def STORE   : INSTR_RegAcc<OPC_STORE, "store">;
 
@@ -76,23 +100,34 @@ def BRNZ    : INSTR_Branch<OPC_BRNZ, "brnz">;
 def BRP     : INSTR_Branch<OPC_BRP, "brp">;
 def BRN     : INSTR_Branch<OPC_BRN, "brn">;
 
-def LDADDR  : INSTR_IndLS<OPC_LDADDR,   "ldaddr">;
-def LDIND   : INSTR_IndLS<OPC_LOADIND,  "ldind">;
-def STIND   : INSTR_IndLS<OPC_STOREIND, "stind">;
+// Instructions where format is specific to the instruction
 
-// JAL
-def OPC_JAL     : LerosJalOpcode<0b01000>;
+def LDADDR  : LerosInst<(outs GPR:$r), (ins ACC), "ldaddr", "$r", []>{
+    let Inst{15-11} = OPC_LDADDR.Value;
+}
+
+def LDIND : LerosInst<(outs ACC), (ins GPR:$r), "ldind", "$r", []>{
+    let Inst{15-11} = OPC_LDIND.Value;
+}
+
+def STIND : LerosInst<(outs GPR:$r), (ins ACC), "stind", "$r", []>{
+    let Inst{15-11} = OPC_STIND.Value;
+}
+
+def JAL     : LerosInst<(outs GPR:$r), (ins ACC), "jal", "$r", []>{
+    let Inst{15-11} = OPC_JAL.Value;
+}
 
 //===----------------------------------------------------------------------===//
 // Immediate patterns
 //===----------------------------------------------------------------------===//
-def : Pat<(i32 imm:$imm),
-          (LIS (HI16 imm:$imm), (LO16 imm:$imm))>;
+
 
 //===----------------------------------------------------------------------===//
 // Codegen patterns
 //===----------------------------------------------------------------------===//
 
+/*
 class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>
     : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;
 
@@ -109,5 +144,6 @@ def : BPat<setne, BRZ>;
 def : BPat<setlt, BRNZ>;
 def : BPat<setge, BRP>;
 def : BPat<setge, BRN>;
+*/
 
 // 'icmp' instruction
