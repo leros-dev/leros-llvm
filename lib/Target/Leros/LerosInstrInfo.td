@@ -14,16 +14,6 @@
 include "LerosInstrFormats.td"
 
 //===----------------------------------------------------------------------===//
-// Codegen patterns
-//===----------------------------------------------------------------------===//
-
-class PatReg<SDPatternOperator OpNode, LerosARInst Inst>
-    : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;
-
-class PatAcc<SDPatternOperator OpNode, LerosARInst Inst>
-    : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;
-
-//===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
 
@@ -92,3 +82,32 @@ def STIND   : INSTR_IndLS<OPC_STOREIND, "stind">;
 
 // JAL
 def OPC_JAL     : LerosJalOpcode<0b01000>;
+
+//===----------------------------------------------------------------------===//
+// Immediate patterns
+//===----------------------------------------------------------------------===//
+def : Pat<(i32 imm:$imm),
+          (LIS (HI16 imm:$imm), (LO16 imm:$imm))>;
+
+//===----------------------------------------------------------------------===//
+// Codegen patterns
+//===----------------------------------------------------------------------===//
+
+class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>
+    : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;
+
+class PatGprImm<SDPatternOperator OpNode, LerosARInst Inst>
+    : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;
+
+// Branches
+class BPat<PatFrag CondOp, RVInstB Inst>
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm12),
+          (Inst GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12)>;
+
+def : BPat<seteq, BR>;
+def : BPat<setne, BRZ>;
+def : BPat<setlt, BRNZ>;
+def : BPat<setge, BRP>;
+def : BPat<setge, BRN>;
+
+// 'icmp' instruction
