@@ -19,5 +19,5 @@
 type = Library
 name = LerosDesc
 parent = Leros
-required_libraries = MC Support LerosInfo
+required_libraries = MC Support LerosInfo LerosAsmPrinter
 add_to_library_groups = Leros
