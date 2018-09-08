@@ -29,7 +29,7 @@ class LerosDAGToDAGISel : public SelectionDAGISel {
 public:
   LerosDAGToDAGISel(LerosTargetMachine &TM) : SelectionDAGISel(TM) {}
 
-  virtual StringRef getPassName() const {
+  StringRef getPassName() const override{
     return "Leros DAG->DAG Pattern Instruction Selection";
   }
 
@@ -41,7 +41,7 @@ public:
 };
 } // end anonymous namespace
 
-void LerosDAGToDAGISel::Select(SDNode *N) {}
+void LerosDAGToDAGISel::Select(SDNode *) {}
 
 // This pass converts a legalized DAG into a Leros-specific DAG, ready
 // for instruction scheduling.

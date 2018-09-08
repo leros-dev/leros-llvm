@@ -25,14 +25,9 @@
 #include "llvm/Support/raw_ostream.h"
 
 namespace llvm {
-static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
-                                    const AsmPrinter &AP) {
-  return MCOperand();
-}
-
 bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
                                          MCOperand &MCOp,
-                                         const AsmPrinter &AP) {
+                                         const AsmPrinter &) {
   MachineOperand::MachineOperandType MOTy = MO.getType();
 
   switch (MOTy) {

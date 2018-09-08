@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "LerosMCTargetDesc.h"
+#include "InstPrinter/LerosInstPrinter.h"
 #include "LerosMCAsmInfo.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
@@ -44,6 +45,14 @@ static MCRegisterInfo *createLerosMCRegisterInfo(const Triple &TT) {
   return X;
 }
 
+static MCInstPrinter *createLerosMCInstPrinter(const Triple &T,
+                                               unsigned SyntaxVariant,
+                                               const MCAsmInfo &MAI,
+                                               const MCInstrInfo &MII,
+                                               const MCRegisterInfo &MRI) {
+  return new LerosInstPrinter(MAI, MII, MRI);
+}
+
 static MCSubtargetInfo *
 createLerosMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
   return createLerosMCSubtargetInfoImpl(TT, CPU, FS);
@@ -58,9 +67,10 @@ static MCAsmInfo *createLerosMCAsmInfo(const MCRegisterInfo &MRI,
 extern "C" void LLVMInitializeLerosTargetMC() {
   // Register the MC asm info.
   for (Target *T : {&getTheLeros32Target(), &getTheLeros64Target()}) {
-    RegisterMCAsmInfoFn X(*T, createLerosMCAsmInfo);
+    TargetRegistry::RegisterMCAsmInfo(*T, createLerosMCAsmInfo);
     TargetRegistry::RegisterMCInstrInfo(*T, createLerosMCInstrInfo);
     TargetRegistry::RegisterMCRegInfo(*T, createLerosMCRegisterInfo);
     TargetRegistry::RegisterMCSubtargetInfo(*T, createLerosMCSubtargetInfo);
+    TargetRegistry::RegisterMCInstPrinter(*T, createLerosMCInstPrinter);
   }
 }

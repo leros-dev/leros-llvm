@@ -7,39 +7,42 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "LerosAsmPrinter.h"
+#include "InstPrinter/LerosInstPrinter.h"
+#include "Leros.h"
 #include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "llvm/Support/TargetRegistry.h"
 
+#include "llvm/CodeGen/AsmPrinter.h"
+#include "llvm/MC/MCStreamer.h"
+
 namespace llvm {
 
+namespace {
+class LerosAsmPrinter : public AsmPrinter {
+
+public:
+  explicit LerosAsmPrinter(TargetMachine &TM,
+                         std::unique_ptr<MCStreamer> Streamer)
+      : AsmPrinter(TM, std::move(Streamer)) {}
+
+  StringRef getPassName() const override { return "Leros Assembly Printer"; }
+
+  void EmitFunctionEntryLabel() override;
+  void EmitInstruction(const MachineInstr *MI) override;
+  void EmitFunctionBodyStart() override;
+};
+} // end of anonymous namespace
+
+void LerosAsmPrinter::EmitFunctionBodyStart() {
+}
+
+void LerosAsmPrinter::EmitFunctionEntryLabel() {
+}
+
 void LerosAsmPrinter::EmitInstruction(const MachineInstr *MI) {
-  MCInst tmpInst;
-  LowerLerosMachineInstrToMCInst(MI, tmpInst, *this);
-  AsmPrinter::EmitToStreamer(*OutStreamer, tmpInst);
-}
-
-bool LerosAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
-                                      unsigned AsmVariant,
-                                      const char *ExtraCode, raw_ostream &OS) {
-  if (AsmVariant != 0)
-    report_fatal_error("There are no defined alternate asm variants");
-
-  // First try the generic code, which knows about modifiers like 'c' and 'n'.
-  if (!AsmPrinter::PrintAsmOperand(MI, OpNo, AsmVariant, ExtraCode, OS))
-    return false;
-
-  return true;
-}
-
-bool LerosAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
-                                            unsigned OpNo, unsigned AsmVariant,
-                                            const char *ExtraCode,
-                                            raw_ostream &OS) {
-  if (AsmVariant != 0)
-    report_fatal_error("There are no defined alternate asm variants");
-
-  return AsmPrinter::PrintAsmMemoryOperand(MI, OpNo, AsmVariant, ExtraCode, OS);
+  MCInst TmpInst;
+  LowerLerosMachineInstrToMCInst(MI, TmpInst, *this);
+  EmitToStreamer(*OutStreamer, TmpInst);
 }
 
 // Force static initialization.

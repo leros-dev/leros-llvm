@@ -35,7 +35,7 @@ public:
     return &Subtarget;
   }
 
-  virtual TargetPassConfig *createPassConfig(llvm::legacy::PassManagerBase &PM);
+  virtual TargetPassConfig *createPassConfig(llvm::legacy::PassManagerBase &PM) override;
 };
 }
 

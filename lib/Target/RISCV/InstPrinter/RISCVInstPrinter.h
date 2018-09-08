@@ -20,8 +20,7 @@
 namespace llvm {
 class MCOperand;
 
-class RISCVInstPrinter : public MCInstPrinter {
-public:
+class RISCVInstPrinter : public MCInstPrinter { public:
   RISCVInstPrinter(const MCAsmInfo &MAI, const MCInstrInfo &MII,
                    const MCRegisterInfo &MRI)
       : MCInstPrinter(MAI, MII, MRI) {}
