@@ -26,29 +26,29 @@ foreach Index = 0-255 in {
   }
 }
 
-def XLenVT : ValueTypeByHwMode<[Leros16, Leros32, Leros64, DefaultMode],
-                               [i16,     i32,     i64,     i32]>;
+def XLenVT : ValueTypeByHwMode<[Leros32, Leros64, DefaultMode],
+                               [i32,     i64,     i32]>;
 
 // Accumulator - we treat this as a separate register outside of the GPR definitions
 def ACC : RegisterClass<"Leros", [XLenVT], 32, (add
   ACCAsReg
 )> {
-    let RegInfos = RegInfoByHwMode<[Leros16,            Leros32,           Leros64,            DefaultMode],
-                                   [RegInfo<16,16,16>,  RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
+    let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
+                                   [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
 }
 
 // General purpose registers
 def GPR : RegisterClass<"Leros", [XLenVT], 32, (add
     (sequence "R%u", 0, 255)
   )> {
-    let RegInfos = RegInfoByHwMode<[Leros16,            Leros32,           Leros64,            DefaultMode],
-                                   [RegInfo<16,16,16>,  RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
+    let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
+                                   [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
 }
 
 // Stack pointer
 def SP : RegisterClass<"Leros", [XLenVT], 32, (add R1)> {
-    let RegInfos = RegInfoByHwMode<[Leros16,            Leros32,           Leros64,            DefaultMode],
-                                   [RegInfo<16,16,16>,  RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
+    let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
+                                   [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
 }
 
 
@@ -57,6 +57,6 @@ def GPRNoSP : RegisterClass<"Leros", [XLenVT], 32, (add
     R0,
     (sequence "R%u", 2, 255)
   )> {
-    let RegInfos = RegInfoByHwMode<[Leros16,            Leros32,           Leros64,            DefaultMode],
-                                   [RegInfo<16,16,16>,  RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
+    let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
+                                   [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
 }

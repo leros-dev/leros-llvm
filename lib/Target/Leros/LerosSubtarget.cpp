@@ -26,12 +26,10 @@ void LerosSubtarget::initializeSubtargetDependencies(StringRef CPU,
                                                      const Triple &TT) {
   std::string CPUName = CPU;
   if (CPUName.empty()) {
-    if (TT.isArch16Bit()) {
-      CPUName = "generic-leros16";
-    } else if (TT.isArch32Bit()) {
-      CPUName = "generic-leros32";
-    } else if (TT.isArch64Bit()) {
+    if (TT.isArch64Bit()) {
       CPUName = "generic-leros64";
+    } else {
+      CPUName = "generic-leros32";
     }
   }
   ParseSubtargetFeatures(CPUName, FS);

@@ -29,13 +29,11 @@ extern "C" void LLVMInitializeLerosTarget() {
   RegisterTargetMachine<LerosTargetMachine> Y(getTheLeros64Target());
 }
 
-static StringRef computeDataLayout(const Triple &TT) {
-  if (TT.isArch16Bit()) {
-    return "e-p16:16-i1:8:16-i8:8:16-i16:16-i32:16:32-i64:16:64";
-  } else if (TT.isArch32Bit()) {
-    return "e-p32:32-i1:8:32-i8:8:32-i16:16:32-i32:32:32-i64:32:64";
+static std::string computeDataLayout(const Triple &TT) {
+  if (TT.isArch64Bit()) {
+    return "e-m:e-p:64:64-i64:64-i128:128-n64-S0";
   } else {
-    return "e-p64:64-i1:8:64-i8:8:64-i16:16:64-i32:32:64-i64:64";
+    return "e-m:e-p:32:32-i64:64-n32-S0";
   }
 }
 
