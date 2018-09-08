@@ -96,8 +96,6 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
     return "le32";
   case le64:
     return "le64";
-  case leros16:
-    return "leros16";
   case leros32:
     return "leros32";
   case leros64:
@@ -205,6 +203,10 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
     return "le32";
   case le64:
     return "le64";
+
+  case leros32:
+  case leros64:
+     return "leros";
 
   case amdil:
   case amdil64:
@@ -450,6 +452,8 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
       .Case("nvptx64", nvptx64)
       .Case("le32", le32)
       .Case("le64", le64)
+      .Case("leros32", leros32)
+      .Case("leros64", leros64)
       .Case("amdil", amdil)
       .Case("amdil64", amdil64)
       .Case("hsail", hsail)
@@ -572,6 +576,8 @@ static Triple::ArchType parseArch(StringRef ArchName) {
                 .Case("nvptx", Triple::nvptx)
                 .Case("nvptx64", Triple::nvptx64)
                 .Case("le32", Triple::le32)
+                .Case("leros64", Triple::leros64)
+                .Case("leros32", Triple::leros32)
                 .Case("le64", Triple::le64)
                 .Case("amdil", Triple::amdil)
                 .Case("amdil64", Triple::amdil64)
@@ -806,7 +812,6 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   case Triple::kalimba:
   case Triple::le32:
   case Triple::le64:
-  case Triple::leros16:
   case Triple::leros32:
   case Triple::leros64:
   case Triple::mips:
@@ -1352,7 +1357,6 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
     return 0;
 
   case llvm::Triple::avr:
-  case llvm::Triple::leros16:
   case llvm::Triple::msp430:
     return 16;
 
@@ -1480,9 +1484,6 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::le64:
     T.setArch(Triple::le32);
     break;
-  case Triple::leros16:
-    T.setArch(Triple::leros32);
-    break;
   case Triple::leros64:
     T.setArch(Triple::leros32);
     break;
@@ -1579,9 +1580,6 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::le32:
     T.setArch(Triple::le64);
     break;
-  case Triple::leros16:
-    T.setArch(Triple::leros64);
-    break;
   case Triple::leros32:
     T.setArch(Triple::leros64);
     break;
@@ -1648,6 +1646,8 @@ Triple Triple::getBigEndianArchVariant() const {
   case Triple::kalimba:
   case Triple::le32:
   case Triple::le64:
+  case Triple::leros32:
+  case Triple::leros64:
   case Triple::msp430:
   case Triple::nios2:
   case Triple::nvptx64:
@@ -1761,6 +1761,8 @@ bool Triple::isLittleEndian() const {
   case Triple::kalimba:
   case Triple::le32:
   case Triple::le64:
+  case Triple::leros32:
+  case Triple::leros64:
   case Triple::mips64el:
   case Triple::mipsel:
   case Triple::msp430:

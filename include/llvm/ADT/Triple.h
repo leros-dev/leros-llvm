@@ -83,7 +83,6 @@ public:
     nvptx64,        // NVPTX: 64-bit
     le32,           // le32: generic little-endian 32-bit CPU (PNaCl)
     le64,           // le64: generic little-endian 64-bit CPU (PNaCl)
-    leros16,        // Leros: 16-bit
     leros32,        // Leros: 32-bit
     leros64,        // Leros: 64-bit
     amdil,          // AMDIL
