@@ -35,7 +35,12 @@ public:
     return &Subtarget;
   }
 
-  virtual TargetPassConfig *createPassConfig(llvm::legacy::PassManagerBase &PM) override;
+  TargetPassConfig *
+  createPassConfig(llvm::legacy::PassManagerBase &PM) override;
+
+  TargetLoweringObjectFile *getObjFileLowering() const override {
+    return TLOF.get();
+  }
 };
 }
 

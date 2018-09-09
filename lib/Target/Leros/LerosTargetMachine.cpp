@@ -13,6 +13,7 @@
 
 #include "LerosTargetMachine.h"
 #include "Leros.h"
+#include "LerosTargetObjectFile.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
@@ -59,7 +60,7 @@ LerosTargetMachine::LerosTargetMachine(const Target &T, const Triple &TT,
     : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
                         getEffectiveRelocModel(TT, RM),
                         getEffectiveCodeModel(CM), OL),
-      Subtarget(TT, CPU, FS) {
+      Subtarget(TT, CPU, FS), TLOF(make_unique<LerosELFTargetObjectFile>()) {
   initAsmInfo();
 }
 
