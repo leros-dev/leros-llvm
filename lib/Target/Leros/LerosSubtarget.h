@@ -15,6 +15,10 @@
 #define Leros_SUBTARGET_H
 
 #include "LerosFrameLowering.h"
+#include "LerosISelLowering.h"
+#include "LerosInstrInfo.h"
+#include "LerosRegisterInfo.h"
+#include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/Support/MachineValueType.h"
 #include <string>
@@ -28,9 +32,14 @@ class LerosSubtarget : public LerosGenSubtargetInfo {
   MVT XLenVT = MVT::i32;
 
   LerosFrameLowering FrameLowering;
+  LerosInstrInfo InstrInfo;
+  LerosRegisterInfo RegInfo;
+  SelectionDAGTargetInfo TSInfo;
+  LerosTargetLowering TLInfo;
 
 public:
-  LerosSubtarget(const Triple &TT, StringRef CPU, StringRef FS);
+  LerosSubtarget(const Triple &TT, StringRef CPU, StringRef FS,
+                 const TargetMachine &TM);
 
   void initializeSubtargetDependencies(StringRef CPU, StringRef FS,
                                        const Triple &TT);
@@ -42,6 +51,16 @@ public:
   const LerosFrameLowering *getFrameLowering() const override {
     return &FrameLowering;
   }
+
+  const LerosInstrInfo *getInstrInfo() const override { return &InstrInfo; }
+  const LerosRegisterInfo *getRegisterInfo() const override { return &RegInfo; }
+  const LerosTargetLowering *getTargetLowering() const override {
+    return &TLInfo;
+  }
+  const SelectionDAGTargetInfo *getSelectionDAGInfo() const override {
+    return &TSInfo;
+  }
+  MVT getXLenVT() const { return XLenVT; }
 
 private:
 };

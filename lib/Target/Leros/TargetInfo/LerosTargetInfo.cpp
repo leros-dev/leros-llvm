@@ -11,8 +11,6 @@
 #include "Leros.h"
 #include "llvm/Support/TargetRegistry.h"
 
-using namespace llvm;
-
 namespace llvm {
 
 Target &getTheLeros32Target() {
@@ -24,11 +22,11 @@ Target &getTheLeros64Target() {
   static Target TheLeros64Target;
   return TheLeros64Target;
 }
-}
 
 extern "C" void LLVMInitializeLerosTargetInfo() {
   RegisterTarget<Triple::leros32> Y(getTheLeros32Target(), "leros32",
                                     "32-bit Leros", "Leros");
   RegisterTarget<Triple::leros64> Z(getTheLeros64Target(), "leros64",
                                     "64-bit Leros", "Leros");
+}
 }

@@ -20,7 +20,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
-using namespace llvm;
+namespace llvm {
 
 // Leros  specific code to select Leros machine
 // instructions for SelectionDAG operations.
@@ -29,7 +29,7 @@ class LerosDAGToDAGISel : public SelectionDAGISel {
 public:
   LerosDAGToDAGISel(LerosTargetMachine &TM) : SelectionDAGISel(TM) {}
 
-  StringRef getPassName() const override{
+  StringRef getPassName() const override {
     return "Leros DAG->DAG Pattern Instruction Selection";
   }
 
@@ -47,4 +47,5 @@ void LerosDAGToDAGISel::Select(SDNode *) {}
 // for instruction scheduling.
 FunctionPass *llvm::createLerosISelDag(LerosTargetMachine &TM) {
   return new LerosDAGToDAGISel(TM);
+}
 }

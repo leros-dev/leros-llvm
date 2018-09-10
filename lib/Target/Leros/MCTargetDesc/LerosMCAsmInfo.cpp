@@ -1,4 +1,5 @@
-//===- LerosMCAsmInfo.cpp - Leros asm properties --------------------*- C++ -*-===//
+//===- LerosMCAsmInfo.cpp - Leros asm properties --------------------*- C++
+//-*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -9,15 +10,16 @@
 
 #include "LerosMCAsmInfo.h"
 #include "llvm/ADT/Triple.h"
-using namespace llvm;
 
+namespace llvm {
 void LerosMCAsmInfo::anchor() {}
 
 LerosMCAsmInfo::LerosMCAsmInfo(const Triple &TT) {
-    CodePointerSize = CalleeSaveStackSlotSize = TT.isArch64Bit() ? 8 : 4;
-    CommentString = "#";
-    AlignmentIsInBytes = false;
-    SupportsDebugInformation = true;
-    // Data16bitsDirective = "\t.half\t"; ///@todo supported?
-    // Data32bitsDirective = "\t.word\t"; ///@todo supported?
+  CodePointerSize = CalleeSaveStackSlotSize = TT.isArch64Bit() ? 8 : 4;
+  CommentString = "#";
+  AlignmentIsInBytes = false;
+  SupportsDebugInformation = true;
+  // Data16bitsDirective = "\t.half\t"; ///@todo supported?
+  // Data32bitsDirective = "\t.word\t"; ///@todo supported?
+}
 }

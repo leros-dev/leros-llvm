@@ -35,8 +35,10 @@ void LerosSubtarget::initializeSubtargetDependencies(StringRef CPU,
   ParseSubtargetFeatures(CPUName, FS);
 }
 
-LerosSubtarget::LerosSubtarget(const Triple &TT, StringRef CPU, StringRef FS)
-    : LerosGenSubtargetInfo(TT, CPU, FS) {
+LerosSubtarget::LerosSubtarget(const Triple &TT, StringRef CPU, StringRef FS,
+                               const TargetMachine &TM)
+    : LerosGenSubtargetInfo(TT, CPU, FS), FrameLowering(), InstrInfo(),
+      RegInfo(getHwMode()), TLInfo(TM, *this) {
 
   initializeSubtargetDependencies(CPU, FS, TT);
 }

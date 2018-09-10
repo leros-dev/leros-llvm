@@ -15,8 +15,6 @@
 #ifndef LLVM_LIB_TARGET_Leros_Leros_H
 #define LLVM_LIB_TARGET_Leros_Leros_H
 
-#include "LerosTargetMachine.h"
-
 namespace llvm {
 class FunctionPass;
 class MachineInstr;
@@ -24,6 +22,7 @@ class MCInst;
 class AsmPrinter;
 class MachineOperand;
 class MCOperand;
+class LerosTargetMachine;
 
 void LowerLerosMachineInstrToMCInst(const MachineInstr *MI, MCInst &OutMI,
                                     const AsmPrinter &AP);

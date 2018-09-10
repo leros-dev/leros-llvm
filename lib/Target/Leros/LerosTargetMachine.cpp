@@ -23,8 +23,7 @@
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
 
-using namespace llvm;
-
+namespace llvm {
 extern "C" void LLVMInitializeLerosTarget() {
   RegisterTargetMachine<LerosTargetMachine> X(getTheLeros32Target());
   RegisterTargetMachine<LerosTargetMachine> Y(getTheLeros64Target());
@@ -60,7 +59,8 @@ LerosTargetMachine::LerosTargetMachine(const Target &T, const Triple &TT,
     : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
                         getEffectiveRelocModel(TT, RM),
                         getEffectiveCodeModel(CM), OL),
-      Subtarget(TT, CPU, FS), TLOF(make_unique<LerosELFTargetObjectFile>()) {
+      Subtarget(TT, CPU, FS, *this),
+      TLOF(make_unique<LerosELFTargetObjectFile>()) {
   initAsmInfo();
 }
 
@@ -86,4 +86,5 @@ bool LerosPassConfig::addInstSelector() {
   addPass(createLerosISelDag(getLerosTargetMachine()));
 
   return false;
+}
 }

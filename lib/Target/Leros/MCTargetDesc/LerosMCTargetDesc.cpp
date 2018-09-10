@@ -22,8 +22,6 @@
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/TargetRegistry.h"
 
-using namespace llvm;
-
 #define GET_INSTRINFO_MC_DESC
 #include "LerosGenInstrInfo.inc"
 
@@ -32,6 +30,8 @@ using namespace llvm;
 
 #define GET_REGINFO_MC_DESC
 #include "LerosGenRegisterInfo.inc"
+
+namespace llvm {
 
 static MCInstrInfo *createLerosMCInstrInfo() {
   auto *X = new MCInstrInfo();
@@ -73,4 +73,5 @@ extern "C" void LLVMInitializeLerosTargetMC() {
     TargetRegistry::RegisterMCSubtargetInfo(*T, createLerosMCSubtargetInfo);
     TargetRegistry::RegisterMCInstPrinter(*T, createLerosMCInstPrinter);
   }
+}
 }
