@@ -21,6 +21,13 @@
 
 namespace llvm {
 
+namespace LEROSISD {
+enum NodeType {
+  FIRST_NUMBER = ISD::BUILTIN_OP_END,
+  JAL_RET // JAL used as a return from subfunction
+};
+}
+
 // Forward delcarations
 class LerosSubtarget;
 class LerosTargetMachine;
@@ -30,9 +37,8 @@ class LerosTargetMachine;
 //===--------------------------------------------------------------------===//
 class LerosTargetLowering : public TargetLowering {
 public:
-    explicit LerosTargetLowering(const TargetMachine &TM,
-                                 const LerosSubtarget &STI);
-
+  explicit LerosTargetLowering(const TargetMachine &TM,
+                               const LerosSubtarget &STI);
 
   /// LowerOperation - Provide custom lowering hooks for some operations.
   virtual SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;

@@ -96,3 +96,10 @@ class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, 
     : LerosInst<outs, ins, opcodestr, argstr, []>{
     let Inst{15-8} = opcode.Value;
 } 
+
+// Pseudo instructions
+class Pseudo<dag outs, dag ins, list<dag> pattern, string opcodestr = "", string argstr = "">
+    : LerosInst<outs, ins, opcodestr, argstr, pattern> {
+  let isPseudo = 1;
+  let isCodeGenOnly = 1;
+}

@@ -14,6 +14,12 @@
 include "LerosInstrFormats.td"
 
 //===----------------------------------------------------------------------===//
+// Leros specific DAG Nodes.
+//===----------------------------------------------------------------------===//
+def JAL_RET : SDNode<"LEROSISD::JAL_RET", SDTNone,
+                          [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+//===----------------------------------------------------------------------===//
 // Operands
 //===----------------------------------------------------------------------===//
 
@@ -128,6 +134,11 @@ def JAL     : LerosInst<(outs GPR:$r), (ins ACC:$acc), "jal", "$r", []>{
 //===----------------------------------------------------------------------===//
 // Codegen patterns
 //===----------------------------------------------------------------------===//
+
+
+// Function return using jal
+def PseudoRET : Pseudo<(outs), (ins), [(JAL_RET)]>,
+                PseudoInstExpansion<(JAL R0)>;
 
 /*
 class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>
