@@ -30,11 +30,6 @@ namespace llvm {
 //===----------------------------------------------------------------------===//
 // LerosFrameLowering:
 //===----------------------------------------------------------------------===//
-LerosFrameLowering::LerosFrameLowering()
-    : TargetFrameLowering(TargetFrameLowering::StackGrowsDown,
-                          /*StackAlignment=*/4, /*LocalAreaOffset=*/0) {
-  // Do nothing
-}
 
 bool LerosFrameLowering::hasFP(const MachineFunction &MF) const {
   const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();

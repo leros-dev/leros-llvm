@@ -50,9 +50,7 @@ BitVector LerosRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 
 void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             int SPAdj, unsigned FIOperandNum,
-                                            RegScavenger *RS) const {
-  assert(0);
-}
+                                            RegScavenger *RS) const {}
 
 unsigned LerosRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
   return Leros::R2;

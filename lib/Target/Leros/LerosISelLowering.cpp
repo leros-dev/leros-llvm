@@ -72,6 +72,9 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
   default:
     return nullptr;
     NODE(JAL_RET);
+    NODE(LOADH);
+    NODE(LOADH2);
+    NODE(LOADH3);
   }
 #undef NODE
 }

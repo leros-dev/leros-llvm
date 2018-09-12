@@ -14,10 +14,18 @@
 include "LerosInstrFormats.td"
 
 //===----------------------------------------------------------------------===//
-// Leros specific DAG Nodes.
+// Leros specific DAG profiles & Nodes.
 //===----------------------------------------------------------------------===//
 def JAL_RET : SDNode<"LEROSISD::JAL_RET", SDTNone,
                           [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+// For Loadh ops, both an imm8 as well as the accumulator are inputs
+def SDT_LOADH   :SDTypeProfile<1, 2, [SDTCisVT<0, untyped>, SDTCisInt<1>, 
+                                      SDTCisSameAs<1, 2>]>;
+
+def LOADH : SDNode<"LEROSISD::LOADH", SDT_LOADH>;
+def LOADH2 : SDNode<"LEROSISD::LOADH2", SDT_LOADH>;
+def LOADH3 : SDNode<"LEROSISD::LOADH3", SDT_LOADH>;
 
 //===----------------------------------------------------------------------===//
 // Operands
@@ -57,56 +65,73 @@ def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
 
 
 // Instruction class definitions
-
-// Instructions with dependency: Acc -> (Acc, Imm)
 let Constraints = "$acci = $acco" in {
-    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr>
+    // Instructions with dependency: Acc -> (Acc, Imm)
+    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
         : LerosImmInst<opcode, (outs ACC:$acco), (ins ACC:$acci, uimm8:$imm8), 
-            opcodestr, "$imm8">;
+            opcodestr, "$imm8", [(set i32:$acco, (opnode i32:$acci, i32:$imm8))]>;
 
     // Instructions with dependency: Acc -> (Acc, Reg)
-    class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr>
+    class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
         : LerosImmInst<opcode, (outs ACC:$acco), (ins ACC:$acci, GPR:$r),
-            opcodestr, "$r">;
+            opcodestr, "$r", [(set i32:$acco, (opnode i32:$acci, i32:$r))]>;
 }
 
     // Instructions with dependency: Reg -> (Acc)
-    class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
+    class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
         : LerosImmInst<opcode, (outs GPR:$r), (ins ACC:$acc),
-            opcodestr, "$r">;
+            opcodestr, "$r", [(set i32:$r, (opnode i32:$acc))]>;
+    
+    // Instructions with dependency: Acc -> (reg)
+    class INSTR_AccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
+        : LerosImmInst<opcode, (outs ACC:$acc), (ins GPR:$r),
+            opcodestr, "$r", [(set i32:$acc, (opnode i32:$r))]>;
+    
+    // Instructions with dependency: Acc -> (imm)
+    class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
+        : LerosImmInst<opcode, (outs ACC:$acc), (ins uimm8:$imm8),
+            opcodestr, "$imm8", [(set i32:$acc, (opnode i32:$imm8))]>;
 
-multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string TGName, string opcodestr>{
-    def #TGName#_I  : INSTR_AccAccImm<opcode, opcodestr>;
-    def #TGName#_R  : INSTR_AccAccReg<opcode, opcodestr>; 
+multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string TGName, string opcodestr, SDNode opnode>{
+    def #TGName#_I  : INSTR_AccAccImm<opcode, opcodestr, opnode>;
+    def #TGName#_R  : INSTR_AccAccReg<opcode, opcodestr, opnode>; 
 }
 
 
-class INSTR_Branch<LerosBOpcode opcode, string opcodestr>
-    : LerosBranchInst<opcode, (outs), (ins uimm8:$imm8), opcodestr, "$imm8">{
+class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr, PatFrag CondOp>
+    : LerosBranchInst<opcode, (outs), (ins ACC:$acc, uimm8:$imm8), opcodestr, "$imm8",
+    [(brcond (i32 (CondOp i32:$acc, uimm8:$imm8)))]>{
 }
 
 
 // Instruction declarations
-defm : INSTR_ImmReg<OPC_NOP     , "INSTR_NOP",    "nop">;
-defm : INSTR_ImmReg<OPC_ADD     , "INSTR_ADD",    "add">;
-defm : INSTR_ImmReg<OPC_SUB     , "INSTR_SUB",    "sub">;
-defm : INSTR_ImmReg<OPC_SHR     , "INSTR_SHR",    "shr">;
-defm : INSTR_ImmReg<OPC_UNUSED  , "INSTR_UNUSED", "">;
-defm : INSTR_ImmReg<OPC_LOAD    , "INSTR_LOAD",   "load">;
-defm : INSTR_ImmReg<OPC_AND     , "INSTR_AND",    "and">;
-defm : INSTR_ImmReg<OPC_OR      , "INSTR_OR",     "or">;
-defm : INSTR_ImmReg<OPC_XOR     , "INSTR_XOR",    "xor">;
-defm : INSTR_ImmReg<OPC_LOADH   , "INSTR_LOADH",  "loadh">;
-defm : INSTR_ImmReg<OPC_OUT     , "INSTR_OUT",    "out">;
-defm : INSTR_ImmReg<OPC_IN      , "INSTR_IN",     "in">;
+// defm : INSTR_ImmReg<OPC_NOP     , "INSTR_NOP",    "nop",    nop>;
+defm : INSTR_ImmReg<OPC_ADD     , "INSTR_ADD",    "add",    add>;
+defm : INSTR_ImmReg<OPC_SUB     , "INSTR_SUB",    "sub",    sub>;
+defm : INSTR_ImmReg<OPC_SHR     , "INSTR_SHR",    "shr",    srl>;
+// defm : INSTR_ImmReg<OPC_UNUSED  , "INSTR_UNUSED", "">;
+defm : INSTR_ImmReg<OPC_AND     , "INSTR_AND",    "and",    and>;
+defm : INSTR_ImmReg<OPC_OR      , "INSTR_OR",     "or",     or>;
+defm : INSTR_ImmReg<OPC_XOR     , "INSTR_XOR",    "xor",    xor>;
 
-def STORE   : INSTR_RegAcc<OPC_STORE, "store">;
+// Loads
+def INSTR_LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;
+def INSTR_LOAD_I : INSTR_AccImm<OPC_LOAD, "load", ld>;
 
-def BR      : INSTR_Branch<OPC_BR, "br">;
-def BRZ     : INSTR_Branch<OPC_BRZ, "brz">;
-def BRNZ    : INSTR_Branch<OPC_BRNZ, "brnz">;
-def BRP     : INSTR_Branch<OPC_BRP, "brp">;
-def BRN     : INSTR_Branch<OPC_BRN, "brn">;
+
+//defm : INSTR_ImmReg<OPC_LOADH   , "INSTR_LOADH",  "loadh",  LOADH>;
+//defm : INSTR_ImmReg<OPC_LOADH_2   , "INSTR_LOADH2",  "loadh2",  LOADH2>;
+//defm : INSTR_ImmReg<OPC_LOADH_3   , "INSTR_LOADH3",  "loadh3",  LOADH3>;
+// defm : INSTR_ImmReg<OPC_OUT     , "INSTR_OUT",    "out",    out>;
+// defm : INSTR_ImmReg<OPC_IN      , "INSTR_IN",     "in",     in>;
+
+// def STORE   : INSTR_RegAcc<OPC_STORE, "store", store>;
+
+// def BR      : INSTR_BranchCond<OPC_BR,      "br",       BEQZ>; // unconditional branch
+//def BRZ     : INSTR_BranchCond<OPC_BRZ,     "brz",      seteq>;
+//def BRNZ    : INSTR_BranchCond<OPC_BRNZ,    "brnz",     brnz>;
+//def BRP     : INSTR_BranchCond<OPC_BRP,     "brp",      brp>;
+//  def BRN     : INSTR_BranchCond<OPC_BRN,     "brn",      brn>;
 
 // Instructions where format is specific to the instruction
 

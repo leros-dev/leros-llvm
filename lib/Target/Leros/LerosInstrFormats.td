@@ -38,6 +38,8 @@ def OPC_AND     : LerosImmRegOpcode<0b0010001>;
 def OPC_OR      : LerosImmRegOpcode<0b0010010>;
 def OPC_XOR     : LerosImmRegOpcode<0b0010011>;
 def OPC_LOADH   : LerosImmRegOpcode<0b0010100>;
+def OPC_LOADH_2 : LerosImmRegOpcode<0b0010101>;
+def OPC_LOADH_3 : LerosImmRegOpcode<0b0010110>;
 def OPC_STORE   : LerosImmRegOpcode<0b0011000>;
 def OPC_OUT     : LerosImmRegOpcode<0b0011100>;
 def OPC_IN      : LerosImmRegOpcode<0b0000010>;
@@ -73,33 +75,36 @@ class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pa
 
   dag OutOperandList = outs;
   dag InOperandList = ins;
-  let AsmString = opcodestr # "\t" # argstr;
+  let AsmString = opcodestr # argstr;
   let Pattern = pattern;
 }
 
-class LerosImmRegInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr>
-    : LerosInst<outs, ins, opcodestr, argstr, []>{
+class LerosImmRegInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
+    : LerosInst<outs, ins, opcodestr, argstr, pattern>{
     let Inst{15-9} = opcode.Value;
 }
 
-class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodestr, string argstr>
-    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr>{
+class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodestr, string argstr,
+    list<dag> pattern>
+    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr, pattern>{
     let Inst{8} = 0;
 }
 
-class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr>
-    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr>{
+class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
+    list<dag> pattern>
+    : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr, pattern>{
     let Inst{8} = 1;
 }
 
-class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr>
-    : LerosInst<outs, ins, opcodestr, argstr, []>{
+class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
+    list<dag> pattern>
+    : LerosInst<outs, ins, opcodestr, argstr, pattern>{
     let Inst{15-8} = opcode.Value;
 } 
 
 // Pseudo instructions
 class Pseudo<dag outs, dag ins, list<dag> pattern, string opcodestr = "", string argstr = "">
-    : LerosInst<outs, ins, opcodestr, argstr, pattern> {
+    : LerosInst<outs, ins, opcodestr, argstr, []> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
 }

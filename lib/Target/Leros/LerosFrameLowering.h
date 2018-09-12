@@ -23,7 +23,11 @@ class LerosSubtarget;
 
 class LerosFrameLowering : public TargetFrameLowering {
 public:
-  LerosFrameLowering();
+  explicit LerosFrameLowering(const LerosSubtarget &STI)
+      : TargetFrameLowering(StackGrowsDown,
+                            /*StackAlignment=*/16,
+                            /*LocalAreaOffset=*/0),
+        STI(STI) {}
 
   /// emitProlog/emitEpilog - These methods insert prolog and epilog code into
   /// the function.
@@ -35,6 +39,9 @@ public:
   MachineBasicBlock::iterator
   eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                                 MachineBasicBlock::iterator MI) const override;
+
+protected:
+  const LerosSubtarget &STI;
 };
 }
 
