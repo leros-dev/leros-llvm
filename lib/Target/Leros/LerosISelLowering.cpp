@@ -237,9 +237,7 @@ LerosTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   }
 
   // use jal as return function, with register as operand
-  llvm::ViewGraph(&DAG, "");
   auto node = DAG.getNode(LEROSISD::JAL_RET, DL, MVT::Other, RetOps);
-  llvm::ViewGraph(&DAG, "");
   return node;
 }
 }

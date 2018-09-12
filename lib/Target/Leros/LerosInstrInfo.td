@@ -135,19 +135,19 @@ def INSTR_LOAD_I : INSTR_AccImm<OPC_LOAD, "load", ld>;
 
 // Instructions where format is specific to the instruction
 
-def LDADDR  : LerosInst<(outs GPR:$r), (ins ACC:$acc), "ldaddr", "$r", []>{
+def INSTR_LDADDR  : LerosInst<(outs GPR:$r), (ins ACC:$acc), "ldaddr", "$r", []>{
     let Inst{15-11} = OPC_LDADDR.Value;
 }
 
-def LDIND : LerosInst<(outs ACC:$acc), (ins GPR:$r), "ldind", "$r", []>{
+def INSTR_LDIND : LerosInst<(outs ACC:$acc), (ins GPR:$r), "ldind", "$r", []>{
     let Inst{15-11} = OPC_LDIND.Value;
 }
 
-def STIND : LerosInst<(outs GPR:$r), (ins ACC:$acc), "stind", "$r", []>{
+def INSTR_STIND : LerosInst<(outs GPR:$r), (ins ACC:$acc), "stind", "$r", []>{
     let Inst{15-11} = OPC_STIND.Value;
 }
 
-def JAL     : LerosInst<(outs GPR:$r), (ins ACC:$acc), "jal", "$r", []>{
+def INSTR_JAL     : LerosInst<(outs GPR:$r), (ins ACC:$acc), "jal", "$r", []>{
     let Inst{15-11} = OPC_JAL.Value;
 }
 
@@ -162,8 +162,11 @@ def JAL     : LerosInst<(outs GPR:$r), (ins ACC:$acc), "jal", "$r", []>{
 
 
 // Function return using jal
-def PseudoRET : Pseudo<(outs), (ins), [(JAL_RET)]>,
-                PseudoInstExpansion<(JAL R0)>;
+
+let isReturn=1, isTerminator=1, isBarrier=1 in {
+  def INSTR_RET : LerosPseudo<(outs), (ins), "jal", "", [(JAL_RET)]>;
+}
+
 
 /*
 class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>
@@ -185,3 +188,18 @@ def : BPat<setge, BRN>;
 */
 
 // 'icmp' instruction
+
+// faker
+class ADD_INST : Instruction {
+  field bits<16> Inst;
+  bits<8> RegOrImm;
+
+  let Namespace = "Leros";
+
+  dag OutOperandList = (outs GPR:$dst);
+  dag InOperandList = (ins GPR:$src1, GPR:$src2);
+  let AsmString = "add $src1 $src2";
+  let Pattern = [(set i32:$dst, (add i32:$src1, i32:$src2))];
+}
+
+def ADD_INST_IMPL : ADD_INST;

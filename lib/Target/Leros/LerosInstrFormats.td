@@ -79,6 +79,12 @@ class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pa
   let Pattern = pattern;
 }
 
+class LerosPseudo<dag outs, dag ins, string opcodestr = "", string argstr = "", list<dag> pattern>
+    : LerosInst<outs, ins, opcodestr, argstr, pattern> {
+  let isPseudo = 1;
+  let isCodeGenOnly = 1;
+}
+
 class LerosImmRegInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
     let Inst{15-9} = opcode.Value;
@@ -101,10 +107,3 @@ class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, 
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
     let Inst{15-8} = opcode.Value;
 } 
-
-// Pseudo instructions
-class Pseudo<dag outs, dag ins, list<dag> pattern, string opcodestr = "", string argstr = "">
-    : LerosInst<outs, ins, opcodestr, argstr, []> {
-  let isPseudo = 1;
-  let isCodeGenOnly = 1;
-}

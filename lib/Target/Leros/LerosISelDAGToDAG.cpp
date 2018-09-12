@@ -41,10 +41,11 @@ public:
 };
 } // end anonymous namespace
 
-void LerosDAGToDAGISel::Select(SDNode *) {}
+void LerosDAGToDAGISel::Select(SDNode *Node) { return SelectCode(Node); }
 
-// This pass converts a legalized DAG into a Leros-specific DAG, ready
-// for instruction scheduling.
+/// createLerosISelDag - This pass converts a Lerosalized DAG into a
+/// Leros-specific DAG, ready for instruction scheduling.
+///
 FunctionPass *llvm::createLerosISelDag(LerosTargetMachine &TM) {
   return new LerosDAGToDAGISel(TM);
 }
