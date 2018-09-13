@@ -17,17 +17,17 @@ include "LerosInstrFormats.td"
 // Leros specific DAG profiles & Nodes.
 //===----------------------------------------------------------------------===//
 
-def SDT_LOADH   :SDTypeProfile<1, 2, [SDTCisVT<0, untyped>, SDTCisInt<1>, 
-                                      SDTCisSameAs<1, 2>]>;
+// type is: Acc -> (Acc, imm)
+def SDT_LOADH   :   SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisSameAs<0, 1>,
+                                      SDTCisInt<2>]>;
 
-def LerosRet : SDNode<"LEROSISD::Ret", SDTNone,
+def LerosRet :      SDNode<"LEROSISD::Ret", SDTNone,
                           [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def LerosMov :      SDNode<"LEROSISD::Mov", SDTIntUnaryOp>;
 
-def LerosMov : SDNode<"LEROSISD::Mov", SDTIntUnaryOp>;
-
-def LOADH : SDNode<"LEROSISD::LOADH", SDT_LOADH>;
-def LOADH2 : SDNode<"LEROSISD::LOADH2", SDT_LOADH>;
-def LOADH3 : SDNode<"LEROSISD::LOADH3", SDT_LOADH>;
+def LOADH   : SDNode<"LEROSISD::LOADH", SDT_LOADH>;
+def LOADH2  : SDNode<"LEROSISD::LOADH2", SDT_LOADH>;
+def LOADH3  : SDNode<"LEROSISD::LOADH3", SDT_LOADH>;
 
 //===----------------------------------------------------------------------===//
 // Operands
@@ -51,14 +51,30 @@ class UImmAsmOperand<int width, string suffix = "">
 // byte-sized immediate.
 // Both operands are mapped to XLenVT for calls
 def uimm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<8>(Imm);}]> {
+  let EncoderMethod = "getImmOpValue";
   let ParserMatchClass = UImmAsmOperand<5>;
   let DecoderMethod = "decodeUImmOperand<8>";
 }
 
 def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
+  let EncoderMethod = "getImmOpValue";
   let ParserMatchClass = SImmAsmOperand<5>;
   let DecoderMethod = "decodeSImmOperand<8>";
 }
+
+// Byte extraction node transformation, used for sequentialising immediate
+// generation of larger than 8-bit immediates using loadh instructions
+class ImmByteExtracter<int byteN> : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant((N->getZExtValue() >> (byteN * 0xff)) & 0xff,
+                                   SDLoc(N), N->getValueType(0));
+}]>;
+
+def BYTE0 : ImmByteExtracter<0>;
+def BYTE1 : ImmByteExtracter<1>;
+def BYTE2 : ImmByteExtracter<2>;
+def BYTE3 : ImmByteExtracter<3>;
+
+def simm32     : ImmLeaf<XLenVT, [{return isInt<32>(Imm);}]>;
 
 
 //===----------------------------------------------------------------------===//
@@ -85,13 +101,13 @@ def ADD_INST_IMPL : ADD_INST;
 let Constraints = "$acci = $acco", Uses=[ACC] in {
     // Instructions with dependency: Acc -> (Acc, Imm)
     class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
-        : LerosImmInst<opcode, (outs ACC_OP:$acco), (ins ACC_OP:$acci, uimm8:$imm8), 
-            opcodestr, "$imm8", [(set i32:$acco, (opnode i32:$acci, i32:$imm8))]>;
+        : LerosImmInst<opcode, (outs ACC_OP:$acco), (ins ACC_OP:$acci, simm8:$imm8), 
+            opcodestr, "$imm8", [(set ACC_OP:$acco, (opnode ACC_OP:$acci, simm8:$imm8))]>;
 
     // Instructions with dependency: Acc -> (Acc, Reg)
     class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
         : LerosImmInst<opcode, (outs ACC_OP:$acco), (ins ACC_OP:$acci, GPR:$r),
-            opcodestr, "$r", [(set i32:$acco, (opnode i32:$acci, i32:$r))]>;
+            opcodestr, "$r", [(set ACC_OP:$acco, (opnode ACC_OP:$acci, i32:$r))]>;
 }
 
     // Instructions with dependency: Reg -> (Acc)
@@ -106,7 +122,7 @@ let Constraints = "$acci = $acco", Uses=[ACC] in {
     
     // Instructions with dependency: Acc -> (imm)
     class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
-        : LerosImmInst<opcode, (outs ACC_OP:$acc), (ins uimm8:$imm8),
+        : LerosImmInst<opcode, (outs ACC_OP:$acc), (ins simm8:$imm8),
             opcodestr, "$imm8", [(set i32:$acc, (opnode i32:$imm8))]>;
 
     multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
@@ -134,10 +150,10 @@ defm INSTR_XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor>;
 def INSTR_LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;
 def INSTR_LOAD_I : INSTR_AccImm<OPC_LOAD, "load", ld>;
 
+defm INSTR_LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH>;
+defm INSTR_LOADH2   : INSTR_ImmReg<OPC_LOADH2   ,  "loadh2",  LOADH2>;
+defm  INSTR_LOADH3  : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 
-//defm : INSTR_ImmReg<OPC_LOADH   , "INSTR_LOADH",  "loadh",  LOADH>;
-//defm : INSTR_ImmReg<OPC_LOADH_2   , "INSTR_LOADH2",  "loadh2",  LOADH2>;
-//defm : INSTR_ImmReg<OPC_LOADH_3   , "INSTR_LOADH3",  "loadh3",  LOADH3>;
 // defm : INSTR_ImmReg<OPC_OUT     , "INSTR_OUT",    "out",    out>;
 // defm : INSTR_ImmReg<OPC_IN      , "INSTR_IN",     "in",     in>;
 
@@ -189,7 +205,6 @@ let Uses=[ACC] in
 //===----------------------------------------------------------------------===//
 // Codegen patterns
 //===----------------------------------------------------------------------===//
-
 
 /*
 class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>
