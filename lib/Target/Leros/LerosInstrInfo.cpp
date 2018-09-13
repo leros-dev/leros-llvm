@@ -29,38 +29,16 @@
 
 namespace llvm {
 
-unsigned LerosInstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
-                                             int &FrameIndex) const {
-  assert(0);
-  return 0;
-}
-unsigned LerosInstrInfo::isStoreToStackSlot(const MachineInstr &MI,
-                                            int &FrameIndex) const {
-  assert(0);
-  return 0;
-}
-
 void LerosInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator MBBI,
                                  const DebugLoc &DL, unsigned DstReg,
                                  unsigned SrcReg, bool KillSrc) const {
-  assert(0);
-}
-
-void LerosInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
-                                         MachineBasicBlock::iterator MBBI,
-                                         unsigned SrcReg, bool IsKill,
-                                         int FrameIndex,
-                                         const TargetRegisterClass *RC,
-                                         const TargetRegisterInfo *TRI) const {
-  assert(0);
-}
-
-void LerosInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
-                                          MachineBasicBlock::iterator MBBI,
-                                          unsigned DstReg, int FrameIndex,
-                                          const TargetRegisterClass *RC,
-                                          const TargetRegisterInfo *TRI) const {
-  assert(0);
+  if (Leros::GPRRegClass.contains(DstReg, SrcReg)) {
+    /// @todo use Leros::MOV pseudo instruction
+    BuildMI(MBB, MBBI, DL, get(Leros::INSTR_ADD_I), DstReg)
+        .addReg(SrcReg, getKillRegState(KillSrc))
+        .addImm(0);
+    return;
+  }
 }
 }

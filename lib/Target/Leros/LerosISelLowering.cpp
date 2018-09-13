@@ -75,6 +75,7 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
     NODE(LOADH);
     NODE(LOADH2);
     NODE(LOADH3);
+    NODE(MOV);
   }
 #undef NODE
 }
