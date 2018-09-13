@@ -34,11 +34,32 @@ void LerosInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  const DebugLoc &DL, unsigned DstReg,
                                  unsigned SrcReg, bool KillSrc) const {
   if (Leros::GPRRegClass.contains(DstReg, SrcReg)) {
-    /// @todo use Leros::MOV pseudo instruction
-    BuildMI(MBB, MBBI, DL, get(Leros::INSTR_ADD_I), DstReg)
+    BuildMI(MBB, MBBI, DL, get(Leros::INSTR_MOV), DstReg)
         .addReg(SrcReg, getKillRegState(KillSrc))
         .addImm(0);
     return;
   }
+}
+
+void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
+                               MachineBasicBlock::iterator I) const {
+  const unsigned &dst = I->getOperand(1).getReg(),
+                 &src = I->getOperand(2).getReg();
+  BuildMI(MBB, I, I->getDebugLoc(), get(ISD::ADD)).addReg(src);
+  BuildMI(MBB, I, I->getDebugLoc(), get(ISD::ADD)).addReg(dst);
+}
+
+bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
+  MachineBasicBlock &MBB = *MI.getParent();
+  switch (MI.getDesc().getOpcode()) {
+  default:
+    return false;
+  case Leros::INSTR_MOV:
+    expandMOV(MBB, MI);
+    break;
+  }
+
+  MBB.erase(MI);
+  return true;
 }
 }

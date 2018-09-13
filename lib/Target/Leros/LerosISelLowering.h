@@ -24,11 +24,11 @@ namespace llvm {
 namespace LEROSISD {
 enum NodeType {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
-  JAL_RET, // JAL used as a return from subfunction
-  LOADH,   // loads an 8-bit immediate into the high byte of a 2-byte value
-  LOADH2,  // - || -                            3rd byte of a 4-byte value
-  LOADH3,  // - || -                            4th byte of a 4-byte value
-  MOV // Pseudo move instruction expanded in LerosInstrInfo::expandPostRAPseudo
+  Ret,    // Return pseudo-op
+  LOADH,  // loads an 8-bit immediate into the high byte of a 2-byte value
+  LOADH2, // - || -                            3rd byte of a 4-byte value
+  LOADH3, // - || -                            4th byte of a 4-byte value
+  Mov     // Move pseudo-op
 };
 }
 

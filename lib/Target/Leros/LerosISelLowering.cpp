@@ -71,11 +71,11 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
   switch (Opcode) {
   default:
     return nullptr;
-    NODE(JAL_RET);
+    NODE(Ret);
     NODE(LOADH);
     NODE(LOADH2);
     NODE(LOADH3);
-    NODE(MOV);
+    NODE(Mov);
   }
 #undef NODE
 }
@@ -238,7 +238,7 @@ LerosTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   }
 
   // use jal as return function, with register as operand
-  auto node = DAG.getNode(LEROSISD::JAL_RET, DL, MVT::Other, RetOps);
+  auto node = DAG.getNode(LEROSISD::Ret, DL, MVT::Other, RetOps);
   return node;
 }
 }

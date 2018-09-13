@@ -16,12 +16,14 @@ include "LerosInstrFormats.td"
 //===----------------------------------------------------------------------===//
 // Leros specific DAG profiles & Nodes.
 //===----------------------------------------------------------------------===//
-def JAL_RET : SDNode<"LEROSISD::JAL_RET", SDTNone,
-                          [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
-// For Loadh ops, both an imm8 as well as the accumulator are inputs
 def SDT_LOADH   :SDTypeProfile<1, 2, [SDTCisVT<0, untyped>, SDTCisInt<1>, 
                                       SDTCisSameAs<1, 2>]>;
+
+def LerosRet : SDNode<"LEROSISD::Ret", SDTNone,
+                          [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+def LerosMov : SDNode<"LEROSISD::Mov", SDTIntUnaryOp>;
 
 def LOADH : SDNode<"LEROSISD::LOADH", SDT_LOADH>;
 def LOADH2 : SDNode<"LEROSISD::LOADH2", SDT_LOADH>;
@@ -62,6 +64,21 @@ def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
 //===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
+
+// Test instructcion without accumulator
+class ADD_INST : Instruction {
+  field bits<16> Inst;
+  bits<8> RegOrImm;
+
+  let Namespace = "Leros";
+
+  dag OutOperandList = (outs GPR:$dst);
+  dag InOperandList = (ins GPR:$src1, GPR:$src2);
+  let AsmString = "add $src1 $src2";
+  let Pattern = [(set i32:$dst, (add i32:$src1, i32:$src2))];
+}
+
+def ADD_INST_IMPL : ADD_INST;
 
 
 // Instruction class definitions
@@ -151,6 +168,20 @@ def INSTR_JAL     : LerosInst<(outs GPR:$r), (ins ACC_OP:$acc), "jal", "$r", []>
 }
 
 //===----------------------------------------------------------------------===//
+// Pseudo Instructions
+//===----------------------------------------------------------------------===//
+
+// Function return using jal
+let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in {
+  def INSTR_RET : LerosPseudo<(outs), (ins), "jal", " r0", [(LerosRet)]>;
+}
+
+// Register copy instruction
+let Uses=[ACC] in
+    def INSTR_MOV : LerosInst<(outs GPR:$rd), (ins GPR:$rs), "mov","$rd $rs",
+        [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
+
+//===----------------------------------------------------------------------===//
 // Immediate patterns
 //===----------------------------------------------------------------------===//
 
@@ -158,13 +189,6 @@ def INSTR_JAL     : LerosInst<(outs GPR:$r), (ins ACC_OP:$acc), "jal", "$r", []>
 //===----------------------------------------------------------------------===//
 // Codegen patterns
 //===----------------------------------------------------------------------===//
-
-
-// Function return using jal
-
-let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in {
-  def INSTR_RET : LerosPseudo<(outs), (ins), "jal", "r0", [(JAL_RET)]>;
-}
 
 
 /*
@@ -187,17 +211,3 @@ def : BPat<setge, BRN>;
 */
 
 // 'icmp' instruction
-
-class ADD_INST : Instruction {
-  field bits<16> Inst;
-  bits<8> RegOrImm;
-
-  let Namespace = "Leros";
-
-  dag OutOperandList = (outs GPR:$dst);
-  dag InOperandList = (ins GPR:$src1, GPR:$src2);
-  let AsmString = "add $src1 $src2";
-  let Pattern = [(set i32:$dst, (add i32:$src1, i32:$src2))];
-}
-
-def ADD_INST_IMPL : ADD_INST;

@@ -79,7 +79,7 @@ class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pa
   let Pattern = pattern;
 }
 
-class LerosPseudo<dag outs, dag ins, string opcodestr = "", string argstr = "", list<dag> pattern>
+class LerosPseudo<dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
