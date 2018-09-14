@@ -38,7 +38,9 @@ void LerosInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
     BuildMI(MBB, MBBI, DL, get(Leros::INSTR_LOAD_AR), DstReg).addReg(SrcReg);
   } else if (SrcReg == Leros::ACC) {
     // Store out of the accumulator, used for most arithmetic instructions
-    BuildMI(MBB, MBBI, DL, get(Leros::INSTR_STORE), SrcReg).addReg(DstReg);
+    BuildMI(MBB, MBBI, DL, get(Leros::INSTR_STORE))
+        .addReg(SrcReg, getKillRegState(KillSrc))
+        .addReg(DstReg);
   } else {
     // An actual register copy operation
     BuildMI(MBB, MBBI, DL, get(Leros::INSTR_MOV), DstReg)

@@ -108,7 +108,7 @@ let Constraints = "$acci = $acco" in {
     // Instructions with dependency: Acc -> (Acc, Reg)
     class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
         : LerosImmInst<opcode, (outs ACC_OP:$acco), (ins ACC_OP:$acci, GPR:$r),
-            opcodestr, "$r", [(set ACC_OP:$acco, (opnode ACC_OP:$acci, GPR:$r))]>;
+            opcodestr, "$r", [/*(set ACC_OP:$acco, (opnode ACC_OP:$acci, GPR:$r))*/]>;
     }
 
     // Instructions with dependency: () -> (Acc, Reg)
@@ -132,6 +132,7 @@ let Constraints = "$acci = $acco" in {
             opcodestr, "$imm8", [(set i32:$acc, (opnode simm8:$imm8))]>;
 
     multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
+        // Instruction definitions
         def _AI  : INSTR_AccAccImm<opcode, opcodestr, opnode>;
         def _AR  : INSTR_AccAccReg<opcode, opcodestr, opnode>; 
 }
@@ -213,10 +214,30 @@ let Uses=[ACC] in
 // Codegen patterns
 //===----------------------------------------------------------------------===//
 
+// The following two codegen patterns are vital for matching 3-op LLVM IR 
+// to a load-and-use sequence, required for the accumulator machine
 class PatGprGpr<SDPatternOperator OpNode, INSTR_AccAccReg Inst>
     : Pat<(OpNode GPR:$rs1, GPR:$rs2), 
         (Inst (INSTR_LOAD_AR GPR:$rs1), GPR:$rs2)>;
-def : PatGprGpr<add, INSTR_ADD_AR>;
+
+class PatGprImm<SDPatternOperator OpNode, INSTR_AccAccImm Inst>
+    : Pat<(OpNode GPR:$rs1, GPR:$rs2), 
+        (Inst (INSTR_LOAD_AI uimm8:$rs1), GPR:$rs2)>;
+
+
+def : PatGprGpr<add,    INSTR_ADD_AR>;
+def : PatGprGpr<sub,    INSTR_SUB_AR>;
+def : PatGprGpr<srl,    INSTR_SHR_AR>;
+def : PatGprGpr<and,    INSTR_AND_AR>;
+def : PatGprGpr<or,     INSTR_OR_AR>;
+def : PatGprGpr<xor,    INSTR_XOR_AR>;
+
+def : PatGprImm<add,    INSTR_ADD_AI>;
+def : PatGprImm<sub,    INSTR_SUB_AI>;
+def : PatGprImm<srl,    INSTR_SHR_AI>;
+def : PatGprImm<and,    INSTR_AND_AI>;
+def : PatGprImm<or,     INSTR_OR_AI>;
+def : PatGprImm<xor,    INSTR_XOR_AI>;
 
 /*
 class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>

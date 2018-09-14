@@ -52,10 +52,6 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
 
   // Compute derived properties from the register classes
   computeRegisterProperties(Subtarget.getRegisterInfo());
-
-  // do setOperationAction for all types which needs expansion
-  setOperationAction(ISD::ADD, XLenVT, Expand);
-  setOperationAction(ISD::SUB, XLenVT, Expand);
 }
 
 SDValue LerosTargetLowering::LowerOperation(SDValue Op,
