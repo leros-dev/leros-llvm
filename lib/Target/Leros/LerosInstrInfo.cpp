@@ -33,12 +33,18 @@ void LerosInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator MBBI,
                                  const DebugLoc &DL, unsigned DstReg,
                                  unsigned SrcReg, bool KillSrc) const {
-  if (Leros::GPRRegClass.contains(DstReg, SrcReg)) {
+  if (DstReg == Leros::ACC) {
+    // Load into the accumulator, used for most arithmetic instructions
+    BuildMI(MBB, MBBI, DL, get(Leros::INSTR_LOAD_AR), DstReg).addReg(SrcReg);
+  } else if (SrcReg == Leros::ACC) {
+    // Store out of the accumulator, used for most arithmetic instructions
+    BuildMI(MBB, MBBI, DL, get(Leros::INSTR_STORE), SrcReg).addReg(DstReg);
+  } else {
+    // An actual register copy operation
     BuildMI(MBB, MBBI, DL, get(Leros::INSTR_MOV), DstReg)
-        .addReg(SrcReg, getKillRegState(KillSrc))
-        .addImm(0);
-    return;
+        .addReg(SrcReg, getKillRegState(KillSrc));
   }
+  return;
 }
 
 void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
