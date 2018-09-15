@@ -192,6 +192,14 @@ bool LerosTargetLowering::CanLowerReturn(
   return true;
 }
 
+bool LerosTargetLowering::isLegalICmpImmediate(int64_t Imm) const {
+  return isInt<8>(Imm);
+}
+
+bool LerosTargetLowering::isLegalAddImmediate(int64_t Imm) const {
+  return isInt<8>(Imm);
+}
+
 SDValue
 LerosTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                  bool isVarArg,
