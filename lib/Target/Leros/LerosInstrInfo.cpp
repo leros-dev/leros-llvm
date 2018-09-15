@@ -70,4 +70,24 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   MBB.erase(MI);
   return true;
 }
+
+void LerosInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
+                                         MachineBasicBlock::iterator I,
+                                         unsigned SrcReg, bool IsKill, int FI,
+                                         const TargetRegisterClass *RC,
+                                         const TargetRegisterInfo *TRI) const {
+  DebugLoc DL;
+  if (I != MBB.end())
+    DL = I->getDebugLoc();
+
+  if (SrcReg == Leros::ACC) {
+    // Store directly to register
+    BuildMI(MBB, I, DL, get(Leros::INSTR_STORE))
+        .addReg(SrcReg, getKillRegState(IsKill))
+        .addFrameIndex(FI)
+        .addImm(0);
+  } else {
+    // Load into accumulator and store
+  }
+}
 }
