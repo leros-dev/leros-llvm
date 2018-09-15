@@ -81,60 +81,48 @@ def simm32     : ImmLeaf<XLenVT, [{return isInt<32>(Imm);}]>;
 // Instructions
 //===----------------------------------------------------------------------===//
 
-/*
-// Test instructcion without accumulator
-class ADD_INST : Instruction {
-  field bits<16> Inst;
-  bits<8> RegOrImm;
-
-  let Namespace = "Leros";
-
-  dag OutOperandList = (outs GPR:$dst);
-  dag InOperandList = (ins GPR:$src1, GPR:$src2);
-  let AsmString = "add $src1 $src2";
-  let Pattern = [(set i32:$dst, (add i32:$src1, i32:$src2))];
-}
-
-def ADD_INST_IMPL : ADD_INST;
-*/
-
-// Instruction class definitions
-let Constraints = "$acci = $acco" in {
-    // Instructions with dependency: Acc -> (Acc, Imm)
-    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
-        : LerosImmInst<opcode, (outs ACC_OP:$acco), (ins ACC_OP:$acci, simm8:$imm8), 
-            opcodestr, "$imm8", [(set ACC_OP:$acco, (opnode ACC_OP:$acci, simm8:$imm8))]>;
-
+let Uses=[ACC] in {
     // Instructions with dependency: Acc -> (Acc, Reg)
     class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
-        : LerosImmInst<opcode, (outs ACC_OP:$acco), (ins ACC_OP:$acci, GPR:$r),
-            opcodestr, "$r", [/*(set ACC_OP:$acco, (opnode ACC_OP:$acci, GPR:$r))*/]>;
-    }
-
-    // Instructions with dependency: () -> (Acc, Reg)
-    class INSTR_NAccReg<LerosImmRegOpcode opcode, string opcodestr>
-        : LerosImmInst<opcode, (outs), (ins ACC_OP:$acci, GPR:$r),
+        : LerosImmInst<opcode, (outs), (ins GPR:$r),
             opcodestr, "$r", []>;
 
+    // Instructions with dependency: Acc -> (Acc, Imm)
+    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
+        : LerosImmInst<opcode, (outs), (ins simm8:$imm8), 
+            opcodestr, "$imm8", []>;
+
     // Instructions with dependency: Reg -> (Acc)
-    class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
-        : LerosImmInst<opcode, (outs GPR:$r), (ins ACC_OP:$acc),
-            opcodestr, "$r", [(set i32:$r, (opnode ACC_OP:$acc))]>;
+    class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
+        : LerosImmInst<opcode, (outs GPR:$r), (ins),
+            opcodestr, "$r", []>;
     
     // Instructions with dependency: Acc -> (reg)
     class INSTR_AccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
-        : LerosImmInst<opcode, (outs ACC_OP:$acc), (ins GPR:$r),
-            opcodestr, "$r", [(set ACC_OP:$acc, (opnode GPR:$r))]>;
+        : LerosImmInst<opcode, (outs), (ins GPR:$r),
+            opcodestr, "$r", []>;
     
     // Instructions with dependency: Acc -> (imm)
     class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
-        : LerosImmInst<opcode, (outs ACC_OP:$acc), (ins simm8:$imm8),
-            opcodestr, "$imm8", [(set i32:$acc, (opnode simm8:$imm8))]>;
+        : LerosImmInst<opcode, (outs), (ins simm8:$imm8),
+            opcodestr, "$imm8", []>;
 
-    multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
-        // Instruction definitions
-        def _AI  : INSTR_AccAccImm<opcode, opcodestr, opnode>;
-        def _AR  : INSTR_AccAccReg<opcode, opcodestr, opnode>; 
+    // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
+    class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   GPR:$r2), F_RR, [(set i32:$rd, (opnode i32:$r1, i32:$r2))]>;
+
+        // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
+    class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   uimm8:$uimm8), F_RI, [(set i32:$rd, (opnode i32:$r1, uimm8:$uimm8))]>;
+
+}
+
+multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
+    // Wrapper pseudo instruction definitions
+    def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
+    def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode>; // Register-immediate instruction
+
+    // Instruction definitions
+    def _AI  : INSTR_AccAccImm<opcode, opcodestr, opnode>;
+    def _AR  : INSTR_AccAccReg<opcode, opcodestr, opnode>; 
 }
 
 
@@ -145,17 +133,16 @@ class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr, PatFrag CondOp>
 
 // Instruction declarations
 // defm : INSTR_ImmReg<OPC_NOP     , "INSTR_NOP",    "nop",    nop>;
-defm INSTR_ADD  : INSTR_ImmReg<OPC_ADD     ,    "add",    add>;
-defm INSTR_SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub",    sub>;
-defm INSTR_SHR  : INSTR_ImmReg<OPC_SHR     ,    "shr",    srl>;
-defm INSTR_AND  : INSTR_ImmReg<OPC_AND     ,    "and",    and>;
-defm INSTR_OR   : INSTR_ImmReg<OPC_OR      ,    "or",     or>;
-defm INSTR_XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor>;
-
+defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add",    add>;
+defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub",    sub>;
+defm SHR  : INSTR_ImmReg<OPC_SHR     ,    "shr",    srl>;
+defm AND  : INSTR_ImmReg<OPC_AND     ,    "and",    and>;
+defm OR   : INSTR_ImmReg<OPC_OR      ,    "or",     or>;
+defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor>;
 
 // Loads
-def INSTR_LOAD_AR : INSTR_AccReg<OPC_LOAD, "load", ld>;
-def INSTR_LOAD_AI : INSTR_AccImm<OPC_LOAD, "load", ld>;
+def LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;
+def LOAD_I : INSTR_AccImm<OPC_LOAD, "load", ld>;
 
 defm INSTR_LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH>;
 defm INSTR_LOADH2   : INSTR_ImmReg<OPC_LOADH2   ,  "loadh2",  LOADH2>;
@@ -164,8 +151,7 @@ defm  INSTR_LOADH3  : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 // defm : INSTR_ImmReg<OPC_OUT     , "INSTR_OUT",    "out",    out>;
 // defm : INSTR_ImmReg<OPC_IN      , "INSTR_IN",     "in",     in>;
 
-def INSTR_STORE   : INSTR_NAccReg<OPC_STORE, "store">;
-def : Pat<(store ACC_OP:$acc, GPR:$rp), (INSTR_STORE ACC_OP:$acc, GPR:$rp)>;
+def STORE   : INSTR_RegAcc<OPC_STORE, "store">;
 
 // def BR      : INSTR_BranchCond<OPC_BR,      "br",       BEQZ>; // unconditional branch
 //def BRZ     : INSTR_BranchCond<OPC_BRZ,     "brz",      seteq>;
@@ -174,21 +160,22 @@ def : Pat<(store ACC_OP:$acc, GPR:$rp), (INSTR_STORE ACC_OP:$acc, GPR:$rp)>;
 //def BRN     : INSTR_BranchCond<OPC_BRN,     "brn",      brn>;
 
 // Instructions where format is specific to the instruction
+let Uses=[ACC] in {
+    def LDADDR  : LerosInst<(outs GPR:$r), (ins), "ldaddr", "$r", []>{
+        let Inst{15-11} = OPC_LDADDR.Value;
+    }
 
-def INSTR_LDADDR  : LerosInst<(outs GPR:$r), (ins ACC_OP:$acc), "ldaddr", "$r", []>{
-    let Inst{15-11} = OPC_LDADDR.Value;
-}
+    def LDIND : LerosInst<(outs), (ins GPR:$r), "ldind", "$r", []>{
+        let Inst{15-11} = OPC_LDIND.Value;
+    }
 
-def INSTR_LDIND : LerosInst<(outs ACC_OP:$acc), (ins GPR:$r), "ldind", "$r", []>{
-    let Inst{15-11} = OPC_LDIND.Value;
-}
+    def STIND : LerosInst<(outs GPR:$r), (ins), "stind", "$r", []>{
+        let Inst{15-11} = OPC_STIND.Value;
+    }
 
-def INSTR_STIND : LerosInst<(outs GPR:$r), (ins ACC_OP:$acc), "stind", "$r", []>{
-    let Inst{15-11} = OPC_STIND.Value;
-}
-
-def INSTR_JAL     : LerosInst<(outs GPR:$r), (ins ACC_OP:$acc), "jal", "$r", []>{
-    let Inst{15-11} = OPC_JAL.Value;
+    def JAL     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
+        let Inst{15-11} = OPC_JAL.Value;
+    }
 }
 
 //===----------------------------------------------------------------------===//
@@ -196,13 +183,13 @@ def INSTR_JAL     : LerosInst<(outs GPR:$r), (ins ACC_OP:$acc), "jal", "$r", []>
 //===----------------------------------------------------------------------===//
 
 // Function return using jal
-let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in {
-  def INSTR_RET : LerosPseudo<(outs), (ins), "jal", "r0", [(LerosRet)]>;
+let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0, ACC] in {
+  def RET : LerosPseudo<(outs), (ins), F_NA, [(LerosRet)]>;
 }
 
 // Register copy instruction
 let Uses=[ACC] in
-    def INSTR_MOV : LerosInst<(outs GPR:$rd), (ins GPR:$rs), "mov","$rd $rs",
+    def MOV : LerosInst<(outs GPR:$rd), (ins GPR:$rs), "mov","$rd $rs",
         [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
 
 //===----------------------------------------------------------------------===//
@@ -214,31 +201,21 @@ let Uses=[ACC] in
 // Codegen patterns
 //===----------------------------------------------------------------------===//
 
-// The following two codegen patterns are vital for matching 3-op LLVM IR 
-// to a load-and-use sequence, required for the accumulator machine
-class PatGprGpr<SDPatternOperator OpNode, INSTR_AccAccReg Inst>
-    : Pat<(OpNode GPR:$rs1, GPR:$rs2), 
-        (Inst (INSTR_LOAD_AR GPR:$rs1), GPR:$rs2)>;
-
-class PatGprImm<SDPatternOperator OpNode, INSTR_AccAccImm Inst>
-    : Pat<(OpNode GPR:$rs1, GPR:$rs2), 
-        (Inst (INSTR_LOAD_AI uimm8:$rs1), GPR:$rs2)>;
-
-
-def : PatGprGpr<add,    INSTR_ADD_AR>;
+/*
+// def : PatGprGpr<add,    INSTR_ADD_AR>;
 def : PatGprGpr<sub,    INSTR_SUB_AR>;
 def : PatGprGpr<srl,    INSTR_SHR_AR>;
 def : PatGprGpr<and,    INSTR_AND_AR>;
 def : PatGprGpr<or,     INSTR_OR_AR>;
 def : PatGprGpr<xor,    INSTR_XOR_AR>;
 
-def : PatGprImm<add,    INSTR_ADD_AI>;
+// def : PatGprImm<add,    INSTR_ADD_AI>;
 def : PatGprImm<sub,    INSTR_SUB_AI>;
 def : PatGprImm<srl,    INSTR_SHR_AI>;
 def : PatGprImm<and,    INSTR_AND_AI>;
 def : PatGprImm<or,     INSTR_OR_AI>;
 def : PatGprImm<xor,    INSTR_XOR_AI>;
-
+*/
 /*
 class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>
     : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;

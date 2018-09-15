@@ -32,6 +32,14 @@ enum NodeType {
 };
 }
 
+namespace LEROSIF {
+enum {
+  NoFormat = 0,
+  RegisterRegister = 1,
+  RegisterImmediate = 2,
+};
+}
+
 // Forward delcarations
 class LerosSubtarget;
 class LerosTargetMachine;

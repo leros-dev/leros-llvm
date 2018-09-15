@@ -60,6 +60,19 @@ def OPC_STIND   : LerosLSOpcode<0b01110>;
 // JAL
 def OPC_JAL     : LerosJalOpcode<0b01000>;
 
+// Pseudoinstruction formats
+class PseudoFormat<bits<3> val>{
+    bits<3>Value = val;
+}
+
+// Format specifies the encoding used by the pseudoinstruction. This is used in
+// expandPostRAPseudo to determine which form of accumulator-using expansion to use.
+// These definitions must be kept in-sync with LerosISelLowering.h.
+def F_NA : PseudoFormat<0>; // No special formatting
+def F_RR : PseudoFormat<1>; // Register-Register formatting
+def F_RI : PseudoFormat<2>; // Register-Immediate formatting
+
+
 
 //===----------------------------------------------------------------------===//
 // Instruction format superclass
@@ -79,10 +92,14 @@ class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pa
   let Pattern = pattern;
 }
 
-class LerosPseudo<dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
-    : LerosInst<outs, ins, opcodestr, argstr, pattern> {
+class LerosPseudo<dag outs, dag ins, PseudoFormat format, list<dag> pattern>
+    : LerosInst<outs, ins, "", "", pattern> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
+
+  // The pseudo instruction format is used in expandPostRAPseudo for determining
+  // the sequence of accumulator loads and stores
+  let TSFlags{2-0} = format.Value;
 }
 
 class LerosImmRegInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
