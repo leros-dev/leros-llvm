@@ -60,8 +60,11 @@ void LerosInstrInfo::expandRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
     opcode = Leros::##instr##_A##postfix##;                                    \
     break;
 
-  unsigned opcode;
-  switch (MI.getDesc().getOpcode()) {
+  unsigned opcode = MI.getDesc().getOpcode();
+  switch (opcode) {
+  default:
+    llvm_unreachable("Unhandled opcode");
+    break;
     OPCASE(ADD, R)
     OPCASE(SUB, R)
     OPCASE(SHR, R)
@@ -78,12 +81,45 @@ void LerosInstrInfo::expandRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE)).addReg(dst);
 }
 
+void LerosInstrInfo::expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const {
+#define OPCASE(instr)                                                          \
+  case Leros::##instr##_PSEUDO:                                                \
+    opcode = Leros::##instr##_IMPL;                                            \
+    break;
+
+  unsigned opcode = MI.getDesc().getOpcode();
+  switch (opcode) {
+  default:
+    llvm_unreachable("Unhandled opcode");
+    break;
+    OPCASE(BR)
+    OPCASE(BRZ)
+    OPCASE(BRNZ)
+    OPCASE(BRP)
+    OPCASE(BRN)
+  }
+#undef OPCASE
+  const unsigned &rs1 = MI.getOperand(0).getReg(),
+                 &rs2 = MI.getOperand(1).getReg();
+  const auto &bb = MI.getOperand(2).getMBB();
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR)).addReg(rs2);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);
+}
+
 bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   MachineBasicBlock &MBB = *MI.getParent();
 
-  if (MI.getDesc().TSFlags & LEROSIF::RegisterRegister) {
+  switch (MI.getDesc().TSFlags) {
+  case LEROSIF::RegisterRegister: {
     expandRR(MBB, MI);
-  } else {
+    break;
+  }
+  case LEROSIF::Branch: {
+    expandBR(MBB, MI);
+    break;
+  }
+  case LEROSIF::NoFormat: {
     switch (MI.getDesc().getOpcode()) {
     default:
       llvm_unreachable("All pseudo-instructions must be expandable");
@@ -95,6 +131,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       expandRET(MBB, MI);
       break;
     }
+  }
   }
 
   MBB.erase(MI);

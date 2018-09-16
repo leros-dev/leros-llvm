@@ -52,6 +52,9 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
 
   // Compute derived properties from the register classes
   computeRegisterProperties(Subtarget.getRegisterInfo());
+
+  setOperationAction(ISD::BR_CC, XLenVT, Expand);
+  setOperationAction(ISD::SELECT_CC, XLenVT, Expand);
 }
 
 SDValue LerosTargetLowering::LowerOperation(SDValue Op,

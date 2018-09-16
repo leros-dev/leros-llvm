@@ -33,11 +33,7 @@ enum NodeType {
 }
 
 namespace LEROSIF {
-enum {
-  NoFormat = 0,
-  RegisterRegister = 1,
-  RegisterImmediate = 2,
-};
+enum { NoFormat = 0, RegisterRegister = 1, RegisterImmediate = 2, Branch = 3 };
 }
 
 // Forward delcarations

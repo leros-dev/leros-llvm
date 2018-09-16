@@ -56,11 +56,13 @@ def uimm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<8>(Imm);}]> {
   let DecoderMethod = "decodeUImmOperand<8>";
 }
 
-def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
+def simm8 : Operand<OtherVT>/*, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]>*/ {
   let EncoderMethod = "getImmOpValue";
   let ParserMatchClass = SImmAsmOperand<5>;
   let DecoderMethod = "decodeSImmOperand<8>";
 }
+
+
 
 // Byte extraction node transformation, used for sequentialising immediate
 // generation of larger than 8-bit immediates using loadh instructions
@@ -110,9 +112,17 @@ let Uses=[ACC] in {
     // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
     class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   GPR:$r2), F_RR, [(set i32:$rd, (opnode i32:$r1, i32:$r2))]>;
 
-        // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
+    // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
     class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   uimm8:$uimm8), F_RI, [(set i32:$rd, (opnode i32:$r1, uimm8:$uimm8))]>;
 
+    class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
+        : LerosBranchInst<opcode, (outs), (ins simm8:$simm8), opcodestr, "$simm8", []>;
+
+    // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
+    class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, simm8:$simm8), F_BR, []> {
+        let isBranch = 1;
+        let isTerminator = 1;
+    }
 }
 
 multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
@@ -125,10 +135,9 @@ multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnod
     def _AR  : INSTR_AccAccReg<opcode, opcodestr, opnode>; 
 }
 
-
-class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr, PatFrag CondOp>
-    : LerosBranchInst<opcode, (outs), (ins ACC_OP:$acc, uimm8:$imm8), opcodestr, "$imm8",
-    [(brcond (i32 (CondOp i32:$acc, uimm8:$imm8)))]>{
+multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
+    def _PSEUDO : Pseudo_Branch;
+    def  _IMPL     : INSTR_BranchCond<opcode, opcodestr>;
 }
 
 // Instruction declarations
@@ -153,11 +162,26 @@ defm  INSTR_LOADH3  : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 
 def STORE   : INSTR_RegAcc<OPC_STORE, "store">;
 
-// def BR      : INSTR_BranchCond<OPC_BR,      "br",       BEQZ>; // unconditional branch
-//def BRZ     : INSTR_BranchCond<OPC_BRZ,     "brz",      seteq>;
-//def BRNZ    : INSTR_BranchCond<OPC_BRNZ,    "brnz",     brnz>;
-//def BRP     : INSTR_BranchCond<OPC_BRP,     "brp",      brp>;
-//def BRN     : INSTR_BranchCond<OPC_BRN,     "brn",      brn>;
+defm BR      : INSTR_BrImpl<OPC_BR,      "br"       >; // unconditional branch
+defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz"      >;
+defm BRNZ    : INSTR_BrImpl<OPC_BRNZ,    "brnz"     >;
+defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp"      >;
+defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn"     >;
+
+// Unconditional branch is defined as a separate instruction - needed for
+// small jumps
+let isBarrier = 1, isBranch = 1, isTerminator = 1 in
+def PseudoBR : LerosPseudo<(outs), (ins simm8:$simm8), F_NA, [(br bb:$simm8)]>,
+               PseudoInstExpansion<(BR_IMPL simm8:$simm8)>;
+
+// Branch instruction where branch condition ($rc) has been precalculated
+class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, simm8:$simm8), F_BR, []> {
+    let isBranch = 1;
+    let isTerminator = 1;
+    let Uses = [ACC];
+}
+def PseudoBRC : Pseudo_BranchCC;
+            
 
 // Instructions where format is specific to the instruction
 let Uses=[ACC] in {
@@ -200,39 +224,24 @@ let Uses=[ACC] in
 //===----------------------------------------------------------------------===//
 // Codegen patterns
 //===----------------------------------------------------------------------===//
+def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setne GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setlt GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
 
-/*
-// def : PatGprGpr<add,    INSTR_ADD_AR>;
-def : PatGprGpr<sub,    INSTR_SUB_AR>;
-def : PatGprGpr<srl,    INSTR_SHR_AR>;
-def : PatGprGpr<and,    INSTR_AND_AR>;
-def : PatGprGpr<or,     INSTR_OR_AR>;
-def : PatGprGpr<xor,    INSTR_XOR_AR>;
 
-// def : PatGprImm<add,    INSTR_ADD_AI>;
-def : PatGprImm<sub,    INSTR_SUB_AI>;
-def : PatGprImm<srl,    INSTR_SHR_AI>;
-def : PatGprImm<and,    INSTR_AND_AI>;
-def : PatGprImm<or,     INSTR_OR_AI>;
-def : PatGprImm<xor,    INSTR_XOR_AI>;
-*/
-/*
-class PatGprGpr<SDPatternOperator OpNode, LerosARInst Inst>
-    : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;
+class BccPat<PatFrag CondOp, Pseudo_Branch Inst>
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm8),
+          (Inst GPR:$rs1, GPR:$rs2, simm8:$imm8)>;
 
-class PatGprImm<SDPatternOperator OpNode, LerosARInst Inst>
-    : Pat<(OpNode GPR:$rs1, GPR:$rs2), (Inst GPR:$rs1, GPR:$rs2)>;
+def : BccPat<seteq, BRZ_PSEUDO>;
+def : BccPat<setne, BRNZ_PSEUDO>;
+def : BccPat<setgt, BRP_PSEUDO>;
+def : BccPat<setlt, BRN_PSEUDO>;
 
-// Branches
-class BPat<PatFrag CondOp, RVInstB Inst>
-    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm12),
-          (Inst GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12)>;
+// An extra pattern is needed for a brcond without a setcc (i.e. where the
+// condition was calculated elsewhere).
+def : Pat<(brcond GPR:$cond, bb:$imm8), (PseudoBRC GPR:$cond, bb:$imm8)>;
 
-def : BPat<seteq, BR>;
-def : BPat<setne, BRZ>;
-def : BPat<setlt, BRNZ>;
-def : BPat<setge, BRP>;
-def : BPat<setge, BRN>;
-*/
 
 // 'icmp' instruction

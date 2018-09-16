@@ -71,6 +71,7 @@ class PseudoFormat<bits<3> val>{
 def F_NA : PseudoFormat<0>; // No special formatting
 def F_RR : PseudoFormat<1>; // Register-Register formatting
 def F_RI : PseudoFormat<2>; // Register-Immediate formatting
+def F_BR : PseudoFormat<3>;  // Branch formatting
 
 
 
@@ -123,4 +124,5 @@ class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, 
     list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
     let Inst{15-8} = opcode.Value;
+    let isBranch = 1;
 } 
