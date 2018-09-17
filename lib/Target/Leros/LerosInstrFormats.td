@@ -69,9 +69,10 @@ class PseudoFormat<bits<3> val>{
 // expandPostRAPseudo to determine which form of accumulator-using expansion to use.
 // These definitions must be kept in-sync with LerosISelLowering.h.
 def F_NA : PseudoFormat<0>; // No special formatting
-def F_RR : PseudoFormat<1>; // Register-Register formatting
-def F_RI : PseudoFormat<2>; // Register-Immediate formatting
+def F_RRR : PseudoFormat<1>; // Register -> Register-Register formatting
+def F_RRI : PseudoFormat<2>; // Register -> Register, Immediate formatting
 def F_BR : PseudoFormat<3>;  // Branch formatting
+def F_RI : PseudoFormat<4>;  // Register -> Immediate
 
 
 

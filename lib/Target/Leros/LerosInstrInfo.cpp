@@ -54,7 +54,7 @@ void LerosInstrInfo::expandRET(MachineBasicBlock &MBB,
   BuildMI(MBB, I, I->getDebugLoc(), get(Leros::JAL)).addReg(dst);
 }
 
-void LerosInstrInfo::expandRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
+void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
 #define OPCASE(instr, postfix)                                                 \
   case Leros::##instr##_R##postfix##_PSEUDO:                                   \
     opcode = Leros::##instr##_A##postfix##;                                    \
@@ -78,6 +78,53 @@ void LerosInstrInfo::expandRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
                  &rs2 = MI.getOperand(2).getReg();
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addReg(rs2);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE)).addReg(dst);
+}
+
+void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
+#define OPCASE(instr, postfix)                                                 \
+  case Leros::##instr##_R##postfix##_PSEUDO:                                   \
+    opcode = Leros::##instr##_A##postfix##;                                    \
+    break;
+
+  unsigned opcode = MI.getDesc().getOpcode();
+  switch (opcode) {
+  default:
+    llvm_unreachable("Unhandled opcode");
+    break;
+    OPCASE(ADD, I)
+    OPCASE(SUB, I)
+    OPCASE(SHR, I)
+    OPCASE(AND, I)
+    OPCASE(OR, I)
+    OPCASE(XOR, I)
+    OPCASE(LOADH, I)
+    OPCASE(LOADH2, I)
+    OPCASE(LOADH3, I)
+  }
+#undef OPCASE
+  const unsigned &dst = MI.getOperand(0).getReg(),
+                 &rs1 = MI.getOperand(1).getReg(),
+                 &imm = MI.getOperand(2).getImm();
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addImm(imm);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE)).addReg(dst);
+}
+
+void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
+  unsigned opcode = MI.getDesc().getOpcode();
+  switch (opcode) {
+  default:
+    llvm_unreachable("Unhandled opcode");
+    break;
+  case Leros::LOAD_RI_PSEUDO: {
+    opcode = Leros::LOAD_R;
+    break;
+  }
+  }
+  const unsigned &dst = MI.getOperand(0).getReg(),
+                 &imm = MI.getOperand(1).getImm();
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_I)).addImm(imm);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE)).addReg(dst);
 }
 
@@ -111,8 +158,19 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   MachineBasicBlock &MBB = *MI.getParent();
 
   switch (MI.getDesc().TSFlags) {
-  case LEROSIF::RegisterRegister: {
-    expandRR(MBB, MI);
+  default:
+    llvm_unreachable("All pseudo-instructions must be expandable");
+    break;
+  case LEROSIF::RRR: {
+    expandRRR(MBB, MI);
+    break;
+  }
+  case LEROSIF::RRI: {
+    expandRRI(MBB, MI);
+    break;
+  }
+  case LEROSIF::RI: {
+    expandRI(MBB, MI);
     break;
   }
   case LEROSIF::Branch: {

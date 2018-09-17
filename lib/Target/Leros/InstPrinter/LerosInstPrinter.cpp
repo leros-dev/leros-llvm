@@ -140,7 +140,7 @@ void LerosInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   }
 
   if (Op.isImm()) {
-    O << "#" << Op.getImm();
+    O << Op.getImm();
     return;
   }
 

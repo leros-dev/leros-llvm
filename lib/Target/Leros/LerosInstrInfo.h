@@ -54,7 +54,9 @@ public:
 private:
   void expandMOV(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
   void expandRET(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
-  void expandRR(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };
 }
