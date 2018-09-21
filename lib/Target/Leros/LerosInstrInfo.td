@@ -133,7 +133,7 @@ let Uses=[ACC] in {
         : LerosBranchInst<opcode, (outs), (ins bb_simm8:$simm8), opcodestr, "$simm8", []>;
 
     // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
-    class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8), F_BR, []> {
+    class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8), F_BRCC, []> {
         let isBranch = 1;
         let isTerminator = 1;
     }
@@ -185,9 +185,10 @@ defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn"     >;
 
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
-let isBarrier = 1, isBranch = 1, isTerminator = 1 in
-def PseudoBR : LerosPseudo<(outs), (ins bb_simm8:$simm8), F_NA, [(br bb:$simm8)]>,
-               PseudoInstExpansion<(BR_IMPL bb_simm8:$simm8)>;
+//let isBarrier = 1, isBranch = 1, isTerminator = 1 in
+def : Pat<(br bb:$simm8), (BR_IMPL bb_simm8:$simm8)>;
+//def PseudoBR : LerosPseudo<(outs), (ins bb_simm8:$simm8), F_BR, [(br bb:$simm8)]>,
+//               PseudoInstExpansion<(BR_IMPL bb_simm8:$simm8)>;
 
 // Branch instruction where branch condition ($rc) has been precalculated
 class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_BR, []> {

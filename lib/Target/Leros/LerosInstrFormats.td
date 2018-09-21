@@ -68,11 +68,12 @@ class PseudoFormat<bits<3> val>{
 // Format specifies the encoding used by the pseudoinstruction. This is used in
 // expandPostRAPseudo to determine which form of accumulator-using expansion to use.
 // These definitions must be kept in-sync with LerosISelLowering.h.
-def F_NA : PseudoFormat<0>; // No special formatting
-def F_RRR : PseudoFormat<1>; // Register -> Register-Register formatting
-def F_RRI : PseudoFormat<2>; // Register -> Register, Immediate formatting
-def F_BR : PseudoFormat<3>;  // Branch formatting
-def F_RI : PseudoFormat<4>;  // Register -> Immediate
+def F_NA : PseudoFormat<0>;     // No special formatting
+def F_RRR : PseudoFormat<1>;    // Register -> Register-Register formatting
+def F_RRI : PseudoFormat<2>;    // Register -> Register, Immediate formatting
+def F_BRCC : PseudoFormat<3>;   // Conditional branch formatting
+def F_RI : PseudoFormat<4>;     // Register -> Immediate
+def F_BR : PseudoFormat<5>;     // Unconditional branch formatting
 
 
 

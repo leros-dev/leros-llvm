@@ -128,7 +128,8 @@ void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE)).addReg(dst);
 }
 
-void LerosInstrInfo::expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const {
+void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB,
+                                MachineInstr &MI) const {
 #define OPCASE(instr)                                                          \
   case Leros::##instr##_PSEUDO:                                                \
     opcode = Leros::##instr##_IMPL;                                            \
@@ -154,6 +155,11 @@ void LerosInstrInfo::expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);
 }
 
+void LerosInstrInfo::expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const {
+  const auto &bb = MI.getOperand(0).getMBB();
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::BR_IMPL)).addMBB(bb);
+}
+
 bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   MachineBasicBlock &MBB = *MI.getParent();
 
@@ -173,11 +179,16 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     expandRI(MBB, MI);
     break;
   }
+  case LEROSIF::BranchCC: {
+    expandBRCC(MBB, MI);
+    break;
+  }
   case LEROSIF::Branch: {
     expandBR(MBB, MI);
     break;
   }
   case LEROSIF::NoFormat: {
+    auto opc = MI.getDesc().getOpcode();
     switch (MI.getDesc().getOpcode()) {
     default:
       llvm_unreachable("All pseudo-instructions must be expandable");

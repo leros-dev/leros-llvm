@@ -55,6 +55,79 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::BR_CC, XLenVT, Expand);
   setOperationAction(ISD::SELECT_CC, XLenVT, Expand);
+
+  for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD})
+    setLoadExtAction(N, XLenVT, MVT::i1, Promote);
+
+  // TODO: add all necessary setOperationAction calls.
+  setOperationAction(ISD::DYNAMIC_STACKALLOC, XLenVT, Expand);
+
+  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+  setOperationAction(ISD::BR_CC, XLenVT, Expand);
+  setOperationAction(ISD::SELECT, XLenVT, Custom);
+  setOperationAction(ISD::SELECT_CC, XLenVT, Expand);
+
+  setOperationAction(ISD::STACKSAVE, MVT::Other, Expand);
+  setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
+
+  setOperationAction(ISD::VASTART, MVT::Other, Custom);
+  setOperationAction(ISD::VAARG, MVT::Other, Expand);
+  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
+  setOperationAction(ISD::VAEND, MVT::Other, Expand);
+
+  for (auto VT : {MVT::i1, MVT::i8, MVT::i16})
+    setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
+
+  setOperationAction(ISD::MUL, XLenVT, LibCall);
+  setOperationAction(ISD::MULHS, XLenVT, LibCall);
+  setOperationAction(ISD::MULHU, XLenVT, LibCall);
+  setOperationAction(ISD::SDIV, XLenVT, LibCall);
+  setOperationAction(ISD::UDIV, XLenVT, LibCall);
+  setOperationAction(ISD::SREM, XLenVT, LibCall);
+  setOperationAction(ISD::UREM, XLenVT, LibCall);
+
+  setOperationAction(ISD::SDIVREM, XLenVT, LibCall);
+  setOperationAction(ISD::UDIVREM, XLenVT, LibCall);
+
+  setOperationAction(ISD::SHL_PARTS, XLenVT, LibCall);
+  setOperationAction(ISD::SRL_PARTS, XLenVT, Legal);
+  setOperationAction(ISD::SRA_PARTS, XLenVT, Expand);
+
+  setOperationAction(ISD::ROTL, XLenVT, Expand);
+  setOperationAction(ISD::ROTR, XLenVT, Expand);
+  setOperationAction(ISD::BSWAP, XLenVT, Expand);
+  setOperationAction(ISD::CTTZ, XLenVT, Expand);
+  setOperationAction(ISD::CTLZ, XLenVT, Expand);
+  setOperationAction(ISD::CTPOP, XLenVT, Expand);
+
+  ISD::CondCode FPCCToExtend[] = {
+      ISD::SETOGT, ISD::SETOGE, ISD::SETONE, ISD::SETO,   ISD::SETUEQ,
+      ISD::SETUGT, ISD::SETUGE, ISD::SETULT, ISD::SETULE, ISD::SETUNE,
+      ISD::SETGT,  ISD::SETGE,  ISD::SETNE};
+
+  setOperationAction(ISD::FMINNUM, MVT::f32, LibCall);
+  setOperationAction(ISD::FMAXNUM, MVT::f32, LibCall);
+  for (auto CC : FPCCToExtend)
+    setCondCodeAction(CC, MVT::f32, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::f32, LibCall);
+  setOperationAction(ISD::SELECT, MVT::f32, LibCall);
+  setOperationAction(ISD::BR_CC, MVT::f32, LibCall);
+
+  setOperationAction(ISD::FMINNUM, MVT::f64, LibCall);
+  setOperationAction(ISD::FMAXNUM, MVT::f64, LibCall);
+  for (auto CC : FPCCToExtend)
+    setCondCodeAction(CC, MVT::f64, LibCall);
+  setOperationAction(ISD::SELECT_CC, MVT::f64, LibCall);
+  setOperationAction(ISD::SELECT, MVT::f64, LibCall);
+  setOperationAction(ISD::BR_CC, MVT::f64, LibCall);
+  setLoadExtAction(ISD::EXTLOAD, MVT::f64, MVT::f32, LibCall);
+  setTruncStoreAction(MVT::f64, MVT::f32, Expand);
+
+  setOperationAction(ISD::GlobalAddress, XLenVT, Expand);
+  setOperationAction(ISD::BlockAddress, XLenVT, Expand);
+  setOperationAction(ISD::ConstantPool, XLenVT, Expand);
+
+  setBooleanContents(ZeroOrOneBooleanContent);
 }
 
 SDValue LerosTargetLowering::LowerOperation(SDValue Op,

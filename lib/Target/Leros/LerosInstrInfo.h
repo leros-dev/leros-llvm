@@ -57,6 +57,7 @@ private:
   void expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };
 }

@@ -33,7 +33,7 @@ enum NodeType {
 }
 
 namespace LEROSIF {
-enum { NoFormat = 0, RRR = 1, RRI = 2, Branch = 3, RI = 4 };
+enum { NoFormat = 0, RRR = 1, RRI = 2, BranchCC = 3, RI = 4, Branch = 5 };
 }
 
 // Forward delcarations
