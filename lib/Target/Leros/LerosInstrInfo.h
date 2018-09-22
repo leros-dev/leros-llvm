@@ -60,5 +60,5 @@ private:
   void expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };
-}
+} // namespace llvm
 #endif

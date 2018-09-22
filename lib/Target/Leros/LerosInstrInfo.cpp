@@ -56,8 +56,8 @@ void LerosInstrInfo::expandRET(MachineBasicBlock &MBB,
 
 void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
 #define OPCASE(instr, postfix)                                                 \
-  case Leros::##instr##_R##postfix##_PSEUDO:                                   \
-    opcode = Leros::##instr##_A##postfix##;                                    \
+  case instr##_R##postfix##_PSEUDO:                                            \
+    opcode = instr##_A##postfix;                                               \
     break;
 
   unsigned opcode = MI.getDesc().getOpcode();
@@ -65,12 +65,12 @@ void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
   default:
     llvm_unreachable("Unhandled opcode");
     break;
-    OPCASE(ADD, R)
-    OPCASE(SUB, R)
-    OPCASE(SHR, R)
-    OPCASE(AND, R)
-    OPCASE(OR, R)
-    OPCASE(XOR, R)
+    OPCASE(Leros::ADD, R)
+    OPCASE(Leros::SUB, R)
+    OPCASE(Leros::SHR, R)
+    OPCASE(Leros::AND, R)
+    OPCASE(Leros::OR, R)
+    OPCASE(Leros::XOR, R)
   }
 #undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
@@ -83,8 +83,8 @@ void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
 
 void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
 #define OPCASE(instr, postfix)                                                 \
-  case Leros::##instr##_R##postfix##_PSEUDO:                                   \
-    opcode = Leros::##instr##_A##postfix##;                                    \
+  case instr##_R##postfix##_PSEUDO:                                            \
+    opcode = instr##_A##postfix;                                               \
     break;
 
   unsigned opcode = MI.getDesc().getOpcode();
@@ -92,15 +92,15 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
   default:
     llvm_unreachable("Unhandled opcode");
     break;
-    OPCASE(ADD, I)
-    OPCASE(SUB, I)
-    OPCASE(SHR, I)
-    OPCASE(AND, I)
-    OPCASE(OR, I)
-    OPCASE(XOR, I)
-    OPCASE(LOADH, I)
-    OPCASE(LOADH2, I)
-    OPCASE(LOADH3, I)
+    OPCASE(Leros::ADD, I)
+    OPCASE(Leros::SUB, I)
+    OPCASE(Leros::SHR, I)
+    OPCASE(Leros::AND, I)
+    OPCASE(Leros::OR, I)
+    OPCASE(Leros::XOR, I)
+    OPCASE(Leros::LOADH, I)
+    OPCASE(Leros::LOADH2, I)
+    OPCASE(Leros::LOADH3, I)
   }
 #undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
@@ -131,8 +131,8 @@ void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
 void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB,
                                 MachineInstr &MI) const {
 #define OPCASE(instr)                                                          \
-  case Leros::##instr##_PSEUDO:                                                \
-    opcode = Leros::##instr##_IMPL;                                            \
+  case instr##_PSEUDO:                                                         \
+    opcode = instr##_IMPL;                                                     \
     break;
 
   unsigned opcode = MI.getDesc().getOpcode();
@@ -140,11 +140,11 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB,
   default:
     llvm_unreachable("Unhandled opcode");
     break;
-    OPCASE(BR)
-    OPCASE(BRZ)
-    OPCASE(BRNZ)
-    OPCASE(BRP)
-    OPCASE(BRN)
+    OPCASE(Leros::BR)
+    OPCASE(Leros::BRZ)
+    OPCASE(Leros::BRNZ)
+    OPCASE(Leros::BRP)
+    OPCASE(Leros::BRN)
   }
 #undef OPCASE
   const unsigned &rs1 = MI.getOperand(0).getReg(),
@@ -188,7 +188,6 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     break;
   }
   case LEROSIF::NoFormat: {
-    auto opc = MI.getDesc().getOpcode();
     switch (MI.getDesc().getOpcode()) {
     default:
       llvm_unreachable("All pseudo-instructions must be expandable");
@@ -226,4 +225,4 @@ void LerosInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
     // Load into accumulator and store
   }
 }
-}
+} // namespace llvm
