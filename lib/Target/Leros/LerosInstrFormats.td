@@ -74,6 +74,7 @@ def F_RRI : PseudoFormat<2>;    // Register -> Register, Immediate formatting
 def F_BRCC : PseudoFormat<3>;   // Conditional branch formatting
 def F_RI : PseudoFormat<4>;     // Register -> Immediate
 def F_BR : PseudoFormat<5>;     // Unconditional branch formatting
+def F_LS : PseudoFormat<6>;     // Memory load/store formatting
 
 
 

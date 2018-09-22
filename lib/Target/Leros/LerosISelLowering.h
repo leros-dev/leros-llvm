@@ -33,8 +33,20 @@ enum NodeType {
 }
 
 namespace LEROSIF {
-enum { NoFormat = 0, RRR = 1, RRI = 2, BranchCC = 3, RI = 4, Branch = 5 };
-}
+/*
+Instruction formats for the various pseudo instructions that creates the
+3-operand wrapper ISA for the Leros instruction set.
+*/
+enum {
+  NoFormat = 0,
+  RRR = 1,
+  RRI = 2,
+  BranchCC = 3,
+  RI = 4,
+  Branch = 5,
+  LoadStore = 6
+};
+} // namespace LEROSIF
 
 // Forward delcarations
 class LerosSubtarget;
@@ -85,6 +97,6 @@ private:
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       LLVMContext &Context) const override;
 };
-}
+} // namespace llvm
 
 #endif // LerosISELLOWERING_H

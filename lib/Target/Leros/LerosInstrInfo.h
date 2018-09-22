@@ -51,6 +51,9 @@ public:
 
   bool expandPostRAPseudo(MachineInstr &MI) const override;
 
+  void movImm32(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
+                const DebugLoc &DL, unsigned DstReg, uint64_t Val) const;
+
 private:
   void expandMOV(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
   void expandRET(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
@@ -59,6 +62,7 @@ private:
   void expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };
 } // namespace llvm
 #endif

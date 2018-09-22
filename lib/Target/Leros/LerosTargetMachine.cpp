@@ -76,7 +76,7 @@ public:
 
   bool addInstSelector() override;
 };
-}
+} // namespace
 
 TargetPassConfig *LerosTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new LerosPassConfig(*this, PM);
@@ -87,4 +87,4 @@ bool LerosPassConfig::addInstSelector() {
 
   return false;
 }
-}
+} // namespace llvm

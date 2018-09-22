@@ -120,24 +120,32 @@ let Uses=[ACC] in {
         : LerosImmInst<opcode, (outs), (ins simm8:$imm8),
             opcodestr, "$imm8", []>;
 
-    // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
-    class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   GPR:$r2), F_RRR, [(set i32:$rd, (opnode i32:$r1, i32:$r2))]>;
-
-    // Pseudo instruction wrapper for an Reg -> (imm) instruction
-    class PSEUDO_RegImm : LerosPseudo<(outs GPR:$rd), (ins simm8:$imm), F_RI, []>;
-
-    // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
-    class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   uimm8:$uimm8), F_RRI, [(set i32:$rd, (opnode i32:$r1, uimm8:$uimm8))]>;
-
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
         : LerosBranchInst<opcode, (outs), (ins bb_simm8:$simm8), opcodestr, "$simm8", []>;
-
-    // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
-    class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8), F_BRCC, []> {
-        let isBranch = 1;
-        let isTerminator = 1;
-    }
 }
+ 
+// ------------- Pseudo ISA wrapper classes -------------
+// Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
+class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8), F_BRCC, []> {
+    let isBranch = 1;
+    let isTerminator = 1;
+}
+
+// Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
+class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   uimm8:$uimm8), F_RRI, [(set i32:$rd, (opnode i32:$r1, uimm8:$uimm8))]>;
+
+    // Pseudo instruction wrapper for memory access functions
+let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
+class PSEUDO_Store_M : LerosPseudo<(outs), (ins GPR:$rs2, GPR:$rs1, simm8:$imm8), F_LS, []>;
+let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
+class PSEUDO_Load_M  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), F_LS, []>;
+
+// Pseudo instruction wrapper for an Acc -> (Acc, Reg) i    nstruction
+class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   GPR:$r2), F_RRR, [(set i32:$rd, (opnode i32:$r1, i32:$r2))]>;
+
+// Pseudo instruction wrapper for an Reg -> (imm) instruction
+class PSEUDO_RegImm : LerosPseudo<(outs GPR:$rd), (ins simm8:$imm), F_RI, []>;
+
 
 multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
     // Wrapper pseudo instruction definitions
@@ -163,7 +171,7 @@ defm AND  : INSTR_ImmReg<OPC_AND     ,    "and",    and>;
 defm OR   : INSTR_ImmReg<OPC_OR      ,    "or",     or>;
 defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor>;
 
-// Loads
+// Register->accumulator Loads
 def LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;
 def LOAD_I : INSTR_AccImm<OPC_LOAD, "load", ld>;
 def LOAD_RI_PSEUDO : PSEUDO_RegImm;
@@ -172,16 +180,18 @@ defm LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH>;
 defm LOADH2   : INSTR_ImmReg<OPC_LOADH2   ,  "loadh2",  LOADH2>;
 defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 
-// defm : INSTR_ImmReg<OPC_OUT     , "INSTR_OUT",    "out",    out>;
-// defm : INSTR_ImmReg<OPC_IN      , "INSTR_IN",     "in",     in>;
-
-def STORE   : INSTR_RegAcc<OPC_STORE, "store">;
+// Accumulator->register store
+def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
 
 defm BR      : INSTR_BrImpl<OPC_BR,      "br"       >; // unconditional branch
 defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz"      >;
 defm BRNZ    : INSTR_BrImpl<OPC_BRNZ,    "brnz"     >;
 defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp"      >;
 defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn"     >;
+
+// Memory access pseudoinstruction definitions
+def STORE_M_PSEUDO  : PSEUDO_Store_M;
+def LOAD_M_PSEUDO   : PSEUDO_Load_M;
 
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
@@ -201,15 +211,17 @@ def PseudoBRC : Pseudo_BranchCC;
 
 // Instructions where format is specific to the instruction
 let Uses=[ACC] in {
-    def LDADDR  : LerosInst<(outs GPR:$r), (ins), "ldaddr", "$r", []>{
+    def LDADDR  : LerosInst<(outs), (ins GPR:$r), "ldaddr", "$r", []>{
         let Inst{15-11} = OPC_LDADDR.Value;
     }
 
-    def LDIND : LerosInst<(outs), (ins GPR:$r), "ldind", "$r", []>{
+    let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
+    def LDIND : LerosInst<(outs), (ins simm8:$imm8), "ldind", "$imm8", []>{
         let Inst{15-11} = OPC_LDIND.Value;
     }
 
-    def STIND : LerosInst<(outs GPR:$r), (ins), "stind", "$r", []>{
+    let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
+    def STIND : LerosInst<(outs), (ins simm8:$imm8), "stind", "$imm8", []>{
         let Inst{15-11} = OPC_STIND.Value;
     }
 
@@ -282,5 +294,36 @@ def : BccPat<setlt, BRN_PSEUDO>;
 // condition was calculated elsewhere).
 def : Pat<(brcond GPR:$cond, bb:$imm8), (PseudoBRC GPR:$cond, bb:$imm8)>;
 
+// Addressing modes.
+// Necessary because a frameindex can't be matched directly in a pattern.
+def AddrFI : ComplexPattern<iPTR, 1, "SelectAddrFI", [frameindex], []>;
 
-// 'icmp' instruction
+/// FrameIndex calculations
+def : Pat<(add (i32 AddrFI:$Rs), simm8:$imm8),
+          (ADD_RI_PSEUDO (i32 AddrFI:$Rs), simm8:$imm8)>;
+
+//  ----------- Memory load/store patterns -----------
+
+// Stores
+multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst, RegisterClass StTy> {
+  def : Pat<(StoreOp StTy:$rs2, GPR:$rs1), (Inst StTy:$rs2, GPR:$rs1, 0)>;
+  def : Pat<(StoreOp StTy:$rs2, AddrFI:$rs1), (Inst StTy:$rs2, AddrFI:$rs1, 0)>;
+  def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm8:$imm8)),
+            (Inst StTy:$rs2, GPR:$rs1, simm8:$imm8)>;
+  def : Pat<(StoreOp StTy:$rs2, (add AddrFI:$rs1, simm8:$imm8)),
+            (Inst StTy:$rs2, AddrFI:$rs1, simm8:$imm8)>;
+}
+
+defm : StPat<store, STORE_M_PSEUDO, GPR>;
+
+// Loads
+multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
+  def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
+  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0)>;
+  def : Pat<(LoadOp (add GPR:$rs1, simm8:$imm8)),
+            (Inst GPR:$rs1, simm8:$imm8)>;
+  def : Pat<(LoadOp (add AddrFI:$rs1, simm8:$imm8)),
+            (Inst AddrFI:$rs1, simm8:$imm8)>;
+}
+
+defm : LdPat<load, LOAD_M_PSEUDO>;
