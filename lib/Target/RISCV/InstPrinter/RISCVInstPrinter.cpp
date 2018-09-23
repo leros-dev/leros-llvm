@@ -36,10 +36,9 @@ using namespace llvm;
 #include "RISCVGenCompressInstEmitter.inc"
 
 static cl::opt<bool>
-NoAliases("riscv-no-aliases",
-            cl::desc("Disable the emission of assembler pseudo instructions"),
-            cl::init(false),
-            cl::Hidden);
+    NoAliases("riscv-no-aliases",
+              cl::desc("Disable the emission of assembler pseudo instructions"),
+              cl::init(false), cl::Hidden);
 
 void RISCVInstPrinter::printInst(const MCInst *MI, raw_ostream &O,
                                  StringRef Annot, const MCSubtargetInfo &STI) {
@@ -49,7 +48,7 @@ void RISCVInstPrinter::printInst(const MCInst *MI, raw_ostream &O,
   if (!NoAliases)
     Res = uncompressInst(UncompressedMI, *MI, MRI, STI);
   if (Res)
-    NewMI = const_cast<MCInst*>(&UncompressedMI);
+    NewMI = const_cast<MCInst *>(&UncompressedMI);
   if (NoAliases || !printAliasInstr(NewMI, STI, O))
     printInstruction(NewMI, STI, O);
   printAnnotation(O, Annot);
@@ -60,8 +59,8 @@ void RISCVInstPrinter::printRegName(raw_ostream &O, unsigned RegNo) const {
 }
 
 void RISCVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
-                                    const MCSubtargetInfo &STI,
-                                    raw_ostream &O, const char *Modifier) {
+                                    const MCSubtargetInfo &STI, raw_ostream &O,
+                                    const char *Modifier) {
   assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
   const MCOperand &MO = MI->getOperand(OpNo);
 
@@ -94,8 +93,7 @@ void RISCVInstPrinter::printFenceArg(const MCInst *MI, unsigned OpNo,
 }
 
 void RISCVInstPrinter::printFRMArg(const MCInst *MI, unsigned OpNo,
-                                   const MCSubtargetInfo &STI,
-                                   raw_ostream &O) {
+                                   const MCSubtargetInfo &STI, raw_ostream &O) {
   auto FRMArg =
       static_cast<RISCVFPRndMode::RoundingMode>(MI->getOperand(OpNo).getImm());
   O << RISCVFPRndMode::roundingModeToString(FRMArg);

@@ -73,21 +73,21 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   }
 
   MachineBasicBlock &MBB = *MI.getParent();
-  bool FrameRegIsKill = false;
 
   assert(isInt<32>(Offset) && "Int32 expected");
   // Move the offset into a scratch register which will be used by
   // loadaddr
-  unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRNoSPRegClass);
+  unsigned ScratchReg =
+      RS->getRegsAvailable(&Leros::GPRNoSPRegClass).find_first();
+  // unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRNoSPRegClass);
   TII->movImm32(MBB, II, DL, ScratchReg, Offset);
   BuildMI(MBB, II, DL, TII->get(Leros::ADD_RR_PSEUDO), ScratchReg)
       .addReg(FrameReg)
       .addReg(ScratchReg, RegState::Kill);
   Offset = 0;
-  FrameReg = ScratchReg;
-  FrameRegIsKill = true;
+  bool ScratchRegIsKill = true;
   MI.getOperand(FIOperandNum)
-      .ChangeToRegister(FrameReg, false, false, FrameRegIsKill);
+      .ChangeToRegister(ScratchReg, false, false, ScratchRegIsKill);
   MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
 }
 

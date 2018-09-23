@@ -134,6 +134,9 @@ void LerosInstPrinter::printAddrModeMemSrc(const MCInst *MI, unsigned OpNum,
 void LerosInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                                     raw_ostream &O) {
   const MCOperand &Op = MI->getOperand(OpNo);
+  if (MI->getOpcode() == Leros::BRN_IMPL) {
+    volatile int a = 1;
+  }
   if (Op.isReg()) {
     printRegName(O, Op.getReg());
     return;
@@ -144,7 +147,8 @@ void LerosInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
     return;
   }
 
+  volatile int a = MI->getOpcode();
   assert(Op.isExpr() && "unknown operand kind in printOperand");
-  printExpr(Op.getExpr(), O);
+  Op.getExpr()->print(O, &MAI);
 }
 }

@@ -25,9 +25,23 @@
 #include "llvm/Support/raw_ostream.h"
 
 namespace llvm {
+
+static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
+                                    const AsmPrinter &AP) {
+  MCContext &Ctx = AP.OutContext;
+
+  const MCExpr *ME =
+      MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, Ctx);
+
+  if (!MO.isJTI() && !MO.isMBB() && MO.getOffset())
+    ME = MCBinaryExpr::createAdd(
+        ME, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
+  return MCOperand::createExpr(ME);
+}
+
 bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
                                          MCOperand &MCOp,
-                                         const AsmPrinter &) {
+                                         const AsmPrinter &ap) {
   MachineOperand::MachineOperandType MOTy = MO.getType();
 
   switch (MOTy) {
@@ -49,8 +63,8 @@ bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
   case MachineOperand::MO_JumpTableIndex:
   case MachineOperand::MO_ConstantPoolIndex:
   case MachineOperand::MO_BlockAddress:
+    MCOp = lowerSymbolOperand(MO, MO.getMBB()->getSymbol(), ap);
     break;
-    ; // LowerSymbolOperand(MO, MOTy, offset);
   case MachineOperand::MO_RegisterMask:
     break;
   }
@@ -68,4 +82,4 @@ void LowerLerosMachineInstrToMCInst(const MachineInstr *MI, MCInst &OutMI,
       OutMI.addOperand(MCOp);
   }
 }
-}
+} // namespace llvm

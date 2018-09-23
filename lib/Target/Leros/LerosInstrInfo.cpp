@@ -40,6 +40,10 @@ void LerosInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   return;
 }
 
+bool LerosInstrInfo::isBranchOffsetInRange(unsigned, int64_t BrOffset) const {
+  return isInt<8>(BrOffset);
+}
+
 void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
                               MachineBasicBlock::iterator MBBI,
                               const DebugLoc &DL, unsigned DstReg,
@@ -64,7 +68,7 @@ void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
   } else if (isInt<8>(val)) {
     BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val >> 24) & 0xff);
   }
-  BuildMI(MBB, MBBI, DL, get(Leros::STORE_R)).addReg(DstReg);
+  BuildMI(MBB, MBBI, DL, get(Leros::STORE_R), DstReg);
 }
 
 void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
@@ -235,9 +239,11 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   }
   case LEROSIF::LoadStore: {
     expandLS(MBB, MI);
+    break;
   }
   case LEROSIF::NoFormat: {
-    switch (MI.getDesc().getOpcode()) {
+    const auto opc = MI.getDesc().getOpcode();
+    switch (opc) {
     default:
       llvm_unreachable("All pseudo-instructions must be expandable");
       return false;

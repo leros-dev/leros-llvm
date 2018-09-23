@@ -94,7 +94,6 @@ def BYTE3 : SDNodeXForm<imm, [{
 // Instructions
 //===----------------------------------------------------------------------===//
 
-let Uses=[ACC] in {
     // Instructions with dependency: Acc -> (Acc, Reg)
     class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
         : LerosImmInst<opcode, (outs), (ins GPR:$r),
@@ -122,7 +121,7 @@ let Uses=[ACC] in {
 
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
         : LerosBranchInst<opcode, (outs), (ins bb_simm8:$simm8), opcodestr, "$simm8", []>;
-}
+
  
 // ------------- Pseudo ISA wrapper classes -------------
 // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
@@ -132,7 +131,8 @@ class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8
 }
 
 // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
-class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   uimm8:$uimm8), F_RRI, [(set i32:$rd, (opnode i32:$r1, uimm8:$uimm8))]>;
+class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
+   uimm8:$uimm8), F_RRI, [(set i32:$rd, (opnode i32:$r1, uimm8:$uimm8))]>;
 
     // Pseudo instruction wrapper for memory access functions
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
@@ -141,7 +141,8 @@ let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
 class PSEUDO_Load_M  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), F_LS, []>;
 
 // Pseudo instruction wrapper for an Acc -> (Acc, Reg) i    nstruction
-class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,   GPR:$r2), F_RRR, [(set i32:$rd, (opnode i32:$r1, i32:$r2))]>;
+class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
+   GPR:$r2), F_RRR, [(set i32:$rd, (opnode i32:$r1, i32:$r2))]>;
 
 // Pseudo instruction wrapper for an Reg -> (imm) instruction
 class PSEUDO_RegImm : LerosPseudo<(outs GPR:$rd), (ins simm8:$imm), F_RI, []>;
@@ -204,13 +205,11 @@ def : Pat<(br bb:$simm8), (BR_IMPL bb_simm8:$simm8)>;
 class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_BR, []> {
     let isBranch = 1;
     let isTerminator = 1;
-    let Uses = [ACC];
 }
 def PseudoBRC : Pseudo_BranchCC;
             
 
 // Instructions where format is specific to the instruction
-let Uses=[ACC] in {
     def LDADDR  : LerosInst<(outs), (ins GPR:$r), "ldaddr", "$r", []>{
         let Inst{15-11} = OPC_LDADDR.Value;
     }
@@ -228,19 +227,17 @@ let Uses=[ACC] in {
     def JAL     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
         let Inst{15-11} = OPC_JAL.Value;
     }
-}
 
 //===----------------------------------------------------------------------===//
 // Pseudo Instructions
 //===----------------------------------------------------------------------===//
 
 // Function return using jal
-let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0, ACC] in {
+let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in {
   def RET : LerosPseudo<(outs), (ins), F_NA, [(LerosRet)]>;
 }
 
 // Register copy instruction
-let Uses=[ACC] in
     def MOV : LerosInst<(outs GPR:$rd), (ins GPR:$rs), "mov","$rd $rs",
         [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
 
