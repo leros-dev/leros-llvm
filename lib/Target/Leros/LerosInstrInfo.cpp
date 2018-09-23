@@ -52,22 +52,22 @@ void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
 
   // Materialize a constant into a register through repeated usage of loadh
   // operations
-
-  if (isInt<32>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val >> 24) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 16) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI)).addImm((val >> 8) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH3_AI)).addImm(val & 0xff);
-  } else if (isInt<24>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val >> 24) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 16) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI)).addImm((val >> 8) & 0xff);
+  if (isInt<8>(val)) {
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val)&0xff);
   } else if (isInt<16>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val >> 24) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 16) & 0xff);
-  } else if (isInt<8>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val >> 24) & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val)&0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 8) & 0xff);
+  } else if (isInt<24>(val)) {
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm(val & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 8) & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI)).addImm((val >> 16) & 0xff);
+  } else {
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val)&0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 8) & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI)).addImm((val >> 16) & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH3_AI)).addImm((val >> 24) & 0xff);
   }
+
   BuildMI(MBB, MBBI, DL, get(Leros::STORE_R), DstReg);
 }
 
