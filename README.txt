@@ -16,3 +16,6 @@ documentation setup.
 If you are writing a package for LLVM, see docs/Packaging.rst for our
 suggestions.
 
+Leros LLVM
+================================
+Port of the LLVM Compiler Infrastructure for the Leros ISA - https://github.com/schoeberl/leros.
