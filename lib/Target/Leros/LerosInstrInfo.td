@@ -245,6 +245,9 @@ let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in {
 // Immediate patterns
 //===----------------------------------------------------------------------===//
 
+// We want to be able to capture immediate loading patterns through the target
+// description files. The following sequence minimizes the required loads and stores
+// which are selected for an immediate
 def : Pat<(simm8:$imm), 
         (LOAD_RI_PSEUDO imm:$imm)>;
 
@@ -268,6 +271,8 @@ def : Pat<(simm32:$imm),
             (BYTE1 imm:$imm)), 
         (BYTE2 imm:$imm)),
     (BYTE3 imm:$imm))>;
+
+// Todo: Extend for 64-bit
 
 //===----------------------------------------------------------------------===//
 // Codegen patterns
