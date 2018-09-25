@@ -39,6 +39,11 @@ static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
   return MCOperand::createExpr(ME);
 }
 
+static MCOperand createLerosImm(int64_t Val) {
+  // Create Leros immediates are always to be signed
+  return MCOperand::createImm(SignExtend64(Val, 8));
+}
+
 bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
                                          MCOperand &MCOp,
                                          const AsmPrinter &ap) {
@@ -55,7 +60,7 @@ bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
     MCOp = MCOperand::createReg(MO.getReg());
     break;
   case MachineOperand::MO_Immediate:
-    MCOp = MCOperand::createImm(MO.getImm());
+    MCOp = createLerosImm(MO.getImm());
     break;
   case MachineOperand::MO_MachineBasicBlock:
   case MachineOperand::MO_GlobalAddress:

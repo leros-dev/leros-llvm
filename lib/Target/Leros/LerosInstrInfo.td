@@ -52,18 +52,18 @@ class UImmAsmOperand<int width, string suffix = "">
 // Both operands are mapped to XLenVT for calls
 def uimm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<8>(Imm);}]> {
   let EncoderMethod = "getImmOpValue";
-  let ParserMatchClass = UImmAsmOperand<5>;
+  let ParserMatchClass = UImmAsmOperand<8>;
   let DecoderMethod = "decodeUImmOperand<8>";
 }
 
 def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
-  let ParserMatchClass = SImmAsmOperand<5>;
+  let ParserMatchClass = SImmAsmOperand<8>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<8>";
 }
 
 def bb_simm8 : Operand<OtherVT> {
-  let ParserMatchClass = SImmAsmOperand<5>;
+  let ParserMatchClass = SImmAsmOperand<8>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<8>";
 }
@@ -132,7 +132,7 @@ class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8
 
 // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
 class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
-   uimm8:$uimm8), F_RRI, [(set i32:$rd, (opnode i32:$r1, uimm8:$uimm8))]>;
+   simm8:$simm8), F_RRI, [(set i32:$rd, (opnode i32:$r1, simm8:$simm8))]>;
 
     // Pseudo instruction wrapper for memory access functions
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
@@ -150,8 +150,8 @@ class PSEUDO_RegImm : LerosPseudo<(outs GPR:$rd), (ins simm8:$imm), F_RI, []>;
 
 multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
     // Wrapper pseudo instruction definitions
-    def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
     def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode>; // Register-immediate instruction
+    def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
 
     // Instruction definitions
     def _AI  : INSTR_AccAccImm<opcode, opcodestr, opnode>;
