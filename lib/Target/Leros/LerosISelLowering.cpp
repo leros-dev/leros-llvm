@@ -123,27 +123,72 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
   setLoadExtAction(ISD::EXTLOAD, MVT::f64, MVT::f32, LibCall);
   setTruncStoreAction(MVT::f64, MVT::f32, Expand);
 
-  setOperationAction(ISD::GlobalAddress, XLenVT, Expand);
-  setOperationAction(ISD::BlockAddress, XLenVT, Expand);
-  setOperationAction(ISD::ConstantPool, XLenVT, Expand);
+  setOperationAction(ISD::GlobalAddress, XLenVT, Custom);
+  setOperationAction(ISD::BlockAddress, XLenVT, Custom);
+  setOperationAction(ISD::ConstantPool, XLenVT, Custom);
 
   setBooleanContents(ZeroOrOneBooleanContent);
 }
 
+SDValue LerosTargetLowering::lowerGlobalAddress(SDValue Op,
+                                                SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  GlobalAddressSDNode *N = cast<GlobalAddressSDNode>(Op);
+  const GlobalValue *GV = N->getGlobal();
+  int64_t Offset = N->getOffset();
+  MVT XLenVT = Subtarget.getXLenVT();
+
+  if (isPositionIndependent())
+    report_fatal_error("Unable to lowerGlobalAddress");
+
+  SDValue GA = DAG.getTargetGlobalAddress(GV, DL, Ty, 0);
+  SDValue MN =
+      SDValue(DAG.getMachineNode(Leros::LOAD_RI_PSEUDO, DL, Ty, GA), 0);
+  if (Offset != 0)
+    return DAG.getNode(ISD::ADD, DL, Ty, MN,
+                       DAG.getConstant(Offset, DL, XLenVT));
+  return MN;
+}
+
+SDValue LerosTargetLowering::lowerConstantPool(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  llvm_unreachable("LowerConstantPool unimplemented");
+  return SDValue();
+}
+
+SDValue LerosTargetLowering::lowerBlockAddress(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  llvm_unreachable("lowerBlockAddress unimplemented");
+  return SDValue();
+}
+
 SDValue LerosTargetLowering::LowerOperation(SDValue Op,
                                             SelectionDAG &DAG) const {
-  report_fatal_error("We do not expect any unhandleable ops yet");
+
+  switch (Op.getOpcode()) {
+  case ISD::ConstantPool:
+    return lowerConstantPool(Op, DAG);
+  case ISD::GlobalAddress:
+    return lowerGlobalAddress(Op, DAG);
+  case ISD::BlockAddress:
+    return lowerBlockAddress(Op, DAG);
+  }
+  llvm_unreachable("Unhandled lowerOperation opcode");
   return SDValue();
 }
 
 const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
 #define NODE(name)                                                             \
   case LEROSISD::name:                                                         \
-    return #name
+    return "LEROSISD::" #name;
   switch (Opcode) {
-  default:
+  default: {
+    llvm_unreachable("Unknown node name for target node");
     return nullptr;
+  }
     NODE(Ret);
+    NODE(Call);
     NODE(LOADH);
     NODE(LOADH2);
     NODE(LOADH3);
@@ -152,9 +197,9 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
 #undef NODE
 }
 
-//===----------------------------------------------------------------------===//
-//                      Calling Convention Implementation
-//===----------------------------------------------------------------------===//
+  //===----------------------------------------------------------------------===//
+  //                      Calling Convention Implementation
+  //===----------------------------------------------------------------------===//
 
 #include "LerosGenCallingConv.inc"
 
@@ -165,8 +210,132 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
 /// Leros call implementation
 SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                        SmallVectorImpl<SDValue> &InVals) const {
-  std::cout << "Leros: Implement me!" << std::endl;
-  return SDValue();
+  SelectionDAG &DAG = CLI.DAG;
+  SDLoc &Loc = CLI.DL;
+  SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+  SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
+  SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
+  const TargetFrameLowering *TFL = Subtarget.getFrameLowering();
+  SDValue Chain = CLI.Chain;
+  SDValue Callee = CLI.Callee;
+  CallingConv::ID CallConv = CLI.CallConv;
+  const bool isVarArg = CLI.IsVarArg;
+
+  CLI.IsTailCall = false;
+
+  if (isVarArg) {
+    llvm_unreachable("Unimplemented");
+  }
+
+  // Analyze operands of the call, assigning locations to each operand.
+  SmallVector<CCValAssign, 16> ArgLocs;
+  CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
+                 *DAG.getContext());
+  CCInfo.AnalyzeCallOperands(Outs, CC_Leros);
+
+  // Get the size of the outgoing arguments stack space requirement.
+  unsigned NextStackOffset = CCInfo.getNextStackOffset();
+  NextStackOffset = alignTo(NextStackOffset, TFL->getStackAlignment());
+  SDValue NextStackOffsetVal =
+      DAG.getIntPtrConstant(NextStackOffset, Loc, true);
+
+  Chain = DAG.getCALLSEQ_START(Chain, NextStackOffset, 0, Loc);
+
+  SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;
+  SmallVector<SDValue, 8> MemOpChains;
+
+  // Walk the register/memloc assignments, inserting copies/loads.
+  for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
+    CCValAssign &VA = ArgLocs[i];
+    SDValue Arg = OutVals[i];
+
+    // We only handle fully promoted arguments.
+    assert(VA.getLocInfo() == CCValAssign::Full && "Unhandled loc info");
+
+    if (VA.isRegLoc()) {
+      RegsToPass.push_back(std::make_pair(VA.getLocReg(), Arg));
+      continue;
+    }
+
+    assert(VA.isMemLoc() &&
+           "Only support passing arguments through registers or via the stack");
+
+    SDValue StackPtr =
+        DAG.getRegister(Leros::SPRegClass.getRegister(0), MVT::i32);
+    SDValue PtrOff = DAG.getIntPtrConstant(VA.getLocMemOffset(), Loc);
+    PtrOff = DAG.getNode(ISD::ADD, Loc, MVT::i32, StackPtr, PtrOff);
+
+    MemOpChains.push_back(
+        DAG.getStore(Chain, Loc, Arg, PtrOff, MachinePointerInfo()));
+  }
+
+  // Emit all stores, make sure they occur before the call.
+  if (!MemOpChains.empty()) {
+    Chain = DAG.getNode(ISD::TokenFactor, Loc, MVT::Other, MemOpChains);
+  }
+
+  // Build a sequence of copy-to-reg nodes chained together with token chain
+  // and flag operands which copy the outgoing args into the appropriate regs.
+  SDValue InFlag;
+  for (auto &Reg : RegsToPass) {
+    Chain = DAG.getCopyToReg(Chain, Loc, Reg.first, Reg.second, InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
+  // We only support calling global addresses.
+  GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee);
+  assert(G && "We only support the calling of global addresses");
+
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+  Callee = DAG.getGlobalAddress(G->getGlobal(), Loc, PtrVT, 0);
+
+  // If the callee is a GlobalAddress/ExternalSymbol node, turn it into a
+  // TargetGlobalAddress/TargetExternalSymbol node so that legalize won't
+  // split it and then direct call can be matched by PseudoCALL.
+  if (GlobalAddressSDNode *S = dyn_cast<GlobalAddressSDNode>(Callee)) {
+    Callee = DAG.getTargetGlobalAddress(S->getGlobal(), Loc, PtrVT, 0, 0);
+  } else if (ExternalSymbolSDNode *S = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+    Callee = DAG.getTargetExternalSymbol(S->getSymbol(), PtrVT, 0);
+  }
+
+  std::vector<SDValue> Ops;
+  Ops.push_back(Chain);
+  Ops.push_back(Callee);
+
+  // Add argument registers to the end of the list so that they are known live
+  // into the call.
+  for (auto &Reg : RegsToPass) {
+    Ops.push_back(DAG.getRegister(Reg.first, Reg.second.getValueType()));
+  }
+
+  // Add a register mask operand representing the call-preserved registers.
+  const uint32_t *Mask;
+  const TargetRegisterInfo *TRI = DAG.getSubtarget().getRegisterInfo();
+  Mask = TRI->getCallPreservedMask(DAG.getMachineFunction(), CallConv);
+
+  assert(Mask && "Missing call preserved mask for calling convention");
+  Ops.push_back(DAG.getRegisterMask(Mask));
+
+  if (InFlag.getNode()) {
+    Ops.push_back(InFlag);
+  }
+
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
+
+  // Returns a chain and a flag for retval copy to use.
+  Chain = DAG.getNode(LEROSISD::Call, Loc, NodeTys, Ops);
+  InFlag = Chain.getValue(1);
+
+  Chain = DAG.getCALLSEQ_END(Chain, NextStackOffsetVal,
+                             DAG.getIntPtrConstant(0, Loc, true), InFlag, Loc);
+  if (!Ins.empty()) {
+    InFlag = Chain.getValue(1);
+  }
+
+  // Handle result values, copying them out of physregs into vregs that we
+  // return.
+  return LowerCallResult(Chain, InFlag, CallConv, isVarArg, Ins, Loc, DAG,
+                         InVals);
 }
 
 SDValue LerosTargetLowering::LowerCallResult(
@@ -321,4 +490,4 @@ LerosTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   auto node = DAG.getNode(LEROSISD::Ret, DL, MVT::Other, RetOps);
   return node;
 }
-}
+} // namespace llvm

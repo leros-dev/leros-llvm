@@ -17,6 +17,20 @@ include "LerosInstrFormats.td"
 // Leros specific DAG profiles & Nodes.
 //===----------------------------------------------------------------------===//
 
+def SDT_lerosCall         : SDTypeProfile<0, -1, [SDTCisVT<0, XLenVT>]>;
+def SDT_LerosCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
+def SDT_LerosCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
+
+def Callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_LerosCallSeqStart,
+                           [SDNPHasChain, SDNPSideEffect, SDNPOutGlue]>;
+def Callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_LerosCallSeqEnd,
+                           [SDNPHasChain, SDNPSideEffect,
+                            SDNPOptInGlue, SDNPOutGlue]>;
+def Call         : SDNode<"LEROSISD::Call", SDT_lerosCall,
+                          [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
+                           SDNPVariadic]>;
+
+
 // type is: Acc -> (Acc, imm)
 def SDT_LOADH   :   SDTypeProfile<1, 2, [SDTCisVT<0, i32>, SDTCisSameAs<0, 1>,
                                       SDTCisInt<2>]>;
@@ -74,6 +88,21 @@ def bb_simm8 : Operand<OtherVT> {
 def simm16 : ImmLeaf<XLenVT, [{return isInt<16>(Imm);}]>;
 def simm24 : ImmLeaf<XLenVT, [{return isInt<24>(Imm);}]>;
 def simm32 : ImmLeaf<XLenVT, [{return isInt<32>(Imm);}]>;
+
+// Symbol operands for calls
+def BareSymbol : AsmOperandClass {
+  let Name = "BareSymbol";
+  let RenderMethod = "addImmOperands";
+  let DiagnosticType = "InvalidBareSymbol";
+}
+
+// A bare symbol.
+def bare_symbol : Operand<XLenVT> {
+  let ParserMatchClass = BareSymbol;
+  let MCOperandPredicate = [{
+     return MCOp.isBareSymbolRef();
+  }];
+}
 
 // Byte extraction node transformation, used for sequentialising immediate
 // generation of larger than 8-bit immediates using loadh instructions
@@ -223,7 +252,8 @@ def PseudoBRC : Pseudo_BranchCC;
     def STIND : LerosInst<(outs), (ins simm8:$imm8), "stind", "$imm8", []>{
         let Inst{15-11} = OPC_STIND.Value;
     }
-
+    
+    let isCall = 1 in
     def JAL     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
         let Inst{15-11} = OPC_JAL.Value;
     }
@@ -237,9 +267,26 @@ let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in {
   def RET : LerosPseudo<(outs), (ins), F_NA, [(LerosRet)]>;
 }
 
+// Will later be expanded to a sequence of immediate loads and a jal instruction
+let isCall = 1, Defs = [R0], isCodeGenOnly = 0 in
+def PseudoCALL : LerosPseudo<(outs), (ins bare_symbol:$func), F_NA,
+                        [(Call tglobaladdr:$func)]> {
+    let AsmString = "call\t$func";
+}
+
+def : Pat<(Call texternalsym:$func), (PseudoCALL texternalsym:$func)>;
+
 // Register copy instruction
     def MOV : LerosInst<(outs GPR:$rd), (ins GPR:$rs), "mov","$rd $rs",
         [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
+
+// Stack pointer adjustments
+let Defs = [R1], Uses = [R1], hasSideEffects = 1 in {
+def ADJCALLSTACKDOWN : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
+                                  [(Callseq_start timm:$amt1, timm:$amt2)]>;
+def ADJCALLSTACKUP   : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
+                                  [(Callseq_end timm:$amt1, timm:$amt2)]>;
+}
 
 //===----------------------------------------------------------------------===//
 // Immediate patterns

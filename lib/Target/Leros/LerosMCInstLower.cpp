@@ -46,7 +46,7 @@ static MCOperand createLerosImm(int64_t Val) {
 
 bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
                                          MCOperand &MCOp,
-                                         const AsmPrinter &ap) {
+                                         const AsmPrinter &AP) {
   MachineOperand::MachineOperandType MOTy = MO.getType();
 
   switch (MOTy) {
@@ -59,18 +59,28 @@ bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
     }
     MCOp = MCOperand::createReg(MO.getReg());
     break;
+  case MachineOperand::MO_RegisterMask:
+    // Regmasks are like implicit defs.
+    return false;
   case MachineOperand::MO_Immediate:
     MCOp = createLerosImm(MO.getImm());
     break;
   case MachineOperand::MO_MachineBasicBlock:
-  case MachineOperand::MO_GlobalAddress:
-  case MachineOperand::MO_ExternalSymbol:
-  case MachineOperand::MO_JumpTableIndex:
-  case MachineOperand::MO_ConstantPoolIndex:
-  case MachineOperand::MO_BlockAddress:
-    MCOp = lowerSymbolOperand(MO, MO.getMBB()->getSymbol(), ap);
+    MCOp = lowerSymbolOperand(MO, MO.getMBB()->getSymbol(), AP);
     break;
-  case MachineOperand::MO_RegisterMask:
+  case MachineOperand::MO_GlobalAddress:
+    MCOp = lowerSymbolOperand(MO, AP.getSymbol(MO.getGlobal()), AP);
+    break;
+  case MachineOperand::MO_BlockAddress:
+    MCOp = lowerSymbolOperand(
+        MO, AP.GetBlockAddressSymbol(MO.getBlockAddress()), AP);
+    break;
+  case MachineOperand::MO_ExternalSymbol:
+    MCOp = lowerSymbolOperand(
+        MO, AP.GetExternalSymbolSymbol(MO.getSymbolName()), AP);
+    break;
+  case MachineOperand::MO_ConstantPoolIndex:
+    MCOp = lowerSymbolOperand(MO, AP.GetCPISymbol(MO.getIndex()), AP);
     break;
   }
 
@@ -80,6 +90,8 @@ bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
 void LowerLerosMachineInstrToMCInst(const MachineInstr *MI, MCInst &OutMI,
                                     const AsmPrinter &AP) {
   OutMI.setOpcode(MI->getOpcode());
+
+  volatile auto a = MI->getOpcode();
 
   for (const MachineOperand &MO : MI->operands()) {
     MCOperand MCOp;

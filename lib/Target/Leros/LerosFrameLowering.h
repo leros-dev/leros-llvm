@@ -40,9 +40,13 @@ public:
   eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                                 MachineBasicBlock::iterator MI) const override;
 
+  void adjustReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
+                 const DebugLoc &DL, unsigned DestReg, unsigned SrcReg,
+                 int64_t Val, MachineInstr::MIFlag Flag) const;
+
 protected:
   const LerosSubtarget &STI;
 };
-}
+} // namespace llvm
 
 #endif // LerosFRAMEINFO_H

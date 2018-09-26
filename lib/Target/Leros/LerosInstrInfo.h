@@ -25,7 +25,7 @@ namespace llvm {
 class LerosInstrInfo : public LerosGenInstrInfo {
 
 public:
-  LerosInstrInfo() {}
+  LerosInstrInfo();
   /*
     unsigned isLoadFromStackSlot(const MachineInstr &MI,
                                  int &FrameIndex) const override;
@@ -58,6 +58,8 @@ public:
   bool isBranchOffsetInRange(unsigned BranchOpc,
                              int64_t BrOffset) const override;
 
+  unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
+
 private:
   void expandMOV(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
   void expandRET(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
@@ -67,6 +69,7 @@ private:
   void expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandCALL(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };
 } // namespace llvm
 #endif

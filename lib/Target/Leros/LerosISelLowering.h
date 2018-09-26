@@ -25,6 +25,7 @@ namespace LEROSISD {
 enum NodeType {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
   Ret,    // Return pseudo-op
+  Call,   // Call SD Node
   LOADH,  // loads an 8-bit immediate into the high byte of a 2-byte value
   LOADH2, // - || -                            3rd byte of a 4-byte value
   LOADH3, // - || -                            4th byte of a 4-byte value
@@ -91,6 +92,10 @@ private:
                           const SmallVectorImpl<ISD::InputArg> &Ins, SDLoc dl,
                           SelectionDAG &DAG,
                           SmallVectorImpl<SDValue> &InVals) const;
+
+  SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
 
   bool CanLowerReturn(CallingConv::ID CallConv, MachineFunction &MF,
                       bool IsVarArg,

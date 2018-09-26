@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "LerosFrameLowering.h"
-#include "Leros.h"
+#include "LerosTargetMachine.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -46,9 +46,52 @@ void LerosFrameLowering::emitPrologue(MachineFunction &MF,
 void LerosFrameLowering::emitEpilogue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {}
 
+void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
+                                   MachineBasicBlock::iterator MBBI,
+                                   const DebugLoc &DL, unsigned DestReg,
+                                   unsigned SrcReg, int64_t Val,
+                                   MachineInstr::MIFlag Flag) const {
+  MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
+  const LerosInstrInfo *TII = STI.getInstrInfo();
+
+  if (DestReg == SrcReg && Val == 0)
+    return;
+
+  unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  TII->movImm32(MBB, MBBI, DL, ScratchReg, Val);
+  BuildMI(MBB, MBBI, DL, TII->get(Leros::ADD_RR_PSEUDO), DestReg)
+      .addReg(SrcReg)
+      .addReg(ScratchReg, RegState::Kill)
+      .setMIFlag(Flag);
+}
+
+// Eliminate ADJCALLSTACKDOWN, ADJCALLSTACKUP pseudo instructions.
 MachineBasicBlock::iterator LerosFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator MI) const {
-  return MBB.begin();
+  unsigned SPReg = Leros::R1;
+  DebugLoc DL = MI->getDebugLoc();
+
+  if (!hasReservedCallFrame(MF)) {
+    // If space has not been reserved for a call frame, ADJCALLSTACKDOWN and
+    // ADJCALLSTACKUP must be converted to instructions manipulating the stack
+    // pointer. This is necessary when there is a variable length stack
+    // allocation (e.g. alloca), which means it's not possible to allocate
+    // space for outgoing arguments from within the function prologue.
+    int64_t Amount = MI->getOperand(0).getImm();
+
+    if (Amount != 0) {
+      // Ensure the stack remains aligned after adjustment.
+      Amount = alignSPAdjust(Amount);
+
+      if (MI->getOpcode() == Leros::ADJCALLSTACKDOWN)
+        Amount = -Amount;
+
+      adjustReg(MBB, MI, DL, SPReg, SPReg, Amount, MachineInstr::NoFlags);
+    }
+  }
+
+  return MBB.erase(MI);
 }
-}
+
+} // namespace llvm

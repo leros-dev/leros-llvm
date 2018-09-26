@@ -29,6 +29,9 @@
 
 namespace llvm {
 
+LerosInstrInfo::LerosInstrInfo()
+    : LerosGenInstrInfo(Leros::ADJCALLSTACKDOWN, Leros::ADJCALLSTACKUP) {}
+
 void LerosInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator MBBI,
                                  const DebugLoc &DL, unsigned DstReg,
@@ -159,6 +162,31 @@ void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(dst);
 }
 
+unsigned LerosInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
+  return 2; // All leros instructions are 16 bits long
+}
+
+void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
+                                MachineInstr &MI) const {
+  // For now, do not expand call - this should be done in some MCCodeEmitter by
+  // the linker
+
+  /*
+unsigned Ra = Leros::R0;
+unsigned opcode = MI.getDesc().getOpcode();
+
+MCOperand &Func = MI.getOperand(0);
+const MCExpr *Expr = Func.getExpr();
+
+// Load function address
+movImm32(MBB, MI, MI.getDebugLoc(), Ra, Expr);
+
+// Create function call expression CallExpr for JAL.
+BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL))
+    .addReg(Ra, RegState::Define);
+    */
+}
+
 void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB,
                                 MachineInstr &MI) const {
 #define OPCASE(instr)                                                          \
@@ -247,6 +275,9 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     default:
       llvm_unreachable("All pseudo-instructions must be expandable");
       return false;
+    case Leros::PseudoCALL:
+      expandCALL(MBB, MI);
+      break;
     case Leros::MOV:
       expandMOV(MBB, MI);
       break;
@@ -257,7 +288,8 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   }
   }
 
-  MBB.erase(MI);
+  if (MI.getDesc().getOpcode() != Leros::PseudoCALL)
+    MBB.erase(MI);
   return true;
 }
 
