@@ -27,7 +27,9 @@ namespace llvm {
 #include "LerosGenAsmWriter.inc"
 
 void LerosInstPrinter::printRegName(raw_ostream &OS, unsigned RegNo) const {
-  OS << StringRef(getRegisterName(RegNo)).lower();
+  const auto regName = getRegisterName(
+      RegNo, RegNo <= Leros::R3 ? Leros::ABIRegAltName : Leros::NoRegAltName);
+  OS << regName;
 }
 
 void LerosInstPrinter::printInst(const MCInst *MI, raw_ostream &O,
@@ -134,9 +136,6 @@ void LerosInstPrinter::printAddrModeMemSrc(const MCInst *MI, unsigned OpNum,
 void LerosInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                                     raw_ostream &O) {
   const MCOperand &Op = MI->getOperand(OpNo);
-  if (MI->getOpcode() == Leros::BRN_IMPL) {
-    volatile int a = 1;
-  }
   if (Op.isReg()) {
     printRegName(O, Op.getReg());
     return;

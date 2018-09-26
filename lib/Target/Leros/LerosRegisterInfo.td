@@ -13,15 +13,25 @@
 
 let Namespace = "Leros" in {
     
-class LerosReg<bits<8> Enc, string n> : Register<n> {
+class LerosReg<bits<8> Enc, string n, list<string> alt = []> : Register<n> {
     let HWEncoding{7-0} = Enc;
+    let AltNames = alt;
 }
 
+def ABIRegAltName : RegAltNameIndex;
 
 // Declare the 256 GPR registers
-foreach Index = 0-255 in {
-    def R#Index# : LerosReg<Index, "r"#Index>, DwarfRegNum<[Index]>;
-  }
+let RegAltNameIndices = [ABIRegAltName] in {
+    def R0 : LerosReg<0, "r0", ["ra"]>, DwarfRegNum<[0]>;
+    def R1 : LerosReg<1, "r1", ["sp"]>, DwarfRegNum<[1]>;
+    def R2 : LerosReg<2, "r2", ["gp"]>, DwarfRegNum<[2]>;
+    def R3 : LerosReg<3, "r3", ["fp"]>, DwarfRegNum<[3]>;
+}
+let RegAltNameIndices = [NoRegAltName] in {
+    foreach Index = 4-255 in {
+        def R#Index# : LerosReg<Index, "r"#Index>, DwarfRegNum<[Index]>;
+    }
+}
 
 
 def XLenVT : ValueTypeByHwMode<[Leros32, Leros64, DefaultMode],
