@@ -263,12 +263,12 @@ def PseudoBRC : Pseudo_BranchCC;
 //===----------------------------------------------------------------------===//
 
 // Function return using jal
-let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in {
+let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in {
   def RET : LerosPseudo<(outs), (ins), F_NA, [(LerosRet)]>;
 }
 
 // Will later be expanded to a sequence of immediate loads and a jal instruction
-let isCall = 1, Defs = [R0], isCodeGenOnly = 0 in
+let isCall = 1, Defs = [RA], isCodeGenOnly = 0 in
 def PseudoCALL : LerosPseudo<(outs), (ins bare_symbol:$func), F_NA,
                         [(Call tglobaladdr:$func)]> {
     let AsmString = "call\t$func";
@@ -281,7 +281,7 @@ def : Pat<(Call texternalsym:$func), (PseudoCALL texternalsym:$func)>;
         [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
 
 // Stack pointer adjustments
-let Defs = [R1], Uses = [R1], hasSideEffects = 1 in {
+let Defs = [SP], Uses = [SP], hasSideEffects = 1 in {
 def ADJCALLSTACKDOWN : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
                                   [(Callseq_start timm:$amt1, timm:$amt2)]>;
 def ADJCALLSTACKUP   : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,

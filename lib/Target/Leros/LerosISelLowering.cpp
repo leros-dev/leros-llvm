@@ -48,7 +48,7 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
   MVT XLenVT = Subtarget.getXLenVT();
   addRegisterClass(XLenVT, &Leros::GPRRegClass);
 
-  setStackPointerRegisterToSaveRestore(Leros::SPRegClass.getRegister(0));
+  setStackPointerRegisterToSaveRestore(Leros::SP);
 
   // Compute derived properties from the register classes
   computeRegisterProperties(Subtarget.getRegisterInfo());
@@ -197,9 +197,9 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
 #undef NODE
 }
 
-  //===----------------------------------------------------------------------===//
-  //                      Calling Convention Implementation
-  //===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+//                      Calling Convention Implementation
+//===----------------------------------------------------------------------===//
 
 #include "LerosGenCallingConv.inc"
 
@@ -220,6 +220,7 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SDValue Callee = CLI.Callee;
   CallingConv::ID CallConv = CLI.CallConv;
   const bool isVarArg = CLI.IsVarArg;
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
 
   CLI.IsTailCall = false;
 
@@ -260,8 +261,7 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     assert(VA.isMemLoc() &&
            "Only support passing arguments through registers or via the stack");
 
-    SDValue StackPtr =
-        DAG.getRegister(Leros::SPRegClass.getRegister(0), MVT::i32);
+    SDValue StackPtr = DAG.getRegister(Leros::SP, MVT::i32);
     SDValue PtrOff = DAG.getIntPtrConstant(VA.getLocMemOffset(), Loc);
     PtrOff = DAG.getNode(ISD::ADD, Loc, MVT::i32, StackPtr, PtrOff);
 
@@ -281,13 +281,6 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     Chain = DAG.getCopyToReg(Chain, Loc, Reg.first, Reg.second, InFlag);
     InFlag = Chain.getValue(1);
   }
-
-  // We only support calling global addresses.
-  GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee);
-  assert(G && "We only support the calling of global addresses");
-
-  EVT PtrVT = getPointerTy(DAG.getDataLayout());
-  Callee = DAG.getGlobalAddress(G->getGlobal(), Loc, PtrVT, 0);
 
   // If the callee is a GlobalAddress/ExternalSymbol node, turn it into a
   // TargetGlobalAddress/TargetExternalSymbol node so that legalize won't

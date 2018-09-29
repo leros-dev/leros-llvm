@@ -41,7 +41,7 @@ static MCInstrInfo *createLerosMCInstrInfo() {
 
 static MCRegisterInfo *createLerosMCRegisterInfo(const Triple &TT) {
   auto *X = new MCRegisterInfo();
-  InitLerosMCRegisterInfo(X, Leros::R1);
+  InitLerosMCRegisterInfo(X, Leros::SP);
   return X;
 }
 

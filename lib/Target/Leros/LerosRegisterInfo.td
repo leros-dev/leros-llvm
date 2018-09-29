@@ -22,10 +22,10 @@ def ABIRegAltName : RegAltNameIndex;
 
 // Declare the 256 GPR registers
 let RegAltNameIndices = [ABIRegAltName] in {
-    def R0 : LerosReg<0, "r0", ["ra"]>, DwarfRegNum<[0]>;
-    def R1 : LerosReg<1, "r1", ["sp"]>, DwarfRegNum<[1]>;
-    def R2 : LerosReg<2, "r2", ["gp"]>, DwarfRegNum<[2]>;
-    def R3 : LerosReg<3, "r3", ["fp"]>, DwarfRegNum<[3]>;
+    def RA : LerosReg<0, "r0", ["ra"]>, DwarfRegNum<[0]>;
+    def SP : LerosReg<1, "r1", ["sp"]>, DwarfRegNum<[1]>;
+    def GP : LerosReg<2, "r2", ["gp"]>, DwarfRegNum<[2]>;
+    def FP : LerosReg<3, "r3", ["fp"]>, DwarfRegNum<[3]>;
 }
 let RegAltNameIndices = [NoRegAltName] in {
     foreach Index = 4-255 in {
@@ -39,23 +39,16 @@ def XLenVT : ValueTypeByHwMode<[Leros32, Leros64, DefaultMode],
 
 // General purpose registers
 def GPR : RegisterClass<"Leros", [XLenVT], 32, (add
-    (sequence "R%u", 0, 255)
+    RA, SP, GP, FP,
+    (sequence "R%u", 4, 255)
   )> {
     let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
 }
 
-// Stack pointer
-def SP : RegisterClass<"Leros", [XLenVT], 32, (add R1)> {
-    let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
-                                   [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
-}
-
-
-// Grouping with stack pointer excluded
-def GPRNoSP : RegisterClass<"Leros", [XLenVT], 32, (add
-    R0,
-    (sequence "R%u", 2, 255)
+// Non-reserved registers
+def GPRNoReserve : RegisterClass<"Leros", [XLenVT], 32, (add
+    (sequence "R%u", 4, 255)
   )> {
     let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;

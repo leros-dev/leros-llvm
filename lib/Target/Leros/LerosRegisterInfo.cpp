@@ -30,7 +30,7 @@
 namespace llvm {
 
 LerosRegisterInfo::LerosRegisterInfo(unsigned HwMode)
-    : LerosGenRegisterInfo(Leros::R1, /*DwarfFlavour*/ 0, /*EHFlavor*/ 0,
+    : LerosGenRegisterInfo(Leros::SP, /*DwarfFlavour*/ 0, /*EHFlavor*/ 0,
                            /*PC*/ 0, HwMode) {}
 
 const MCPhysReg *
@@ -42,10 +42,10 @@ BitVector LerosRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
   // Use markSuperRegs to ensure any register aliases are also reserved
-  markSuperRegs(Reserved, Leros::R0); // ra
-  markSuperRegs(Reserved, Leros::R1); // sp
-  markSuperRegs(Reserved, Leros::R2); // gp
-  markSuperRegs(Reserved, Leros::R3); // fp
+  markSuperRegs(Reserved, Leros::RA); // ra
+  markSuperRegs(Reserved, Leros::SP); // sp
+  markSuperRegs(Reserved, Leros::GP); // gp
+  markSuperRegs(Reserved, Leros::FP); // fp
   assert(checkAllSuperRegsMarked(Reserved));
   return Reserved;
 }
@@ -78,7 +78,7 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // Move the offset into a scratch register which will be used by
   // loadaddr
   unsigned ScratchReg =
-      RS->getRegsAvailable(&Leros::GPRNoSPRegClass).find_first();
+      RS->getRegsAvailable(&Leros::GPRNoReserveRegClass).find_first();
   // unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRNoSPRegClass);
   TII->movImm32(MBB, II, DL, ScratchReg, Offset);
   BuildMI(MBB, II, DL, TII->get(Leros::ADD_RR_PSEUDO), ScratchReg)
@@ -92,7 +92,8 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 }
 
 unsigned LerosRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
-  return Leros::R2;
+  const TargetFrameLowering *TFI = getFrameLowering(MF);
+  return TFI->hasFP(MF) ? Leros::FP : Leros::SP;
 }
 
 const uint32_t *

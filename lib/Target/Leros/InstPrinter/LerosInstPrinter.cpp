@@ -28,7 +28,7 @@ namespace llvm {
 
 void LerosInstPrinter::printRegName(raw_ostream &OS, unsigned RegNo) const {
   const auto regName = getRegisterName(
-      RegNo, RegNo <= Leros::R3 ? Leros::ABIRegAltName : Leros::NoRegAltName);
+      RegNo, RegNo <= Leros::FP ? Leros::ABIRegAltName : Leros::NoRegAltName);
   OS << regName;
 }
 

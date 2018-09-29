@@ -69,7 +69,7 @@ void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
 MachineBasicBlock::iterator LerosFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator MI) const {
-  unsigned SPReg = Leros::R1;
+  unsigned SPReg = Leros::SP;
   DebugLoc DL = MI->getDebugLoc();
 
   if (!hasReservedCallFrame(MF)) {
