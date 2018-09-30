@@ -317,14 +317,9 @@ void LerosInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   if (I != MBB.end())
     DL = I->getDebugLoc();
 
-  if (SrcReg == Leros::ACC) {
-    // Store directly to register
-    BuildMI(MBB, I, DL, get(Leros::STORE_R))
-        .addReg(SrcReg, getKillRegState(IsKill))
-        .addFrameIndex(FI)
-        .addImm(0);
-  } else {
-    // Load into accumulator and store
-  }
+  BuildMI(MBB, I, DL, get(Leros::STORE_M_PSEUDO))
+      .addReg(SrcReg, getKillRegState(IsKill))
+      .addFrameIndex(FI)
+      .addImm(0);
 }
 } // namespace llvm

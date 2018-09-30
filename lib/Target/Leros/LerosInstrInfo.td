@@ -21,6 +21,10 @@ def SDT_lerosCall         : SDTypeProfile<0, -1, [SDTCisVT<0, XLenVT>]>;
 def SDT_LerosCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 def SDT_LerosCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 
+def SDT_LerosSelectCC     : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
+                                                 SDTCisSameAs<0, 4>,
+                                                 SDTCisSameAs<4, 5>]>;
+
 def Callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_LerosCallSeqStart,
                            [SDNPHasChain, SDNPSideEffect, SDNPOutGlue]>;
 def Callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_LerosCallSeqEnd,
@@ -43,9 +47,18 @@ def LOADH   : SDNode<"LEROSISD::LOADH", SDT_LOADH>;
 def LOADH2  : SDNode<"LEROSISD::LOADH2", SDT_LOADH>;
 def LOADH3  : SDNode<"LEROSISD::LOADH3", SDT_LOADH>;
 
+def SelectCC     : SDNode<"LEROSISD::SELECT_CC", SDT_LerosSelectCC,
+                          [SDNPInGlue]>;
+
 //===----------------------------------------------------------------------===//
 // Operands
 //===----------------------------------------------------------------------===//
+
+class ImmXLenAsmOperand<string prefix, string suffix = ""> : AsmOperandClass {
+  let Name = prefix # "ImmXLen" # suffix;
+  let RenderMethod = "addImmOperands";
+  let DiagnosticType = !strconcat("Invalid", Name);
+}
 
 class ImmAsmOperand<string prefix, int width, string suffix> : AsmOperandClass {
   let Name = prefix # "Imm" # width # suffix;
@@ -102,6 +115,11 @@ def bare_symbol : Operand<XLenVT> {
   let MCOperandPredicate = [{
      return MCOp.isBareSymbolRef();
   }];
+}
+
+// A parameterized register class alternative to i32imm/i64imm from Target.td.
+def ixlenimm : Operand<XLenVT> {
+  let ParserMatchClass = ImmXLenAsmOperand<"">;
 }
 
 // Byte extraction node transformation, used for sequentialising immediate
@@ -323,7 +341,7 @@ def : Pat<(simm32:$imm),
 
 //===----------------------------------------------------------------------===//
 // Codegen patterns
-//===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//    
 def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setne GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
@@ -338,6 +356,8 @@ def : BccPat<seteq, BRZ_PSEUDO>;
 def : BccPat<setne, BRNZ_PSEUDO>;
 def : BccPat<setgt, BRP_PSEUDO>;
 def : BccPat<setlt, BRN_PSEUDO>;
+def : BccPat<setugt, BRP_PSEUDO>;
+def : BccPat<setult, BRN_PSEUDO>;
 
 // An extra pattern is needed for a brcond without a setcc (i.e. where the
 // condition was calculated elsewhere).
@@ -350,6 +370,18 @@ def AddrFI : ComplexPattern<iPTR, 1, "SelectAddrFI", [frameindex], []>;
 /// FrameIndex calculations
 def : Pat<(add (i32 AddrFI:$Rs), simm8:$imm8),
           (ADD_RI_PSEUDO (i32 AddrFI:$Rs), simm8:$imm8)>;
+
+//  ----------- SELECT pseudo instruction  -----------
+// will be expanded in EmitInstrWithCustomInserter
+let usesCustomInserter = 1 in
+class SelectCC_rrirr<RegisterClass valty, RegisterClass cmpty>
+    : LerosPseudo<(outs valty:$dst),
+             (ins cmpty:$lhs, cmpty:$rhs, ixlenimm:$imm,
+              valty:$truev, valty:$falsev), F_NA,
+             [(set valty:$dst, (SelectCC cmpty:$lhs, cmpty:$rhs,
+              (XLenVT imm:$imm), valty:$truev, valty:$falsev))]>;
+
+def Select_GPR_Using_CC_GPR : SelectCC_rrirr<GPR, GPR>;
 
 //  ----------- Memory load/store patterns -----------
 

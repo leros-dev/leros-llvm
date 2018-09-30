@@ -29,7 +29,8 @@ enum NodeType {
   LOADH,  // loads an 8-bit immediate into the high byte of a 2-byte value
   LOADH2, // - || -                            3rd byte of a 4-byte value
   LOADH3, // - || -                            4th byte of a 4-byte value
-  Mov     // Move pseudo-op
+  Mov,    // Move pseudo-op
+  SELECT_CC
 };
 }
 
@@ -67,6 +68,10 @@ public:
   // This method returns the name of a target specific DAG node.
   virtual const char *getTargetNodeName(unsigned Opcode) const override;
 
+  MachineBasicBlock *
+  EmitInstrWithCustomInserter(MachineInstr &MI,
+                              MachineBasicBlock *BB) const override;
+
   bool isLegalICmpImmediate(int64_t Imm) const override;
   bool isLegalAddImmediate(int64_t Imm) const override;
 
@@ -96,6 +101,10 @@ private:
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerSELECT(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerVASTART(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const;
 
   bool CanLowerReturn(CallingConv::ID CallConv, MachineFunction &MF,
                       bool IsVarArg,

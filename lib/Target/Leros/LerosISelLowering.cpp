@@ -70,7 +70,10 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::STACKSAVE, MVT::Other, Expand);
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
 
-  setOperationAction(ISD::VASTART, MVT::Other, Custom);
+  setOperationAction(ISD::FRAMEADDR, MVT::Other, Expand);
+  setOperationAction(ISD::RETURNADDR, MVT::Other, Expand);
+
+  setOperationAction(ISD::VASTART, MVT::Other, Expand);
   setOperationAction(ISD::VAARG, MVT::Other, Expand);
   setOperationAction(ISD::VACOPY, MVT::Other, Expand);
   setOperationAction(ISD::VAEND, MVT::Other, Expand);
@@ -163,19 +166,124 @@ SDValue LerosTargetLowering::lowerBlockAddress(SDValue Op,
   return SDValue();
 }
 
+SDValue LerosTargetLowering::lowerSELECT(SDValue Op, SelectionDAG &DAG) const {
+  SDValue CondV = Op.getOperand(0);
+  SDValue TrueV = Op.getOperand(1);
+  SDValue FalseV = Op.getOperand(2);
+  SDLoc DL(Op);
+  MVT XLenVT = Subtarget.getXLenVT();
+
+  // (select condv, truev, falsev)
+  // -> (lerosisd::select_cc condv, zero, setne, truev, falsev)
+  SDValue Zero = DAG.getConstant(0, DL, XLenVT);
+  SDValue SetNE = DAG.getConstant(ISD::SETNE, DL, XLenVT);
+
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue Ops[] = {CondV, Zero, SetNE, TrueV, FalseV};
+
+  return DAG.getNode(LEROSISD::SELECT_CC, DL, VTs, Ops);
+}
+
 SDValue LerosTargetLowering::LowerOperation(SDValue Op,
                                             SelectionDAG &DAG) const {
 
   switch (Op.getOpcode()) {
+  default:
+    llvm_unreachable("Uninmplemented operand");
   case ISD::ConstantPool:
     return lowerConstantPool(Op, DAG);
   case ISD::GlobalAddress:
     return lowerGlobalAddress(Op, DAG);
   case ISD::BlockAddress:
     return lowerBlockAddress(Op, DAG);
+  case ISD::SELECT:
+    return lowerSELECT(Op, DAG);
   }
-  llvm_unreachable("Unhandled lowerOperation opcode");
-  return SDValue();
+}
+
+static unsigned getBranchOpcodeForIntCondCode(ISD::CondCode CC) {
+  switch (CC) {
+  default:
+    llvm_unreachable("Unsupported CondCode");
+  case ISD::SETEQ:
+    return Leros::BRZ_PSEUDO;
+  case ISD::SETNE:
+    return Leros::BRNZ_PSEUDO;
+  case ISD::SETLT:
+    return Leros::BRN_PSEUDO;
+  case ISD::SETGE:
+    return Leros::BRP_PSEUDO;
+  case ISD::SETULT:
+    return Leros::BRN_PSEUDO;
+  case ISD::SETUGE:
+    return Leros::BRP_PSEUDO;
+  }
+}
+
+MachineBasicBlock *
+LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+                                                 MachineBasicBlock *BB) const {
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unexpected instr type to insert");
+  case Leros::Select_GPR_Using_CC_GPR:
+    break;
+  }
+
+  // To "insert" a SELECT instruction, we actually have to insert the triangle
+  // control-flow pattern.  The incoming instruction knows the destination vreg
+  // to set, the condition code register to branch on, the true/false values to
+  // select between, and the condcode to use to select the appropriate branch.
+  //
+  // We produce the following control flow:
+  //     HeadMBB
+  //     |  \
+  //     |  IfFalseMBB
+  //     | /
+  //    TailMBB
+  const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineFunction::iterator I = ++BB->getIterator();
+
+  MachineBasicBlock *HeadMBB = BB;
+  MachineFunction *F = BB->getParent();
+  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *IfFalseMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+  F->insert(I, IfFalseMBB);
+  F->insert(I, TailMBB);
+  // Move all remaining instructions to TailMBB.
+  TailMBB->splice(TailMBB->begin(), HeadMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
+  // Update machine-CFG edges by transferring all successors of the current
+  // block to the new block which will contain the Phi node for the select.
+  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+  // Set the successors for HeadMBB.
+  HeadMBB->addSuccessor(IfFalseMBB);
+  HeadMBB->addSuccessor(TailMBB);
+
+  // Insert appropriate branch.
+  unsigned LHS = MI.getOperand(1).getReg();
+  unsigned RHS = MI.getOperand(2).getReg();
+  auto CC = static_cast<ISD::CondCode>(MI.getOperand(3).getImm());
+  unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
+
+  BuildMI(HeadMBB, DL, TII.get(Opcode)).addReg(LHS).addReg(RHS).addMBB(TailMBB);
+
+  // IfFalseMBB just falls through to TailMBB.
+  IfFalseMBB->addSuccessor(TailMBB);
+
+  // %Result = phi [ %TrueValue, HeadMBB ], [ %FalseValue, IfFalseMBB ]
+  BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI),
+          MI.getOperand(0).getReg())
+      .addReg(MI.getOperand(4).getReg())
+      .addMBB(HeadMBB)
+      .addReg(MI.getOperand(5).getReg())
+      .addMBB(IfFalseMBB);
+
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return TailMBB;
 }
 
 const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
@@ -193,6 +301,7 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
     NODE(LOADH2);
     NODE(LOADH3);
     NODE(Mov);
+    NODE(SELECT_CC);
   }
 #undef NODE
 }
