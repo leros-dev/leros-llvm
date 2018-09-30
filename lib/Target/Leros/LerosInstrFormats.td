@@ -92,7 +92,7 @@ class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pa
 
   dag OutOperandList = outs;
   dag InOperandList = ins;
-  let AsmString = opcodestr # " " # argstr;
+  let AsmString = opcodestr # "\t" # argstr;
   let Pattern = pattern;
 }
 

@@ -271,7 +271,7 @@ let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in {
 let isCall = 1, Defs = [RA], isCodeGenOnly = 0 in
 def PseudoCALL : LerosPseudo<(outs), (ins bare_symbol:$func), F_NA,
                         [(Call tglobaladdr:$func)]> {
-    let AsmString = "call $func";
+    let AsmString = "call\t$func";
 }
 
 def : Pat<(Call texternalsym:$func), (PseudoCALL texternalsym:$func)>;
