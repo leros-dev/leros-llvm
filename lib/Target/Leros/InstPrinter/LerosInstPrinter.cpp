@@ -146,7 +146,6 @@ void LerosInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
     return;
   }
 
-  volatile int a = MI->getOpcode();
   assert(Op.isExpr() && "unknown operand kind in printOperand");
   Op.getExpr()->print(O, &MAI);
 }

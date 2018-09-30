@@ -21,6 +21,7 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
+#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/TargetRegistry.h"
 
@@ -36,10 +37,7 @@ void LerosInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator MBBI,
                                  const DebugLoc &DL, unsigned DstReg,
                                  unsigned SrcReg, bool KillSrc) const {
-
-  BuildMI(MBB, MBBI, DL, get(Leros::MOV), DstReg)
-      .addReg(SrcReg, getKillRegState(KillSrc));
-
+  expandMOV(MBB, MBBI, false, DstReg, SrcReg);
   return;
 }
 
@@ -75,11 +73,15 @@ void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
 }
 
 void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
-                               MachineBasicBlock::iterator I) const {
-  const unsigned &dst = I->getOperand(1).getReg(),
-                 &src = I->getOperand(2).getReg();
-  BuildMI(MBB, I, I->getDebugLoc(), get(ISD::ADD)).addReg(src);
-  BuildMI(MBB, I, I->getDebugLoc(), get(ISD::ADD)).addReg(dst);
+                               MachineBasicBlock::iterator I,
+                               bool BBHasOperands, unsigned dst,
+                               unsigned src) const {
+  if (BBHasOperands) {
+    dst = I->getOperand(1).getReg();
+    src = I->getOperand(2).getReg();
+  }
+  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::LOAD_R)).addReg(src);
+  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::STORE_R)).addReg(dst);
 }
 
 void LerosInstrInfo::expandRET(MachineBasicBlock &MBB,
@@ -164,6 +166,20 @@ void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
 
 unsigned LerosInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   return 2; // All leros instructions are 16 bits long
+}
+
+void LerosInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
+                                          MachineBasicBlock::iterator I,
+                                          unsigned DstReg, int FrameIndex,
+                                          const TargetRegisterClass *RC,
+                                          const TargetRegisterInfo *TRI) const {
+  DebugLoc DL;
+  if (I != MBB.end())
+    DL = I->getDebugLoc();
+
+  BuildMI(MBB, I, DL, get(Leros::LOAD_M_PSEUDO), DstReg)
+      .addFrameIndex(FrameIndex)
+      .addImm(0);
 }
 
 void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
@@ -273,13 +289,12 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     const auto opc = MI.getDesc().getOpcode();
     switch (opc) {
     default:
-      llvm_unreachable("All pseudo-instructions must be expandable");
       return false;
     case Leros::PseudoCALL:
       expandCALL(MBB, MI);
       break;
     case Leros::MOV:
-      expandMOV(MBB, MI);
+      expandMOV(MBB, MI, true);
       break;
     case Leros::RET:
       expandRET(MBB, MI);

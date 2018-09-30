@@ -41,13 +41,11 @@ public:
                            bool IsKill, int FrameIndex,
                            const TargetRegisterClass *RC,
                            const TargetRegisterInfo *TRI) const override;
-  /*
-      void loadRegFromStackSlot(MachineBasicBlock &MBB,
-                                MachineBasicBlock::iterator MBBI, unsigned
-     DstReg,
-                                int FrameIndex, const TargetRegisterClass *RC,
-                                const TargetRegisterInfo *TRI) const override;
-    */
+
+  void loadRegFromStackSlot(MachineBasicBlock &MBB,
+                            MachineBasicBlock::iterator MBBI, unsigned DstReg,
+                            int FrameIndex, const TargetRegisterClass *RC,
+                            const TargetRegisterInfo *TRI) const override;
 
   bool expandPostRAPseudo(MachineInstr &MI) const override;
 
@@ -61,7 +59,9 @@ public:
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
 
 private:
-  void expandMOV(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
+  void expandMOV(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
+                 bool BBHasOperands, unsigned DstReg = 0,
+                 unsigned SrcReg = 0) const;
   void expandRET(MachineBasicBlock &MBB, MachineBasicBlock::iterator I) const;
   void expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const;

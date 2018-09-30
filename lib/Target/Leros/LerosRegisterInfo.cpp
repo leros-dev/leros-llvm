@@ -57,7 +57,6 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   MachineInstr &MI = *II;
   MachineFunction &MF = *MI.getParent()->getParent();
-  MachineRegisterInfo &MRI = MF.getRegInfo();
   const LerosInstrInfo *TII = MF.getSubtarget<LerosSubtarget>().getInstrInfo();
   DebugLoc DL = MI.getDebugLoc();
 
@@ -79,7 +78,6 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // loadaddr
   unsigned ScratchReg =
       RS->getRegsAvailable(&Leros::GPRNoReserveRegClass).find_first();
-  // unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRNoSPRegClass);
   TII->movImm32(MBB, II, DL, ScratchReg, Offset);
   BuildMI(MBB, II, DL, TII->get(Leros::ADD_RR_PSEUDO), ScratchReg)
       .addReg(FrameReg)

@@ -271,14 +271,14 @@ let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in {
 let isCall = 1, Defs = [RA], isCodeGenOnly = 0 in
 def PseudoCALL : LerosPseudo<(outs), (ins bare_symbol:$func), F_NA,
                         [(Call tglobaladdr:$func)]> {
-    let AsmString = "call\t$func";
+    let AsmString = "call $func";
 }
 
 def : Pat<(Call texternalsym:$func), (PseudoCALL texternalsym:$func)>;
 
 // Register copy instruction
-    def MOV : LerosInst<(outs GPR:$rd), (ins GPR:$rs), "mov","$rd $rs",
-        [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
+def MOV : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA,
+    [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
 
 // Stack pointer adjustments
 let Defs = [SP], Uses = [SP], hasSideEffects = 1 in {

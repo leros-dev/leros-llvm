@@ -224,10 +224,6 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   CLI.IsTailCall = false;
 
-  if (isVarArg) {
-    llvm_unreachable("Unimplemented");
-  }
-
   // Analyze operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
@@ -335,9 +331,6 @@ SDValue LerosTargetLowering::LowerCallResult(
     SDValue Chain, SDValue InGlue, CallingConv::ID CallConv, bool isVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, SDLoc dl, SelectionDAG &DAG,
     SmallVectorImpl<SDValue> &InVals) const {
-  if (isVarArg) {
-    report_fatal_error("VarArg not supported");
-  }
   // Assign locations to each value returned by this call.
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), RVLocs,
@@ -369,9 +362,6 @@ SDValue LerosTargetLowering::LowerFormalArguments(
   MachineFunction &MF = DAG.getMachineFunction();
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
 
-  if (IsVarArg) {
-    report_fatal_error("VarArg not supported");
-  }
   // Assign locations to all of the incoming arguments.
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
@@ -444,10 +434,6 @@ LerosTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                  const SmallVectorImpl<ISD::OutputArg> &Outs,
                                  const SmallVectorImpl<SDValue> &OutVals,
                                  const SDLoc &DL, SelectionDAG &DAG) const {
-  if (isVarArg) {
-    report_fatal_error("VarArg not supported");
-  }
-
   // CCValAssign - represent the assignment of
   // the return value to a location
   SmallVector<CCValAssign, 16> RVLocs;
