@@ -22,6 +22,8 @@
 
 namespace llvm {
 
+#define DEBUG_TYPE "leros-isel"
+
 // Leros  specific code to select Leros machine
 // instructions for SelectionDAG operations.
 namespace {
@@ -50,7 +52,33 @@ public:
 };
 } // end anonymous namespace
 
-void LerosDAGToDAGISel::Select(SDNode *Node) { return SelectCode(Node); }
+void LerosDAGToDAGISel::Select(SDNode *Node) {
+  unsigned Opcode = Node->getOpcode();
+  MVT XLenVT = Subtarget->getXLenVT();
+
+  // If we have a custom node, we have already selected
+  if (Node->isMachineOpcode()) {
+    LLVM_DEBUG(dbgs() << "== "; Node->dump(CurDAG); dbgs() << "\n");
+    Node->setNodeId(-1);
+    return;
+  }
+
+  // Instruction Selection not handled by the auto-generated tablegen selection
+  // should be handled here.
+  if (Opcode == ISD::FrameIndex) {
+    SDLoc DL(Node);
+    SDValue Imm = CurDAG->getTargetConstant(0, DL, XLenVT);
+    int FI = cast<FrameIndexSDNode>(Node)->getIndex();
+    EVT VT = Node->getValueType(0);
+    SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
+    ReplaceNode(Node,
+                CurDAG->getMachineNode(Leros::ADD_RI_PSEUDO, DL, VT, TFI, Imm));
+    return;
+  }
+
+  // Select the default instruction.
+  SelectCode(Node);
+}
 
 bool LerosDAGToDAGISel::SelectAddrFI(SDValue Addr, SDValue &Base) {
   if (auto FIN = dyn_cast<FrameIndexSDNode>(Addr)) {
