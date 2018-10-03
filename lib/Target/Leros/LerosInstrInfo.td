@@ -224,6 +224,7 @@ defm OR   : INSTR_ImmReg<OPC_OR      ,    "or\t",     or>;
 defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor\t",    xor>;
 
 defm SHL  : INSTR_ImmReg<OPC_NOP     ,    "shl_UNDEFINED\t",    shl>; // For now, simulate that we have an stl instruktion
+defm SRA  : INSTR_ImmReg<OPC_NOP     ,    "sra_UNDEFINED\t",    sra>; // For now, 
 
 // Register->accumulator Loads
 def LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;

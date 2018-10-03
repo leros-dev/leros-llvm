@@ -108,6 +108,7 @@ void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
     OPCASE(Leros::OR, R)
     OPCASE(Leros::XOR, R)
     OPCASE(Leros::SHL, R)
+    OPCASE(Leros::SRA, R)
   }
 #undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
@@ -138,6 +139,8 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
     OPCASE(Leros::LOADH, I)
     OPCASE(Leros::LOADH2, I)
     OPCASE(Leros::LOADH3, I)
+    OPCASE(Leros::SHL, I)
+    OPCASE(Leros::SRA, I)
   }
 #undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
