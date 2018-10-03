@@ -148,16 +148,6 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
 }
 
 void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
-  unsigned opcode = MI.getDesc().getOpcode();
-  switch (opcode) {
-  default:
-    llvm_unreachable("Unhandled opcode");
-    break;
-  case Leros::LOAD_RI_PSEUDO: {
-    opcode = Leros::LOAD_R;
-    break;
-  }
-  }
   const unsigned &dst = MI.getOperand(0).getReg(),
                  &imm = MI.getOperand(1).getImm();
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_I)).addImm(imm);

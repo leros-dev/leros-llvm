@@ -140,7 +140,6 @@ def BYTE3 : SDNodeXForm<imm, [{
 //===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
-
     // Instructions with dependency: Acc -> (Acc, Reg)
     class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
         : LerosImmInst<opcode, (outs), (ins GPR:$r),
@@ -169,7 +168,12 @@ def BYTE3 : SDNodeXForm<imm, [{
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
         : LerosBranchInst<opcode, (outs), (ins bb_simm8:$simm8), opcodestr, "$simm8", []>;
 
- 
+    // To be determined instruction - to avoid errors in LLVM tests.
+// These instructions are basically because a deliberation on the ISA
+// is required
+class TBD_SET_C : LerosInst<(outs GPR:$rs), (ins GPR:$r1, GPR:$r2), "TBD", "$r1 $r2", []>;
+def TBD_SET : TBD_SET_C;
+
 // ------------- Pseudo ISA wrapper classes -------------
 // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
 class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8), F_BRCC, []> {
@@ -342,14 +346,20 @@ def : Pat<(simm32:$imm),
 //===----------------------------------------------------------------------===//
 // Codegen patterns
 //===----------------------------------------------------------------------===//   
-/* 
-Todo: Implement these using a future set instruction, or expand into a phi node
-using branch logic for the set results
-def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setne GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setlt GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
-*/
+ 
+//Todo: Implement these using a future set instruction, or expand into a phi node
+// using branch logic for the set results
+def : Pat<(seteq GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setne GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setgt GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setge GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setlt GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setle GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setugt GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setuge GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setult GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setule GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+
 
 class BccPat<PatFrag CondOp, Pseudo_Branch Inst>
     : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm8),

@@ -15,6 +15,8 @@
 #ifndef LLVM_LIB_TARGET_Leros_Leros_H
 #define LLVM_LIB_TARGET_Leros_Leros_H
 
+#include "LerosBaseInfo.h"
+
 namespace llvm {
 class FunctionPass;
 class MachineInstr;

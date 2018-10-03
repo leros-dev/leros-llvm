@@ -16,39 +16,11 @@
 #define LerosISELLOWERING_H
 
 #include "Leros.h"
+#include "LerosBaseInfo.h"
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/CodeGen/TargetLowering.h"
 
 namespace llvm {
-
-namespace LEROSISD {
-enum NodeType {
-  FIRST_NUMBER = ISD::BUILTIN_OP_END,
-  Ret,    // Return pseudo-op
-  Call,   // Call SD Node
-  LOADH,  // loads an 8-bit immediate into the high byte of a 2-byte value
-  LOADH2, // - || -                            3rd byte of a 4-byte value
-  LOADH3, // - || -                            4th byte of a 4-byte value
-  Mov,    // Move pseudo-op
-  SELECT_CC
-};
-}
-
-namespace LEROSIF {
-/*
-Instruction formats for the various pseudo instructions that creates the
-3-operand wrapper ISA for the Leros instruction set.
-*/
-enum {
-  NoFormat = 0,
-  RRR = 1,
-  RRI = 2,
-  BranchCC = 3,
-  RI = 4,
-  Branch = 5,
-  LoadStore = 6
-};
-} // namespace LEROSIF
 
 // Forward delcarations
 class LerosSubtarget;

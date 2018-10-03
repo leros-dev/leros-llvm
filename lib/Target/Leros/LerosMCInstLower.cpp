@@ -30,6 +30,11 @@ static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
                                     const AsmPrinter &AP) {
   MCContext &Ctx = AP.OutContext;
 
+  switch (MO.getTargetFlags()) {
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  }
+
   const MCExpr *ME =
       MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, Ctx);
 
