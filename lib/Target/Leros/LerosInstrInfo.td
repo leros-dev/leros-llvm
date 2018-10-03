@@ -216,12 +216,12 @@ multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
 
 // Instruction declarations
 // defm : INSTR_ImmReg<OPC_NOP     , "INSTR_NOP",    "nop",    nop>;
-defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add",    add>;
-defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub",    sub>;
-defm SHR  : INSTR_ImmReg<OPC_SHR     ,    "shr",    srl>;
-defm AND  : INSTR_ImmReg<OPC_AND     ,    "and",    and>;
-defm OR   : INSTR_ImmReg<OPC_OR      ,    "or",     or>;
-defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor>;
+defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add\t",    add>;
+defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub\t",    sub>;
+defm SHR  : INSTR_ImmReg<OPC_SHR     ,    "shr\t",    srl>;
+defm AND  : INSTR_ImmReg<OPC_AND     ,    "and\t",    and>;
+defm OR   : INSTR_ImmReg<OPC_OR      ,    "or\t",     or>;
+defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor\t",    xor>;
 
 // Register->accumulator Loads
 def LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;
@@ -235,11 +235,11 @@ defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 // Accumulator->register store
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
 
-defm BR      : INSTR_BrImpl<OPC_BR,      "br"       >; // unconditional branch
-defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz"      >;
+defm BR      : INSTR_BrImpl<OPC_BR,      "br\t"       >; // unconditional branch
+defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz\t"      >;
 defm BRNZ    : INSTR_BrImpl<OPC_BRNZ,    "brnz"     >;
-defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp"      >;
-defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn"     >;
+defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp\t"      >;
+defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn\t"     >;
 
 // Memory access pseudoinstruction definitions
 def STORE_M_PSEUDO  : PSEUDO_Store_M;
@@ -276,7 +276,7 @@ def PseudoBRC : Pseudo_BranchCC;
     }
     
     let isCall = 1 in
-    def JAL     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
+    def JAL     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
         let Inst{15-11} = OPC_JAL.Value;
     }
 
