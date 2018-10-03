@@ -28,6 +28,8 @@ void LerosSubtarget::initializeSubtargetDependencies(StringRef CPU,
   if (CPUName.empty()) {
     if (TT.isArch64Bit()) {
       CPUName = "generic-leros64";
+      XLen = 64;
+      XLenVT = MVT::i64;
     } else {
       CPUName = "generic-leros32";
     }

@@ -13,7 +13,14 @@ include "llvm/Target/Target.td"
 // Leros subtarget features
 //===----------------------------------------------------------------------===//
 
-def Leros32           : HwMode<"+32bit">;
+def Feature64Bit
+    : SubtargetFeature<"64bit", "HasLeros64", "true", "Implements Leros64">;
+def IsRV64 : Predicate<"Subtarget->is64Bit()">,
+                       AssemblerPredicate<"Feature64Bit">;
+def IsRV32 : Predicate<"!Subtarget->is64Bit()">,
+                       AssemblerPredicate<"!Feature64Bit">;
+
+def Leros32           : HwMode<"-64bit">;
 def Leros64           : HwMode<"+64bit">;
 
 /* @todo: These are not subtarget specific features, but rather our processor model specifications
@@ -41,7 +48,7 @@ include "LerosCallingConv.td"
 //===----------------------------------------------------------------------===//
 def : ProcessorModel<"generic-leros32", NoSchedModel, []>;
 
-def : ProcessorModel<"generic-leros64", NoSchedModel, []>;
+def : ProcessorModel<"generic-leros64", NoSchedModel, [Feature64Bit]>;
 
 //===----------------------------------------------------------------------===//
 // Define the Leros target.

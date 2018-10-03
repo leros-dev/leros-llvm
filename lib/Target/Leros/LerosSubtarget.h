@@ -18,6 +18,7 @@
 #include "LerosISelLowering.h"
 #include "LerosInstrInfo.h"
 #include "LerosRegisterInfo.h"
+#include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/Support/MachineValueType.h"
@@ -30,6 +31,7 @@ namespace llvm {
 class LerosSubtarget : public LerosGenSubtargetInfo {
   unsigned XLen = 32;
   MVT XLenVT = MVT::i32;
+  bool HasLeros64 = false;
 
   LerosFrameLowering FrameLowering;
   LerosInstrInfo InstrInfo;

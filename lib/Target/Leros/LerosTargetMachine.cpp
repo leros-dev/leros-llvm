@@ -14,6 +14,7 @@
 #include "LerosTargetMachine.h"
 #include "Leros.h"
 #include "LerosTargetObjectFile.h"
+#include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
