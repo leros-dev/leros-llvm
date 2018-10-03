@@ -341,12 +341,15 @@ def : Pat<(simm32:$imm),
 
 //===----------------------------------------------------------------------===//
 // Codegen patterns
-//===----------------------------------------------------------------------===//    
+//===----------------------------------------------------------------------===//   
+/* 
+Todo: Implement these using a future set instruction, or expand into a phi node
+using branch logic for the set results
 def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setne GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setlt GPR:$rs1, GPR:$rs2), (SUB_RR_PSEUDO GPR:$rs1, GPR:$rs2)>;
-
+*/
 
 class BccPat<PatFrag CondOp, Pseudo_Branch Inst>
     : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm8),
@@ -354,10 +357,21 @@ class BccPat<PatFrag CondOp, Pseudo_Branch Inst>
 
 def : BccPat<seteq, BRZ_PSEUDO>;
 def : BccPat<setne, BRNZ_PSEUDO>;
-def : BccPat<setgt, BRP_PSEUDO>;
+def : BccPat<setge, BRP_PSEUDO>;
 def : BccPat<setlt, BRN_PSEUDO>;
-def : BccPat<setugt, BRP_PSEUDO>;
+def : BccPat<setuge, BRP_PSEUDO>;
 def : BccPat<setult, BRN_PSEUDO>;
+
+class BccSwapPat<PatFrag CondOp, Pseudo_Branch Inst>
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm8),
+          (Inst GPR:$rs2, GPR:$rs1, bb:$imm8)>;
+
+// Condition codes that don't have matching RISC-V branch instructions, but
+// are trivially supported by swapping the two input operands
+def : BccSwapPat<setgt, BRN_PSEUDO>;
+def : BccSwapPat<setle, BRP_PSEUDO>;
+def : BccSwapPat<setugt, BRN_PSEUDO>;
+def : BccSwapPat<setule, BRP_PSEUDO>;
 
 // An extra pattern is needed for a brcond without a setcc (i.e. where the
 // condition was calculated elsewhere).
