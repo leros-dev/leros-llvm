@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Leros.h"
+#include "MCTargetDesc/LerosMCExpr.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineInstr.h"
@@ -29,10 +30,27 @@ namespace llvm {
 static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
                                     const AsmPrinter &AP) {
   MCContext &Ctx = AP.OutContext;
+  LerosMCExpr::VariantKind Kind;
 
-  switch (MO.getTargetFlags()) {
+  auto tf = MO.getTargetFlags();
+
+  switch (tf) {
   default:
     llvm_unreachable("Unknown target flag on GV operand");
+  case LEROSTF::MO_None:
+    Kind = LerosMCExpr::VK_Leros_None;
+  case LEROSTF::MO_B0:
+    Kind = LerosMCExpr::VK_Leros_B0;
+    break;
+  case LEROSTF::MO_B1:
+    Kind = LerosMCExpr::VK_Leros_B1;
+    break;
+  case LEROSTF::MO_B2:
+    Kind = LerosMCExpr::VK_Leros_B2;
+    break;
+  case LEROSTF::MO_B3:
+    Kind = LerosMCExpr::VK_Leros_B3;
+    break;
   }
 
   const MCExpr *ME =
