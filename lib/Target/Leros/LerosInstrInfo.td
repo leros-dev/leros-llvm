@@ -223,6 +223,8 @@ defm AND  : INSTR_ImmReg<OPC_AND     ,    "and\t",    and>;
 defm OR   : INSTR_ImmReg<OPC_OR      ,    "or\t",     or>;
 defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor\t",    xor>;
 
+defm SHL  : INSTR_ImmReg<OPC_NOP     ,    "shl_UNDEFINED\t",    shl>; // For now, simulate that we have an stl instruktion
+
 // Register->accumulator Loads
 def LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;
 def LOAD_I : INSTR_AccImm<OPC_LOAD, "load", ld>;
