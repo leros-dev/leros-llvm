@@ -66,7 +66,8 @@ private:
   void expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const;
-  void expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
+                  bool hasPrecalcCC) const;
   void expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandCALL(MachineBasicBlock &MBB, MachineInstr &MI) const;

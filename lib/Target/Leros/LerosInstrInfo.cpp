@@ -204,8 +204,8 @@ BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL))
     */
 }
 
-void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB,
-                                MachineInstr &MI) const {
+void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
+                                bool hasPrecalcCC) const {
 #define OPCASE(instr)                                                          \
   case instr##_PSEUDO:                                                         \
     opcode = instr##_IMPL;                                                     \
@@ -221,13 +221,21 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB,
     OPCASE(Leros::BRNZ)
     OPCASE(Leros::BRP)
     OPCASE(Leros::BRN)
+  case Leros::PseudoBRC: {
+    opcode = Leros::BRNZ_IMPL;
+  }
   }
 #undef OPCASE
-  const unsigned &rs1 = MI.getOperand(0).getReg(),
-                 &rs2 = MI.getOperand(1).getReg();
-  const auto &bb = MI.getOperand(2).getMBB();
+
+  const unsigned &rs1 = MI.getOperand(0).getReg();
+
+  const auto &bb = MI.getOperand(hasPrecalcCC ? 1 : 2).getMBB();
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR)).addReg(rs2);
+  if (!hasPrecalcCC) {
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR))
+        .addReg(MI.getOperand(1).getReg());
+  }
+
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);
 }
 
@@ -275,7 +283,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     break;
   }
   case LEROSIF::BranchCC: {
-    expandBRCC(MBB, MI);
+    expandBRCC(MBB, MI, false);
     break;
   }
   case LEROSIF::Branch: {
@@ -300,6 +308,8 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     case Leros::RET:
       expandRET(MBB, MI);
       break;
+    case Leros::PseudoBRC:
+      expandBRCC(MBB, MI, true);
     }
   }
   }

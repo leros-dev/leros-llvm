@@ -255,7 +255,7 @@ def : Pat<(br bb:$simm8), (BR_IMPL bb_simm8:$simm8)>;
 //               PseudoInstExpansion<(BR_IMPL bb_simm8:$simm8)>;
 
 // Branch instruction where branch condition ($rc) has been precalculated
-class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_BR, []> {
+class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_NA, []> {
     let isBranch = 1;
     let isTerminator = 1;
 }
