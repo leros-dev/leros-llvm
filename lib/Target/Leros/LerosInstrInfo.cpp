@@ -107,6 +107,7 @@ void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
     OPCASE(Leros::AND, R)
     OPCASE(Leros::OR, R)
     OPCASE(Leros::XOR, R)
+    OPCASE(Leros::SHL, R)
   }
 #undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
@@ -148,10 +149,20 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
 }
 
 void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
-  const unsigned &dst = MI.getOperand(0).getReg(),
-                 &imm = MI.getOperand(1).getImm();
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_I)).addImm(imm);
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(dst);
+  const auto DL = MI.getDebugLoc();
+  const unsigned &dst = MI.getOperand(0).getReg();
+  if (MI.getOperand(1).getType() == MachineOperand::MO_GlobalAddress) {
+    // Emit a load sequence for the global address that will get translated
+    // during linking
+    const auto GA = MI.getOperand(1).getGlobal();
+    BuildMI(MBB, MI, DL, get(Leros::LOAD_I)).addGlobalAddress(GA);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH_AI)).addGlobalAddress(GA);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI)).addGlobalAddress(GA);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI)).addGlobalAddress(GA);
+  } else {
+    BuildMI(MBB, MI, DL, get(Leros::LOAD_I)).addImm(MI.getOperand(1).getImm());
+  }
+  BuildMI(MBB, MI, DL, get(Leros::STORE_R)).addReg(dst);
 }
 
 unsigned LerosInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
