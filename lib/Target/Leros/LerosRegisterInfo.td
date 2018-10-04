@@ -40,7 +40,7 @@ def XLenVT : ValueTypeByHwMode<[Leros32, Leros64, DefaultMode],
 // General purpose registers
 def GPR : RegisterClass<"Leros", [XLenVT], 32, (add
     RA, SP, GP, FP,
-    (sequence "R%u", 4, 255)
+    (sequence "R%u", 4, 250)
   )> {
     let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
@@ -48,7 +48,15 @@ def GPR : RegisterClass<"Leros", [XLenVT], 32, (add
 
 // Non-reserved registers
 def GPRNoReserve : RegisterClass<"Leros", [XLenVT], 32, (add
-    (sequence "R%u", 4, 255)
+    (sequence "R%u", 4, 250)
+  )> {
+    let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
+                                   [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
+}
+
+// Registers that can be used post-register allocation by pseudo instr. expansion
+def GPRPseudoExpand : RegisterClass<"Leros", [XLenVT], 32, (add
+    (sequence "R%u", 251, 255)
   )> {
     let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
