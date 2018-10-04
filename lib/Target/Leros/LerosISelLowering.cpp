@@ -81,6 +81,8 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
   for (auto VT : {MVT::i1, MVT::i8, MVT::i16})
     setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
 
+  setOperationAction(ISD::UMUL_LOHI, XLenVT, Promote);
+  setOperationAction(ISD::SMUL_LOHI, XLenVT, Promote);
   setOperationAction(ISD::MUL, XLenVT, LibCall);
   setOperationAction(ISD::MULHS, XLenVT, LibCall);
   setOperationAction(ISD::MULHU, XLenVT, LibCall);
