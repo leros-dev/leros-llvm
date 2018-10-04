@@ -189,7 +189,7 @@ class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
 class PSEUDO_Store_M : LerosPseudo<(outs), (ins GPR:$rs2, GPR:$rs1, simm8:$imm8), F_LS, []>;
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-class PSEUDO_Load_M  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), F_LS, []>;
+class PSEUDO_Load_M<PseudoFormat format>  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), format, []>;
 
 // Pseudo instruction wrapper for an Acc -> (Acc, Reg) i    nstruction
 class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
@@ -245,8 +245,12 @@ defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp\t"      >;
 defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn\t"     >;
 
 // Memory access pseudoinstruction definitions
-def STORE_M_PSEUDO  : PSEUDO_Store_M;
-def LOAD_M_PSEUDO   : PSEUDO_Load_M;
+def STORE_M_PSEUDO      : PSEUDO_Store_M;
+def LOAD_M_PSEUDO       : PSEUDO_Load_M<F_LS>;
+def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M<F_S8L>;
+def LOAD_U8_M_PSEUDO    : PSEUDO_Load_M<F_U8L>;
+def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M<F_S16L>;
+def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U8L>;
 
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
@@ -422,6 +426,7 @@ multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst, RegisterClass StTy> {
             (Inst StTy:$rs2, AddrFI:$rs1, simm8:$imm8)>;
 }
 
+
 defm : StPat<store, STORE_M_PSEUDO, GPR>;
 
 // Loads
@@ -435,3 +440,10 @@ multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
 }
 
 defm : LdPat<load, LOAD_M_PSEUDO>;
+defm : LdPat<load, LOAD_M_PSEUDO>;
+defm : LdPat<sextloadi8, LOAD_S8_M_PSEUDO>;
+defm : LdPat<extloadi8, LOAD_S8_M_PSEUDO>;
+defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO>;
+defm : LdPat<extloadi16, LOAD_S16_M_PSEUDO>;
+defm : LdPat<zextloadi8, LOAD_U8_M_PSEUDO>;
+defm : LdPat<zextloadi16, LOAD_U8_M_PSEUDO>;

@@ -28,6 +28,8 @@
 #define GET_INSTRINFO_CTOR_DTOR
 #include "LerosGenInstrInfo.inc"
 
+#define DEBUG_TYPE "leros-instr-info"
+
 namespace llvm {
 
 LerosInstrInfo::LerosInstrInfo()
@@ -253,16 +255,65 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
   const auto &imm = MI.getOperand(2).getImm();
   unsigned opcode = MI.getDesc().getOpcode();
 
-  if (opcode == Leros::STORE_M_PSEUDO) {
+  switch (opcode) {
+  default:
+    llvm_unreachable("Unknown opcode for LS pseudoinstruction format");
+  case Leros::STORE_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STIND)).addImm(imm);
-  } else if (opcode == Leros::LOAD_M_PSEUDO) {
+    break;
+  }
+  case Leros::LOAD_S8_M_PSEUDO:
+  case Leros::LOAD_U8_M_PSEUDO:
+  case Leros::LOAD_S16_M_PSEUDO:
+  case Leros::LOAD_U16_M_PSEUDO:
+  case Leros::LOAD_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
-  } else {
-    llvm_unreachable("Unknown opcode for LS pseudoinstruction format");
+
+    // Check whether we have to zero or sign extend the load if this was not a
+    // full-word load
+    switch (MI.getDesc().TSFlags) {
+    default: {
+      // Full word load, just store the value
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+    }
+    case LEROSIF::Signed8BitLoad: {
+      // todo implement this
+      LLVM_DEBUG("Implement logic for signed masking and loading!");
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      break;
+    }
+    case LEROSIF::Signed16BitLoad: {
+      LLVM_DEBUG("Implement logic for signed masking and loading!");
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      break;
+    }
+    case LEROSIF::Unsigned8BitLoad: {
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AI)).addImm(0xFF);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      break;
+    }
+    case LEROSIF::Unsigned16BitLoad: {
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      // Build the operand which we have to OR with. We use a register from
+      // GPRPseudoExpandRegClass since we are post reg allocation
+      auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
+      movImm32(MBB, MI, MI.getDebugLoc(), scratchReg, 0xFFFF);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOADH2_AI))
+          .addImm(0x0); // ensure that the topmost bits are 0
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
+          .addReg(scratchReg);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AR)).addReg(scratchReg);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
+          .addReg(scratchReg);
+      break;
+    }
+    }
+    break;
+  }
   }
 }
 
@@ -293,6 +344,10 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     expandBR(MBB, MI);
     break;
   }
+  case LEROSIF::Signed8BitLoad:
+  case LEROSIF::Signed16BitLoad:
+  case LEROSIF::Unsigned8BitLoad:
+  case LEROSIF::Unsigned16BitLoad:
   case LEROSIF::LoadStore: {
     expandLS(MBB, MI);
     break;
