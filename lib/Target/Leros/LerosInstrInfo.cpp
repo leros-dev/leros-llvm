@@ -209,6 +209,45 @@ BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL))
     */
 }
 
+// Inserts a branch into the end of the specific MachineBasicBlock, returning
+// the number of instructions inserted.
+unsigned LerosInstrInfo::insertBranch(
+    MachineBasicBlock &MBB, MachineBasicBlock *TBB, MachineBasicBlock *FBB,
+    ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
+  if (BytesAdded)
+    *BytesAdded = 0;
+
+  // Shouldn't be a fall through.
+  assert(TBB && "InsertBranch must not be told to insert a fallthrough");
+  assert((Cond.size() == 3 || Cond.size() == 0) &&
+         "Leros pseudo branch conditions have two components!");
+
+  // Unconditional branch.
+  if (Cond.empty()) {
+    MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::PseudoBR)).addMBB(TBB);
+    if (BytesAdded)
+      *BytesAdded += getInstSizeInBytes(MI);
+    return 1;
+  }
+
+  // Either a one or two-way conditional branch.
+  unsigned Opc = Cond[0].getImm();
+  MachineInstr &CondMI =
+      *BuildMI(&MBB, DL, get(Opc)).add(Cond[1]).add(Cond[2]).addMBB(TBB);
+  if (BytesAdded)
+    *BytesAdded += getInstSizeInBytes(CondMI);
+
+  // One-way conditional branch.
+  if (!FBB)
+    return 1;
+
+  // Two-way conditional branch.
+  MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::PseudoBR)).addMBB(FBB);
+  if (BytesAdded)
+    *BytesAdded += getInstSizeInBytes(MI);
+  return 2;
+}
+
 void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
                                 bool hasPrecalcCC) const {
 #define OPCASE(instr)                                                          \
@@ -221,7 +260,6 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
   default:
     llvm_unreachable("Unhandled opcode");
     break;
-    OPCASE(Leros::BR)
     OPCASE(Leros::BRZ)
     OPCASE(Leros::BRNZ)
     OPCASE(Leros::BRP)
@@ -232,13 +270,18 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
   }
 #undef OPCASE
 
-  const unsigned &rs1 = MI.getOperand(0).getReg();
+  MachineBasicBlock *bb;
+  if (opcode != Leros::BR_IMPL) {
+    bb = MI.getOperand(hasPrecalcCC ? 1 : 2).getMBB();
+    const unsigned &rs1 = MI.getOperand(0).getReg();
 
-  const auto &bb = MI.getOperand(hasPrecalcCC ? 1 : 2).getMBB();
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
-  if (!hasPrecalcCC) {
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR))
-        .addReg(MI.getOperand(1).getReg());
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+    if (!hasPrecalcCC) {
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR))
+          .addReg(MI.getOperand(1).getReg());
+    }
+  } else {
+    bb = MI.getOperand(0).getMBB();
   }
 
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);

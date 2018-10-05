@@ -238,7 +238,7 @@ defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 // Accumulator->register store
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
 
-defm BR      : INSTR_BrImpl<OPC_BR,      "br\t"       >; // unconditional branch
+def  BR_IMPL : INSTR_BranchCond<OPC_BR,  "br\t"       >; // unconditional branch, pseudo version is handled by PseudoBR
 defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz\t"      >;
 defm BRNZ    : INSTR_BrImpl<OPC_BRNZ,    "brnz"     >;
 defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp\t"      >;
@@ -256,8 +256,8 @@ def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U8L>;
 // small jumps
 //let isBarrier = 1, isBranch = 1, isTerminator = 1 in
 def : Pat<(br bb:$simm8), (BR_IMPL bb_simm8:$simm8)>;
-//def PseudoBR : LerosPseudo<(outs), (ins bb_simm8:$simm8), F_BR, [(br bb:$simm8)]>,
-//               PseudoInstExpansion<(BR_IMPL bb_simm8:$simm8)>;
+def PseudoBR : LerosPseudo<(outs), (ins bb_simm8:$simm8), F_BR, [(br bb:$simm8)]>,
+               PseudoInstExpansion<(BR_IMPL bb_simm8:$simm8)>;
 
 // Branch instruction where branch condition ($rc) has been precalculated
 class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_NA, []> {
