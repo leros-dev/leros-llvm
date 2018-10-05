@@ -419,6 +419,87 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     MBB.erase(MI);
   return true;
 }
+// The contents of values added to Cond are not examined outside of
+// LerosInstrInfo, giving us flexibility in what to push to it. For Leros, we
+// push BranchOpcode, Reg1, Reg2.
+static void parseCondBranch(MachineInstr &LastInst, MachineBasicBlock *&Target,
+                            SmallVectorImpl<MachineOperand> &Cond) {
+  // Block ends with fall-through condbranch.
+  assert(LastInst.getDesc().isConditionalBranch() &&
+         "Unknown conditional branch");
+  Target = LastInst.getOperand(2).getMBB();
+  Cond.push_back(MachineOperand::CreateImm(LastInst.getOpcode()));
+  Cond.push_back(LastInst.getOperand(0));
+  Cond.push_back(LastInst.getOperand(1));
+}
+
+bool LerosInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
+                                   MachineBasicBlock *&TBB,
+                                   MachineBasicBlock *&FBB,
+                                   SmallVectorImpl<MachineOperand> &Cond,
+                                   bool AllowModify) const {
+  TBB = FBB = nullptr;
+  Cond.clear();
+
+  // If the block has no terminators, it just falls into the block after it.
+  MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
+  if (I == MBB.end() || !isUnpredicatedTerminator(*I))
+    return false;
+
+  // Count the number of terminators and find the first unconditional or
+  // indirect branch.
+  MachineBasicBlock::iterator FirstUncondOrIndirectBr = MBB.end();
+  int NumTerminators = 0;
+  for (auto J = I.getReverse(); J != MBB.rend() && isUnpredicatedTerminator(*J);
+       J++) {
+    NumTerminators++;
+    if (J->getDesc().isUnconditionalBranch() ||
+        J->getDesc().isIndirectBranch()) {
+      FirstUncondOrIndirectBr = J.getReverse();
+    }
+  }
+
+  // If AllowModify is true, we can erase any terminators after
+  // FirstUncondOrIndirectBR.
+  if (AllowModify && FirstUncondOrIndirectBr != MBB.end()) {
+    while (std::next(FirstUncondOrIndirectBr) != MBB.end()) {
+      std::next(FirstUncondOrIndirectBr)->eraseFromParent();
+      NumTerminators--;
+    }
+    I = FirstUncondOrIndirectBr;
+  }
+
+  // We can't handle blocks that end in an indirect branch.
+  if (I->getDesc().isIndirectBranch())
+    return true;
+
+  // We can't handle blocks with more than 2 terminators.
+  if (NumTerminators > 2)
+    return true;
+
+  // Handle a single unconditional branch.
+  if (NumTerminators == 1 && I->getDesc().isUnconditionalBranch()) {
+    TBB = I->getOperand(0).getMBB();
+    return false;
+  }
+
+  // Handle a single conditional branch.
+  if (NumTerminators == 1 && I->getDesc().isConditionalBranch()) {
+    parseCondBranch(*I, TBB, Cond);
+    return false;
+  }
+
+  // Handle a conditional branch followed by an unconditional branch.
+  if (NumTerminators == 2 && std::prev(I)->getDesc().isConditionalBranch() &&
+      I->getDesc().isUnconditionalBranch()) {
+    parseCondBranch(*std::prev(I), TBB, Cond);
+    FBB = I->getOperand(0).getMBB();
+    return false;
+  }
+
+  // Otherwise, we can't handle this.
+  return true;
+}
 
 void LerosInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                          MachineBasicBlock::iterator I,

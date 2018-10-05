@@ -63,6 +63,11 @@ public:
 
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
 
+  bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
+                     MachineBasicBlock *&FBB,
+                     SmallVectorImpl<MachineOperand> &Cond,
+                     bool AllowModify) const override;
+
 private:
   void expandMOV(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
                  bool BBHasOperands, unsigned DstReg = 0,
