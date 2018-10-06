@@ -88,8 +88,7 @@ void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
 
 void LerosInstrInfo::expandRET(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I) const {
-  const unsigned &dst = I->getOperand(0).getReg();
-  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::JAL)).addReg(dst);
+  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::JAL_ret)).addReg(Leros::RA);
 }
 
 void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {

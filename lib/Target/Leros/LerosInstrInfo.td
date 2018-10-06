@@ -282,8 +282,13 @@ def PseudoBRC : Pseudo_BranchCC;
         let Inst{15-11} = OPC_STIND.Value;
     }
     
-    let isCall = 1 in
-    def JAL     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
+    let isCall = 1, Defs=[RA] in
+    def JAL_call     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
+        let Inst{15-11} = OPC_JAL.Value;
+    }
+
+    let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in
+    def JAL_ret     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
         let Inst{15-11} = OPC_JAL.Value;
     }
 
@@ -292,9 +297,8 @@ def PseudoBRC : Pseudo_BranchCC;
 //===----------------------------------------------------------------------===//
 
 // Function return using jal
-let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in {
-  def RET : LerosPseudo<(outs), (ins), F_NA, [(LerosRet)]>;
-}
+let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in
+def RET : LerosPseudo<(outs), (ins), F_NA, [(LerosRet)]>;
 
 // Will later be expanded to a sequence of immediate loads and a jal instruction
 let isCall = 1, Defs = [RA], isCodeGenOnly = 0 in
