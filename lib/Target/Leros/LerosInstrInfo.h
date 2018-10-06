@@ -68,6 +68,9 @@ public:
                      SmallVectorImpl<MachineOperand> &Cond,
                      bool AllowModify) const override;
 
+  unsigned removeBranch(MachineBasicBlock &MBB,
+                        int *BytesRemoved = nullptr) const override;
+
 private:
   void expandMOV(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
                  bool BBHasOperands, unsigned DstReg = 0,
