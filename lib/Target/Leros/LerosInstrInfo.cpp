@@ -297,6 +297,7 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
                  &rs1 = MI.getOperand(1).getReg();
   const auto &imm = MI.getOperand(2).getImm();
   unsigned opcode = MI.getDesc().getOpcode();
+  DebugLoc DL = MI.getDebugLoc();
 
   switch (opcode) {
   default:
@@ -308,8 +309,71 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
     break;
   }
   case Leros::LOAD_S8_M_PSEUDO:
+  case Leros::LOAD_S16_M_PSEUDO: {
+    // Based on the load type, we now emit small algorithms for sign- or zero
+    // extension
+    const auto TF = MI.getDesc().TSFlags;
+    switch (TF) {
+    case LEROSIF::Signed8BitLoad:
+    case LEROSIF::Signed16BitLoad: {
+      // To insert a sign extension instruction, we insert a triangle pattern
+      // control-flow pattern where, based on the sign of the input operand at
+      // the
+      // 7th or 15th bit position, we sign extend by 0 or 1
+      const BasicBlock *LLVM_BB = MBB.getBasicBlock();
+      MachineFunction::iterator I = ++MBB.getIterator();
+
+      MachineBasicBlock *HeadMBB = &MBB;
+      MachineFunction *F = HeadMBB->getParent();
+      MachineBasicBlock *NegMBB = F->CreateMachineBasicBlock(LLVM_BB);
+      MachineBasicBlock *endMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+      F->insert(I, NegMBB);
+      F->insert(I, endMBB);
+      // Move all remaining instructions to TailMBB.
+      endMBB->splice(endMBB->begin(), HeadMBB,
+                     std::next(MachineBasicBlock::iterator(MI)),
+                     HeadMBB->end());
+      // Update machine-CFG edges by transferring all successors of the current
+      // block to the new block which will contain the Phi node for the select.
+      endMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+      // Set the successors for HeadMBB.
+      HeadMBB->addSuccessor(NegMBB);
+      HeadMBB->addSuccessor(endMBB);
+      NegMBB->addSuccessor(endMBB);
+
+      // Load memory operand
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
+
+      // Extract sign from the loaded operand and insert branch
+      BuildMI(HeadMBB, DL, get(Leros::SHR_AI))
+          .addImm(TF == LEROSIF::Signed8BitLoad ? 7 : 15);
+      BuildMI(HeadMBB, DL, get(Leros::AND_AI)).addImm(1);
+
+      // Branch if sign == 1 (negative)
+      BuildMI(HeadMBB, DL, get(Leros::BRZ_IMPL)).addMBB(NegMBB);
+
+      // Positive sign extension (fallthrough from previous branch)
+      if (LEROSIF::Signed8BitLoad) {
+        BuildMI(HeadMBB, DL, get(Leros::LOADH_AI)).addImm(0x0);
+      } else {
+        BuildMI(HeadMBB, DL, get(Leros::LOADH2_AI)).addImm(0x0);
+      }
+      BuildMI(HeadMBB, DL, get(Leros::BRZ_IMPL)).addMBB(endMBB);
+
+      // Negative sign extension
+      if (LEROSIF::Signed8BitLoad) {
+        BuildMI(HeadMBB, DL, get(Leros::LOADH_AI)).addImm(0xFF);
+      } else {
+        BuildMI(HeadMBB, DL, get(Leros::LOADH2_AI)).addImm(0xFF);
+      }
+      break;
+    }
+    }
+    break;
+  }
   case Leros::LOAD_U8_M_PSEUDO:
-  case Leros::LOAD_S16_M_PSEUDO:
   case Leros::LOAD_U16_M_PSEUDO:
   case Leros::LOAD_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
