@@ -428,6 +428,8 @@ multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst, RegisterClass StTy> {
 
 
 defm : StPat<store, STORE_M_PSEUDO, GPR>;
+defm : StPat<truncstorei8, STORE_M_PSEUDO, GPR>;
+defm : StPat<truncstorei16, STORE_M_PSEUDO, GPR>;
 
 // Loads
 multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
