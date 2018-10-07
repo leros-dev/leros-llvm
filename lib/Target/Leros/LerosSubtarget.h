@@ -63,6 +63,7 @@ public:
     return &TSInfo;
   }
   MVT getXLenVT() const { return XLenVT; }
+  unsigned getXLen() const { return XLen; }
 
 private:
 };

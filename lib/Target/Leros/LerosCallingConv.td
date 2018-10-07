@@ -11,11 +11,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-def CSR : CalleeSavedRegs<(add (sequence "R%u", 61,62))>;// 117))>;
+def CSR : CalleeSavedRegs<(add RA, SP, GP, FP, (sequence "R%u", 61, 117))>;
 
 //===----------------------------------------------------------------------===//
 // Leros Return Value Calling Convention
 //===----------------------------------------------------------------------===//
+/*
 def RetCC_Leros : CallingConv
 <[
   // i32 are returned in registers R4-R60
@@ -40,3 +41,4 @@ def CC_Leros : CallingConv<[
   // size and 4-byte aligned.
   CCIfType<[i32], CCAssignToStack<4, 4>>
 ]>;
+*/
