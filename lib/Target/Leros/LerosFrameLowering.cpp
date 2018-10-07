@@ -66,6 +66,41 @@ void LerosFrameLowering::determineFrameLayout(MachineFunction &MF) const {
   MFI.setStackSize(FrameSize);
 }
 
+int LerosFrameLowering::getFrameIndexReference(const MachineFunction &MF,
+                                               int FI,
+                                               unsigned &FrameReg) const {
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const TargetRegisterInfo *RI = MF.getSubtarget().getRegisterInfo();
+  const auto *RVFI = MF.getInfo<LerosMachineFunctionInfo>();
+
+  // Callee-saved registers should be referenced relative to the stack
+  // pointer (positive offset), otherwise use the frame pointer (negative
+  // offset).
+  const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
+  int MinCSFI = 0;
+  int MaxCSFI = -1;
+
+  int Offset = MFI.getObjectOffset(FI) - getOffsetOfLocalArea() +
+               MFI.getOffsetAdjustment();
+
+  if (CSI.size()) {
+    MinCSFI = CSI[0].getFrameIdx();
+    MaxCSFI = CSI[CSI.size() - 1].getFrameIdx();
+  }
+
+  if (FI >= MinCSFI && FI <= MaxCSFI) {
+    FrameReg = Leros::SP;
+    Offset += MF.getFrameInfo().getStackSize();
+  } else {
+    FrameReg = RI->getFrameRegister(MF);
+    if (hasFP(MF))
+      Offset += RVFI->getVarArgsSaveSize();
+    else
+      Offset += MF.getFrameInfo().getStackSize();
+  }
+  return Offset;
+}
+
 void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator MBBI,
                                    const DebugLoc &DL, unsigned DestReg,
