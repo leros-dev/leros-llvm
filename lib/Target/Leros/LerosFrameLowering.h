@@ -40,12 +40,14 @@ public:
   eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                                 MachineBasicBlock::iterator MI) const override;
 
+protected:
+  const LerosSubtarget &STI;
+
+private:
+  void determineFrameLayout(MachineFunction &MF) const;
   void adjustReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
                  const DebugLoc &DL, unsigned DestReg, unsigned SrcReg,
                  int64_t Val, MachineInstr::MIFlag Flag) const;
-
-protected:
-  const LerosSubtarget &STI;
 };
 } // namespace llvm
 

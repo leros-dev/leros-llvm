@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "LerosFrameLowering.h"
+#include "LerosMachineFunctionInfo.h"
 #include "LerosTargetMachine.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -40,11 +41,30 @@ bool LerosFrameLowering::hasFP(const MachineFunction &MF) const {
          MFI.isFrameAddressTaken();
 }
 
-void LerosFrameLowering::emitPrologue(MachineFunction &MF,
-                                      MachineBasicBlock &MBB) const {}
+// Returns the register used to hold the frame pointer.
+static unsigned getFPReg(const LerosSubtarget &STI) { return Leros::FP; }
 
-void LerosFrameLowering::emitEpilogue(MachineFunction &MF,
-                                      MachineBasicBlock &MBB) const {}
+// Returns the register used to hold the stack pointer.
+static unsigned getSPReg(const LerosSubtarget &STI) { return Leros::SP; }
+
+// Determines the size of the frame and maximum call frame size.
+void LerosFrameLowering::determineFrameLayout(MachineFunction &MF) const {
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  const LerosRegisterInfo *RI = STI.getRegisterInfo();
+
+  // Get the number of bytes to allocate from the FrameInfo.
+  uint64_t FrameSize = MFI.getStackSize();
+
+  // Get the alignment.
+  uint64_t StackAlign = RI->needsStackRealignment(MF) ? MFI.getMaxAlignment()
+                                                      : getStackAlignment();
+
+  // Make sure the frame is aligned.
+  FrameSize = alignTo(FrameSize, StackAlign);
+
+  // Update frame info.
+  MFI.setStackSize(FrameSize);
+}
 
 void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator MBBI,
@@ -57,12 +77,103 @@ void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
   if (DestReg == SrcReg && Val == 0)
     return;
 
-  unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII->movImm32(MBB, MBBI, DL, ScratchReg, Val);
-  BuildMI(MBB, MBBI, DL, TII->get(Leros::ADD_RR_PSEUDO), DestReg)
-      .addReg(SrcReg)
-      .addReg(ScratchReg, RegState::Kill)
-      .setMIFlag(Flag);
+  if (isInt<8>(Val)) {
+    BuildMI(MBB, MBBI, DL, TII->get(Leros::ADD_RI_PSEUDO), DestReg)
+        .addReg(SrcReg)
+        .addImm(Val)
+        .setMIFlag(Flag);
+  } else if (isInt<32>(Val)) {
+    unsigned Opc = Leros::ADD_RR_PSEUDO;
+    bool isSub = Val < 0;
+    if (isSub) {
+      Val = -Val;
+      Opc = Leros::SUB_RR_PSEUDO;
+    }
+
+    unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    TII->movImm32(MBB, MBBI, DL, ScratchReg, Val);
+    BuildMI(MBB, MBBI, DL, TII->get(Opc), DestReg)
+        .addReg(SrcReg)
+        .addReg(ScratchReg, RegState::Kill)
+        .setMIFlag(Flag);
+  } else {
+    report_fatal_error("adjustReg cannot yet handle adjustments >32 bits");
+  }
+}
+
+void LerosFrameLowering::emitPrologue(MachineFunction &MF,
+                                      MachineBasicBlock &MBB) const {
+  assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
+
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  auto *RVFI = MF.getInfo<LerosMachineFunctionInfo>();
+  MachineBasicBlock::iterator MBBI = MBB.begin();
+
+  unsigned FPReg = getFPReg(STI);
+  unsigned SPReg = getSPReg(STI);
+
+  // Debug location must be unknown since the first debug location is used
+  // to determine the end of the prologue.
+  DebugLoc DL;
+
+  // Determine the correct frame layout
+  determineFrameLayout(MF);
+
+  // FIXME (note copied from Lanai): This appears to be overallocating.  Needs
+  // investigation. Get the number of bytes to allocate from the FrameInfo.
+  uint64_t StackSize = MFI.getStackSize();
+
+  // Early exit if there is no need to allocate on the stack
+  if (StackSize == 0 && !MFI.adjustsStack())
+    return;
+
+  // Allocate space on the stack if necessary.
+  adjustReg(MBB, MBBI, DL, SPReg, SPReg, -StackSize, MachineInstr::FrameSetup);
+
+  // The frame pointer is callee-saved, and code has been generated for us to
+  // save it to the stack. We need to skip over the storing of callee-saved
+  // registers as the frame pointer must be modified after it has been saved
+  // to the stack, not before.
+  // FIXME: assumes exactly one instruction is used to save each callee-saved
+  // register.
+  const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
+  std::advance(MBBI, CSI.size());
+
+  // Generate new FP.
+  if (hasFP(MF))
+    adjustReg(MBB, MBBI, DL, FPReg, SPReg,
+              StackSize - RVFI->getVarArgsSaveSize(), MachineInstr::FrameSetup);
+}
+
+void LerosFrameLowering::emitEpilogue(MachineFunction &MF,
+                                      MachineBasicBlock &MBB) const {
+  MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
+  const LerosRegisterInfo *RI = STI.getRegisterInfo();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  auto *RVFI = MF.getInfo<LerosMachineFunctionInfo>();
+  DebugLoc DL = MBBI->getDebugLoc();
+  unsigned FPReg = getFPReg(STI);
+  unsigned SPReg = getSPReg(STI);
+
+  // Skip to before the restores of callee-saved registers
+  // FIXME: assumes exactly one instruction is used to restore each
+  // callee-saved register.
+  auto LastFrameDestroy = std::prev(MBBI, MFI.getCalleeSavedInfo().size());
+
+  uint64_t StackSize = MFI.getStackSize();
+
+  // Restore the stack pointer using the value of the frame pointer. Only
+  // necessary if the stack pointer was modified, meaning the stack size is
+  // unknown.
+  if (RI->needsStackRealignment(MF) || MFI.hasVarSizedObjects()) {
+    assert(hasFP(MF) && "frame pointer should not have been eliminated");
+    adjustReg(MBB, LastFrameDestroy, DL, SPReg, FPReg,
+              -StackSize + RVFI->getVarArgsSaveSize(),
+              MachineInstr::FrameDestroy);
+  }
+
+  // Deallocate stack
+  adjustReg(MBB, MBBI, DL, SPReg, SPReg, StackSize, MachineInstr::FrameDestroy);
 }
 
 // Eliminate ADJCALLSTACKDOWN, ADJCALLSTACKUP pseudo instructions.
