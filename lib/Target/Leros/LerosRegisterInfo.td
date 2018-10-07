@@ -62,16 +62,4 @@ def GPRPseudoExpand : RegisterClass<"Leros", [XLenVT], 32, (add
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
 }
 
-// Define the accumulator as a register - is this the best way to define an
-// implicit operand that still should be considered in the DAGs?
-def ACC : Register<"acc">, DwarfRegNum<[-1]>;
-
-// Accumulator - we treat this as a separate register outside of the GPR definitions
-def ACC_OP : RegisterClass<"Leros", [XLenVT], 32, (add
-    ACC
-)> {
-    let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
-                                   [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
-}
-
 }
