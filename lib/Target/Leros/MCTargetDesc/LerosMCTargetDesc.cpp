@@ -72,6 +72,8 @@ extern "C" void LLVMInitializeLerosTargetMC() {
     TargetRegistry::RegisterMCRegInfo(*T, createLerosMCRegisterInfo);
     TargetRegistry::RegisterMCSubtargetInfo(*T, createLerosMCSubtargetInfo);
     TargetRegistry::RegisterMCInstPrinter(*T, createLerosMCInstPrinter);
+    TargetRegistry::RegisterMCAsmBackend(*T, createLerosAsmBackend);
+    TargetRegistry::RegisterMCCodeEmitter(*T, createLerosMCCodeEmitter);
   }
 }
 }

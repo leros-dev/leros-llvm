@@ -15,15 +15,39 @@
 #ifndef LLVM_LIB_TARGET_Leros_MCTARGETDESC_LerosMCTARGETDESC_H
 #define LLVM_LIB_TARGET_Leros_MCTARGETDESC_LerosMCTARGETDESC_H
 
+#include "memory"
+#include "llvm/MC/MCTargetOptions.h"
 #include "llvm/Support/DataTypes.h"
 
 namespace llvm {
 
+class MCAsmBackend;
+class MCCodeEmitter;
+class MCContext;
+class MCInstrInfo;
+class MCObjectTargetWriter;
+class MCRegisterInfo;
+class MCSubtargetInfo;
+class StringRef;
 class Target;
+class Triple;
+class raw_ostream;
+class raw_pwrite_stream;
 
 Target &getTheLeros16Target();
 Target &getTheLeros32Target();
 Target &getTheLeros64Target();
+
+MCCodeEmitter *createLerosMCCodeEmitter(const MCInstrInfo &MCII,
+                                        const MCRegisterInfo &MRI,
+                                        MCContext &Ctx);
+
+MCAsmBackend *createLerosAsmBackend(const Target &T, const MCSubtargetInfo &STI,
+                                    const MCRegisterInfo &MRI,
+                                    const MCTargetOptions &Options);
+
+std::unique_ptr<MCObjectTargetWriter> createLerosELFObjectWriter(uint8_t OSABI,
+                                                                 bool Is64Bit);
 
 } // end namespace llvm
 
