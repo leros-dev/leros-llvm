@@ -83,6 +83,10 @@ private:
   void analyzeOutputArgs(MachineFunction &MF, CCState &CCInfo,
                          const SmallVectorImpl<ISD::OutputArg> &Outs,
                          bool IsRet, CallLoweringInfo *CLI) const;
+
+  MachineBasicBlock *EmitSHL(MachineInstr &MI, MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitSRA(MachineInstr &MI, MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitSRL(MachineInstr &MI, MachineBasicBlock *BB) const;
 };
 } // namespace llvm
 

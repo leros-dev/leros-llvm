@@ -79,8 +79,8 @@ void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
                                bool BBHasOperands, unsigned dst,
                                unsigned src) const {
   if (BBHasOperands) {
-    dst = I->getOperand(1).getReg();
-    src = I->getOperand(2).getReg();
+    dst = I->getOperand(0).getReg();
+    src = I->getOperand(1).getReg();
   }
   BuildMI(MBB, I, I->getDebugLoc(), get(Leros::LOAD_R)).addReg(src);
   BuildMI(MBB, I, I->getDebugLoc(), get(Leros::STORE_R)).addReg(dst);
@@ -108,8 +108,6 @@ void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
     OPCASE(Leros::AND, R)
     OPCASE(Leros::OR, R)
     OPCASE(Leros::XOR, R)
-    OPCASE(Leros::SHL, R)
-    OPCASE(Leros::SRA, R)
   }
 #undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
@@ -140,8 +138,6 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
     OPCASE(Leros::LOADH, I)
     OPCASE(Leros::LOADH2, I)
     OPCASE(Leros::LOADH3, I)
-    OPCASE(Leros::SHL, I)
-    OPCASE(Leros::SRA, I)
   }
 #undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
@@ -263,8 +259,13 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
     OPCASE(Leros::BRNZ)
     OPCASE(Leros::BRP)
     OPCASE(Leros::BRN)
-  case Leros::PseudoBRC: {
+  case Leros::PseudoBRNZ: {
     opcode = Leros::BRNZ_IMPL;
+    break;
+  }
+  case Leros::PseudoBRZ: {
+    opcode = Leros::BRZ_IMPL;
+    break;
   }
   }
 #undef OPCASE
@@ -289,6 +290,10 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
 void LerosInstrInfo::expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const {
   const auto &bb = MI.getOperand(0).getMBB();
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::BR_IMPL)).addMBB(bb);
+}
+
+void LerosInstrInfo::expandNOP(MachineBasicBlock &MBB, MachineInstr &MI) const {
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::NOP_IMPL)).addImm(0);
 }
 
 void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
@@ -463,6 +468,9 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     switch (opc) {
     default:
       return false;
+    case Leros::NOP:
+      expandNOP(MBB, MI);
+      break;
     case Leros::PseudoCALL:
       expandCALL(MBB, MI);
       break;
@@ -472,7 +480,8 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     case Leros::RET:
       expandRET(MBB, MI);
       break;
-    case Leros::PseudoBRC:
+    case Leros::PseudoBRZ:
+    case Leros::PseudoBRNZ:
       expandBRCC(MBB, MI, true);
     }
   }
@@ -526,76 +535,6 @@ unsigned LerosInstrInfo::removeBranch(MachineBasicBlock &MBB,
   if (BytesRemoved)
     *BytesRemoved += getInstSizeInBytes(*I);
   return 2;
-}
-
-bool LerosInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
-                                   MachineBasicBlock *&TBB,
-                                   MachineBasicBlock *&FBB,
-                                   SmallVectorImpl<MachineOperand> &Cond,
-                                   bool AllowModify) const {
-  return true;
-
-  TBB = FBB = nullptr;
-  Cond.clear();
-
-  // If the block has no terminators, it just falls into the block after it.
-  MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
-  if (I == MBB.end() || !isUnpredicatedTerminator(*I))
-    return false;
-
-  // Count the number of terminators and find the first unconditional or
-  // indirect branch.
-  MachineBasicBlock::iterator FirstUncondOrIndirectBr = MBB.end();
-  int NumTerminators = 0;
-  for (auto J = I.getReverse(); J != MBB.rend() && isUnpredicatedTerminator(*J);
-       J++) {
-    NumTerminators++;
-    if (J->getDesc().isUnconditionalBranch() ||
-        J->getDesc().isIndirectBranch()) {
-      FirstUncondOrIndirectBr = J.getReverse();
-    }
-  }
-
-  // If AllowModify is true, we can erase any terminators after
-  // FirstUncondOrIndirectBR.
-  if (AllowModify && FirstUncondOrIndirectBr != MBB.end()) {
-    while (std::next(FirstUncondOrIndirectBr) != MBB.end()) {
-      std::next(FirstUncondOrIndirectBr)->eraseFromParent();
-      NumTerminators--;
-    }
-    I = FirstUncondOrIndirectBr;
-  }
-
-  // We can't handle blocks that end in an indirect branch.
-  if (I->getDesc().isIndirectBranch())
-    return true;
-
-  // We can't handle blocks with more than 2 terminators.
-  if (NumTerminators > 2)
-    return true;
-
-  // Handle a single unconditional branch.
-  if (NumTerminators == 1 && I->getDesc().isUnconditionalBranch()) {
-    TBB = I->getOperand(0).getMBB();
-    return false;
-  }
-
-  // Handle a single conditional branch.
-  if (NumTerminators == 1 && I->getDesc().isConditionalBranch()) {
-    parseCondBranch(*I, TBB, Cond);
-    return false;
-  }
-
-  // Handle a conditional branch followed by an unconditional branch.
-  if (NumTerminators == 2 && std::prev(I)->getDesc().isConditionalBranch() &&
-      I->getDesc().isUnconditionalBranch()) {
-    parseCondBranch(*std::prev(I), TBB, Cond);
-    FBB = I->getOperand(0).getMBB();
-    return false;
-  }
-
-  // Otherwise, we can't handle this.
-  return true;
 }
 
 void LerosInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,

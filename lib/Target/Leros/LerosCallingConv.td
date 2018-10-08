@@ -13,6 +13,9 @@
 
 def CSR : CalleeSavedRegs<(add RA, SP, GP, FP, (sequence "R%u", 61, 117))>;
 
+// Needed for implementation of LerosRegisterInfo::getNoPreservedMask()
+def CSR_NoRegs : CalleeSavedRegs<(add)>;
+
 //===----------------------------------------------------------------------===//
 // Leros Return Value Calling Convention
 //===----------------------------------------------------------------------===//

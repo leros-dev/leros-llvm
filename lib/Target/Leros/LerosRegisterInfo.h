@@ -30,6 +30,8 @@ struct LerosRegisterInfo : public LerosGenRegisterInfo {
 
   const MCPhysReg *getCalleeSavedRegs(const MachineFunction *MF) const override;
 
+  const uint32_t *getNoPreservedMask() const override;
+
   BitVector getReservedRegs(const MachineFunction &MF) const override;
 
   void eliminateFrameIndex(MachineBasicBlock::iterator MI, int SPAdj,

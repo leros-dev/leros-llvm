@@ -141,12 +141,12 @@ def BYTE3 : SDNodeXForm<imm, [{
 // Instructions
 //===----------------------------------------------------------------------===//
     // Instructions with dependency: Acc -> (Acc, Reg)
-    class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
+    class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr>
         : LerosImmInst<opcode, (outs), (ins GPR:$r),
             opcodestr, "$r", []>;
 
     // Instructions with dependency: Acc -> (Acc, Imm)
-    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
+    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr>
         : LerosImmInst<opcode, (outs), (ins simm8:$imm8), 
             opcodestr, "$imm8", []>;
 
@@ -156,12 +156,12 @@ def BYTE3 : SDNodeXForm<imm, [{
             opcodestr, "$r", []>;
     
     // Instructions with dependency: Acc -> (reg)
-    class INSTR_AccReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
+    class INSTR_AccReg<LerosImmRegOpcode opcode, string opcodestr>
         : LerosImmInst<opcode, (outs), (ins GPR:$r),
             opcodestr, "$r", []>;
     
     // Instructions with dependency: Acc -> (imm)
-    class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>
+    class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr>
         : LerosImmInst<opcode, (outs), (ins simm8:$imm8),
             opcodestr, "$imm8", []>;
 
@@ -205,8 +205,15 @@ multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnod
     def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
 
     // Instruction definitions
-    def _AI  : INSTR_AccAccImm<opcode, opcodestr, opnode>;
-    def _AR  : INSTR_AccAccReg<opcode, opcodestr, opnode>; 
+    def _AI  : INSTR_AccAccImm<opcode, opcodestr>;
+    def _AR  : INSTR_AccAccReg<opcode, opcodestr>; 
+}
+
+multiclass INSTR_Pseudo<LerosImmRegOpcode opcode, SDNode opnode>{
+    let usesCustomInserter = 1 in {
+        def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode>; // Register-immediate instruction
+        def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
+    }
 }
 
 multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
@@ -215,20 +222,24 @@ multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
 }
 
 // Instruction declarations
-// defm : INSTR_ImmReg<OPC_NOP     , "INSTR_NOP",    "nop",    nop>;
 defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add\t",    add>;
 defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub\t",    sub>;
-defm SHR  : INSTR_ImmReg<OPC_SHR     ,    "shr\t",    srl>;
 defm AND  : INSTR_ImmReg<OPC_AND     ,    "and\t",    and>;
 defm OR   : INSTR_ImmReg<OPC_OR      ,    "or\t",     or>;
 defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor\t",    xor>;
 
-defm SHL  : INSTR_ImmReg<OPC_NOP     ,    "shl_UNDEFINED\t",    shl>; // For now, simulate that we have an stl instruktion
-defm SRA  : INSTR_ImmReg<OPC_NOP     ,    "sra_UNDEFINED\t",    sra>; // For now, 
+// Shifts are all pseudo instructions since they require custom emmission. 
+// shr has an actual leros instruction, whereas shl and sra are emissions of small algorithms
+defm SHR    : INSTR_Pseudo<OPC_SHR     , srl>;
+def SHR_AI  : INSTR_AccAccImm<OPC_SHR, "shr\t">;
+def SHR_AR  : INSTR_AccAccReg<OPC_SHR, "shr\t">; 
+
+defm SHL  : INSTR_Pseudo<OPC_NOP     , shl>; // For now, simulate that we have an stl instruktion
+defm SRA  : INSTR_Pseudo<OPC_NOP     , sra>; // For now, 
 
 // Register->accumulator Loads
-def LOAD_R : INSTR_AccReg<OPC_LOAD, "load", ld>;
-def LOAD_I : INSTR_AccImm<OPC_LOAD, "load", ld>;
+def LOAD_R : INSTR_AccReg<OPC_LOAD, "load">;
+def LOAD_I : INSTR_AccImm<OPC_LOAD, "load">;
 def LOAD_RI_PSEUDO : PSEUDO_RegImm;
 
 defm LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH>;
@@ -252,6 +263,15 @@ def LOAD_U8_M_PSEUDO    : PSEUDO_Load_M<F_U8L>;
 def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M<F_S16L>;
 def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U8L>;
 
+// NOP instruction. Pseudo NOP can be used without any arguments, later expanded to NOP_IMPL.
+// NOP_IMPL contains a register argument because llvm complains about instructions with no in/out nodes
+def  NOP   : LerosPseudo<(outs ), (ins), F_NA, []>;
+def  NOP_IMPL   : LerosInst<(outs), (ins simm8:$imm), "nop", "", []>{
+        let Inst{15-9} = OPC_NOP.Value;
+        let Inst{7-0} = 0;
+    }
+
+
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
 //let isBarrier = 1, isBranch = 1, isTerminator = 1 in
@@ -264,8 +284,9 @@ class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_NA
     let isBranch = 1;
     let isTerminator = 1;
 }
-def PseudoBRC : Pseudo_BranchCC;
-            
+def PseudoBRNZ : Pseudo_BranchCC;
+def PseudoBRZ : Pseudo_BranchCC;
+
 
 // Instructions where format is specific to the instruction
     def LDADDR  : LerosInst<(outs), (ins GPR:$r), "ldaddr", "$r", []>{
@@ -396,7 +417,7 @@ def : BccSwapPat<setule, BRP_PSEUDO>;
 
 // An extra pattern is needed for a brcond without a setcc (i.e. where the
 // condition was calculated elsewhere).
-def : Pat<(brcond GPR:$cond, bb:$imm8), (PseudoBRC GPR:$cond, bb:$imm8)>;
+def : Pat<(brcond GPR:$cond, bb:$imm8), (PseudoBRNZ GPR:$cond, bb:$imm8)>;
 
 // Addressing modes.
 // Necessary because a frameindex can't be matched directly in a pattern.

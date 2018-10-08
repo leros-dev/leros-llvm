@@ -94,6 +94,10 @@ unsigned LerosRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
   return TFI->hasFP(MF) ? Leros::FP : Leros::SP;
 }
 
+const uint32_t *LerosRegisterInfo::getNoPreservedMask() const {
+  return CSR_NoRegs_RegMask;
+}
+
 const uint32_t *
 LerosRegisterInfo::getCallPreservedMask(const MachineFunction &MF,
                                         CallingConv::ID /*CC*/) const {

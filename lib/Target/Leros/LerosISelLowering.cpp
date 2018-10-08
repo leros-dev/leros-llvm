@@ -227,6 +227,144 @@ static unsigned getBranchOpcodeForIntCondCode(ISD::CondCode CC) {
   }
 }
 
+MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
+                                                MachineBasicBlock *BB) const {
+
+  const LerosInstrInfo &TII =
+      *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineFunction::iterator I = ++BB->getIterator();
+  MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
+
+  MachineBasicBlock *HeadMBB = BB;
+  MachineFunction *F = BB->getParent();
+
+  const unsigned &dstReg = MI.getOperand(0).getReg(),
+                 &rs1 = MI.getOperand(1).getReg();
+  unsigned rs2;
+  int64_t imm;
+
+  if (MI.getOpcode() == Leros::SHL_RI_PSEUDO) {
+    imm = MI.getOperand(2).getImm();
+    if (imm > Subtarget.getXLen()) {
+      llvm_unreachable("Immediate value must be lteq XLen");
+    }
+    if (imm == 1) {
+      // A single rs1 self addition is sufficient
+      BuildMI(HeadMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), dstReg)
+          .addReg(rs1)
+          .addImm(imm);
+      MI.eraseFromParent(); // The pseudo instruction is gone now.
+      return HeadMBB;
+    }
+  } else {
+    rs2 = MI.getOperand(2).getReg();
+  }
+
+  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *shiftMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  F->insert(I, shiftMBB);
+  F->insert(I, TailMBB);
+  // Move all remaining instructions to TailMBB.
+  TailMBB->splice(TailMBB->begin(), HeadMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
+  // Update machine-CFG edges by transferring all successors of the current
+  // block to the new block which will contain the Phi node for the select.
+  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+
+  HeadMBB->addSuccessor(shiftMBB);
+  shiftMBB->addSuccessor(TailMBB);
+
+  if (MI.getOpcode() == Leros::SHL_RI_PSEUDO) {
+    // shift by immediate operand
+    // We here do the following control flow
+    //     HeadMBB
+    //       |
+    //     load immediate
+    //       |
+    //     shiftBB   <-------
+    //       |              ^
+    //     shl << 1 (repeat)^
+    //       |
+    //     TailMBB
+
+    // Load immediate into scratch register
+    unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    TII.movImm32(*HeadMBB, HeadMBB->end(), DL, ScratchReg, imm);
+
+    // Create shiftBB
+    // Because of SSA, we cant do buildMI(...,rs1,rs1,rs1), so temporary
+    // registers has to be deleted. Stuff like this can be optimized away in a
+    // late-stage peephole pass
+    unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
+        .addReg(rs1)
+        .addReg(rs1);
+    unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
+        .addReg(ScratchReg)
+        .addImm(1);
+    // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
+    BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
+        .addReg(SubRes)
+        .addMBB(shiftMBB);
+
+    BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::MOV), dstReg)
+        .addReg(ShiftRes);
+    MI.eraseFromParent(); // The pseudo instruction is gone now.
+    return TailMBB;
+  } else {
+    // We here do the following control flow
+    //     HeadMBB
+    //       |
+    //     CheckIfZero
+    //       | \
+        //       |  shiftBB   <-------
+    //       |  |            ^
+    //       | /
+    //       |
+    //     TailMBB
+    // Set the successors for HeadMBB.
+
+    // Zero check
+    BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRZ)).addReg(rs2).addMBB(TailMBB);
+    HeadMBB->addSuccessor(shiftMBB);
+
+    // shift by register operand
+    unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
+        .addReg(rs1)
+        .addReg(rs1);
+    unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
+        .addReg(rs2)
+        .addImm(1);
+    BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
+        .addReg(SubRes)
+        .addMBB(shiftMBB);
+
+    // move rs1 to rsd as first instruction in TailMBB
+    BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
+        .addReg(rs1)
+        .addMBB(HeadMBB)
+        .addReg(ShiftRes)
+        .addMBB(shiftMBB);
+    MI.eraseFromParent(); // The pseudo instruction is gone now.
+    return TailMBB;
+  }
+}
+MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
+                                                MachineBasicBlock *BB) const {
+  llvm_unreachable("SRA unimplemented");
+  return nullptr;
+}
+MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
+                                                MachineBasicBlock *BB) const {
+  llvm_unreachable("SRL unimplemented");
+  return nullptr;
+}
+
 MachineBasicBlock *
 LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
@@ -235,11 +373,16 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     llvm_unreachable("Unexpected instr type to insert");
   case Leros::Select_GPR_Using_CC_GPR:
     break;
+  case Leros::SHL_RI_PSEUDO:
+  case Leros::SHL_RR_PSEUDO:
+    return EmitSHL(MI, BB);
   }
 
   // To "insert" a SELECT instruction, we actually have to insert the triangle
-  // control-flow pattern.  The incoming instruction knows the destination vreg
-  // to set, the condition code register to branch on, the true/false values to
+  // control-flow pattern.  The incoming instruction knows the destination
+  // vreg
+  // to set, the condition code register to branch on, the true/false values
+  // to
   // select between, and the condcode to use to select the appropriate branch.
   //
   // We produce the following control flow:
@@ -394,7 +537,8 @@ static bool CC_Leros(const DataLayout &DL, unsigned ValNo, MVT ValVT, MVT LocVT,
   // If this is a variadic argument, the Leros calling convention requires
   // that it is assigned an 'even' or 'aligned' register if it has 8-byte
   // alignment (Leros32) or 16-byte alignment (Leros64). An aligned register
-  // should be used regardless of whether the original argument was split during
+  // should be used regardless of whether the original argument was split
+  // during
   // legalisation or not. The argument will not be passed by registers if the
   // original type is larger than 2*XLEN, so the register alignment rule does
   // not apply.
@@ -567,7 +711,8 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   /*
   // Check if it's really possible to do a tail call.
   if (IsTailCall)
-    IsTailCall = IsEligibleForTailCallOptimization(ArgCCInfo, CLI, MF, ArgLocs);
+    IsTailCall = IsEligibleForTailCallOptimization(ArgCCInfo, CLI, MF,
+  ArgLocs);
 
   if (IsTailCall)
     ++NumTailCalls;
