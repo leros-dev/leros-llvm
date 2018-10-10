@@ -74,6 +74,15 @@ void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
   BuildMI(MBB, MBBI, DL, get(Leros::STORE_R), DstReg);
 }
 
+void LerosInstrInfo::movUImm32(MachineBasicBlock &MBB,
+                               MachineBasicBlock::iterator MBBI,
+                               const DebugLoc &DL, unsigned DstReg,
+                               uint64_t Val) const {
+  assert(isUInt<32>(Val) && "Can only materialize 32-bit constants");
+
+  movImm32(MBB, MBBI, DL, DstReg, static_cast<int32_t>(Val));
+}
+
 void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I,
                                bool BBHasOperands, unsigned dst,
@@ -91,6 +100,16 @@ void LerosInstrInfo::expandRET(MachineBasicBlock &MBB,
   BuildMI(MBB, I, I->getDebugLoc(), get(Leros::JAL_ret)).addReg(Leros::RA);
 }
 
+void LerosInstrInfo::expandSHR(MachineBasicBlock &MBB, MachineInstr &I) const {
+  const unsigned &dst = I.getOperand(0).getReg(),
+                 &src = I.getOperand(1).getReg();
+  auto DL = I.getDebugLoc();
+  BuildMI(MBB, I, DL, get(Leros::LOAD_R)).addReg(src);
+  // Reg and immediate does nothing, but required for the signature of SHR
+  BuildMI(MBB, I, DL, get(Leros::SHR_IMPL)).addImm(0);
+  BuildMI(MBB, I, DL, get(Leros::STORE_R)).addReg(dst);
+}
+
 void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
 #define OPCASE(instr, postfix)                                                 \
   case instr##_R##postfix##_PSEUDO:                                            \
@@ -104,7 +123,6 @@ void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
     break;
     OPCASE(Leros::ADD, R)
     OPCASE(Leros::SUB, R)
-    OPCASE(Leros::SHR, R)
     OPCASE(Leros::AND, R)
     OPCASE(Leros::OR, R)
     OPCASE(Leros::XOR, R)
@@ -131,7 +149,6 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
     break;
     OPCASE(Leros::ADD, I)
     OPCASE(Leros::SUB, I)
-    OPCASE(Leros::SHR, I)
     OPCASE(Leros::AND, I)
     OPCASE(Leros::OR, I)
     OPCASE(Leros::XOR, I)
@@ -267,6 +284,10 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
     opcode = Leros::BRZ_IMPL;
     break;
   }
+  case Leros::PseudoBRP: {
+    opcode = Leros::BRP_IMPL;
+    break;
+  }
   }
 #undef OPCASE
 
@@ -320,6 +341,8 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
     switch (TF) {
     case LEROSIF::Signed8BitLoad:
     case LEROSIF::Signed16BitLoad: {
+      llvm_unreachable("Fix sign extended loads - should be handled earlier "
+                       "and emitted as a combination of a load + shift node");
       // To insert a sign extension instruction, we insert a triangle pattern
       // control-flow pattern where, based on the sign of the input operand at
       // the
@@ -351,8 +374,10 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
 
       // Extract sign from the loaded operand and insert branch
+      /*
       BuildMI(HeadMBB, DL, get(Leros::SHR_AI))
           .addImm(TF == LEROSIF::Signed8BitLoad ? 7 : 15);
+          */
       BuildMI(HeadMBB, DL, get(Leros::AND_AI)).addImm(1);
 
       // Branch if sign == 1 (negative)
@@ -468,6 +493,9 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     switch (opc) {
     default:
       return false;
+    case Leros::SHRByOne_Pseudo:
+      expandSHR(MBB, MI);
+      break;
     case Leros::NOP:
       expandNOP(MBB, MI);
       break;
@@ -482,6 +510,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       break;
     case Leros::PseudoBRZ:
     case Leros::PseudoBRNZ:
+    case Leros::PseudoBRP:
       expandBRCC(MBB, MI, true);
     }
   }

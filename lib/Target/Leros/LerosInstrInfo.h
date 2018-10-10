@@ -52,6 +52,9 @@ public:
   void movImm32(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
                 const DebugLoc &DL, unsigned DstReg, uint64_t Val) const;
 
+  void movUImm32(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
+                 const DebugLoc &DL, unsigned DstReg, uint64_t Val) const;
+
   unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                         MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
                         const DebugLoc &dl,
@@ -78,6 +81,7 @@ private:
   void expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
                   bool hasPrecalcCC) const;
   void expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandSHR(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandCALL(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };

@@ -230,12 +230,13 @@ defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor\t",    xor>;
 
 // Shifts are all pseudo instructions since they require custom emmission. 
 // shr has an actual leros instruction, whereas shl and sra are emissions of small algorithms
-defm SHR    : INSTR_Pseudo<OPC_SHR     , srl>;
-def SHR_AI  : INSTR_AccAccImm<OPC_SHR, "shr\t">;
-def SHR_AR  : INSTR_AccAccReg<OPC_SHR, "shr\t">; 
+def SHRByOne_Pseudo: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
+def SHR_IMPL  : LerosImmInst<OPC_SHR, (outs), (ins simm8:$imm8), 
+            "shr", "", []>;
 
-defm SHL  : INSTR_Pseudo<OPC_NOP     , shl>; // For now, simulate that we have an stl instruktion
-defm SRA  : INSTR_Pseudo<OPC_NOP     , sra>; // For now, 
+defm SRL  : INSTR_Pseudo<OPC_SHR     , srl>; // This instruction will get expanded by EmitSRL
+defm SHL  : INSTR_Pseudo<OPC_NOP     , shl>; // This instruction will get expanded by EmitSHL
+defm SRA  : INSTR_Pseudo<OPC_NOP     , sra>; // This instruction will get expanded by EmitSRA
 
 // Register->accumulator Loads
 def LOAD_R : INSTR_AccReg<OPC_LOAD, "load">;
@@ -286,6 +287,7 @@ class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_NA
 }
 def PseudoBRNZ : Pseudo_BranchCC;
 def PseudoBRZ : Pseudo_BranchCC;
+def PseudoBRP : Pseudo_BranchCC;
 
 
 // Instructions where format is specific to the instruction
