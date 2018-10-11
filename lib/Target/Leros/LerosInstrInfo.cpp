@@ -288,6 +288,10 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
     opcode = Leros::BRP_IMPL;
     break;
   }
+  case Leros::PseudoBRN: {
+    opcode = Leros::BRN_IMPL;
+    break;
+  }
   }
 #undef OPCASE
 
@@ -511,6 +515,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     case Leros::PseudoBRZ:
     case Leros::PseudoBRNZ:
     case Leros::PseudoBRP:
+    case Leros::PseudoBRN:
       expandBRCC(MBB, MI, true);
     }
   }

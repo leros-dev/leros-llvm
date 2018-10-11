@@ -168,7 +168,7 @@ def BYTE3 : SDNodeXForm<imm, [{
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
         : LerosBranchInst<opcode, (outs), (ins bb_simm8:$simm8), opcodestr, "$simm8", []>;
 
-    // To be determined instruction - to avoid errors in LLVM tests.
+// To be determined instruction - to avoid errors in LLVM tests.
 // These instructions are basically because a deliberation on the ISA
 // is required
 class TBD_SET_C : LerosInst<(outs GPR:$rs), (ins GPR:$r1, GPR:$r2), "TBD", "$r1 $r2", []>;
@@ -238,6 +238,13 @@ defm SRL  : INSTR_Pseudo<OPC_SHR     , srl>; // This instruction will get expand
 defm SHL  : INSTR_Pseudo<OPC_NOP     , shl>; // This instruction will get expanded by EmitSHL
 defm SRA  : INSTR_Pseudo<OPC_NOP     , sra>; // This instruction will get expanded by EmitSRA
 
+// Set pseudo-instructions will be emitted as custom branch sequences with phi nodes
+let usesCustomInserter = 1 in {
+    def SETEQ_PSEUDO    : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
+    def SETGE_PSEUDO   : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
+    def SETLT_PSEUDO    : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
+}
+
 // Register->accumulator Loads
 def LOAD_R : INSTR_AccReg<OPC_LOAD, "load">;
 def LOAD_I : INSTR_AccImm<OPC_LOAD, "load">;
@@ -288,6 +295,7 @@ class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm8:$simm8), F_NA
 def PseudoBRNZ : Pseudo_BranchCC;
 def PseudoBRZ : Pseudo_BranchCC;
 def PseudoBRP : Pseudo_BranchCC;
+def PseudoBRN : Pseudo_BranchCC;
 
 
 // Instructions where format is specific to the instruction
@@ -383,16 +391,18 @@ def : Pat<(simm32:$imm),
  
 //Todo: Implement these using a future set instruction, or expand into a phi node
 // using branch logic for the set results
-def : Pat<(seteq GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setne GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setgt GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setge GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setlt GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setle GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setugt GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setuge GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setult GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setule GPR:$rs1, GPR:$rs2), (TBD_SET GPR:$rs1, GPR:$rs2)>;
+
+
+def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SETEQ_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setne GPR:$rs1, GPR:$rs2), (XOR_RI_PSEUDO (SETEQ_PSEUDO GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs2, GPR:$rs1)>;
+def : Pat<(setge GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setlt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setle GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs2, GPR:$rs1)>;
+def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs2, GPR:$rs1)>;
+def : Pat<(setuge GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setult GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setule GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs2, GPR:$rs1)>;
 
 
 class BccPat<PatFrag CondOp, Pseudo_Branch Inst>

@@ -354,6 +354,93 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     return TailMBB;
   }
 }
+
+MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
+                                                MachineBasicBlock *BB) const {
+  const LerosInstrInfo &TII =
+      *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineFunction::iterator I = ++BB->getIterator();
+  MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
+
+  MachineBasicBlock *HeadMBB = BB;
+  MachineFunction *F = BB->getParent();
+
+  unsigned opcode;
+
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unknown SET opcode");
+  case Leros::SETEQ_PSEUDO:
+    opcode = Leros::PseudoBRZ;
+  case Leros::SETGE_PSEUDO:
+    opcode = Leros::PseudoBRP;
+  case Leros::SETLT_PSEUDO:
+    opcode = Leros::PseudoBRN;
+  }
+
+  const unsigned &dstReg = MI.getOperand(0).getReg(),
+                 &rs1 = MI.getOperand(1).getReg(),
+                 &rs2 = MI.getOperand(2).getReg();
+
+  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *trueMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+  // Insertion order matters, to properly handle BB fallthrough
+  F->insert(I, trueMBB);
+  F->insert(I, TailMBB);
+
+  // Move all remaining instructions to TailMBB.
+  TailMBB->splice(TailMBB->begin(), HeadMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
+  // Update machine-CFG edges by transferring all successors of the current
+  // block to the new block which will contain the Phi node for the select.
+  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+
+  // Set successors for remaining MBBs
+  HeadMBB->addSuccessor(trueMBB);
+  HeadMBB->addSuccessor(TailMBB);
+
+  trueMBB->addSuccessor(TailMBB);
+
+  // -------- HeadMBB --------------
+  const unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::SUB_RR_PSEUDO),
+          ScratchReg)
+      .addReg(rs1)
+      .addReg(rs2);
+
+  // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(opcode))
+      .addReg(ScratchReg)
+      .addMBB(trueMBB);
+
+  // From here, we know that comparison was false
+  // register
+  const unsigned falseRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, falseRes, 0);
+
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBR))
+      .addMBB(TailMBB);
+
+  // -------- trueMBB --------------
+  const unsigned trueRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  TII.movImm32(*trueMBB, trueMBB->end(), DL, trueRes, 1);
+
+  // Fallthrough to tail
+
+  // -------- tailMBB --------------
+  // Get result through a phi node
+  BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
+      .addReg(falseRes)
+      .addMBB(HeadMBB)
+      .addReg(trueRes)
+      .addMBB(trueMBB);
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return TailMBB;
+}
+
 MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
   const LerosInstrInfo &TII =
@@ -709,6 +796,10 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return EmitSRAI(MI, BB);
   case Leros::SRA_RR_PSEUDO:
     return EmitSRAR(MI, BB);
+  case Leros::SETEQ_PSEUDO:
+  case Leros::SETGE_PSEUDO:
+  case Leros::SETLT_PSEUDO:
+    return EmitSET(MI, BB);
   }
 
   // To "insert" a SELECT instruction, we actually have to insert the triangle
