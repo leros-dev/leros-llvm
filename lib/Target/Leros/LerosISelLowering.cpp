@@ -372,12 +372,18 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   switch (MI.getOpcode()) {
   default:
     llvm_unreachable("Unknown SET opcode");
-  case Leros::SETEQ_PSEUDO:
+  case Leros::SETEQ_PSEUDO: {
     opcode = Leros::PseudoBRZ;
-  case Leros::SETGE_PSEUDO:
+    break;
+  }
+  case Leros::SETGE_PSEUDO: {
     opcode = Leros::PseudoBRP;
-  case Leros::SETLT_PSEUDO:
+    break;
+  }
+  case Leros::SETLT_PSEUDO: {
     opcode = Leros::PseudoBRN;
+    break;
+  }
   }
 
   const unsigned &dstReg = MI.getOperand(0).getReg(),

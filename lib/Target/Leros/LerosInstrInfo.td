@@ -257,6 +257,7 @@ defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 // Accumulator->register store
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
 
+let isBarrier = 1, isBranch = 1, isTerminator = 1 in
 def  BR_IMPL : INSTR_BranchCond<OPC_BR,  "br\t"       >; // unconditional branch, pseudo version is handled by PseudoBR
 defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz\t"      >;
 defm BRNZ    : INSTR_BrImpl<OPC_BRNZ,    "brnz"     >;
@@ -282,8 +283,8 @@ def  NOP_IMPL   : LerosInst<(outs), (ins simm8:$imm), "nop", "", []>{
 
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
-//let isBarrier = 1, isBranch = 1, isTerminator = 1 in
 def : Pat<(br bb:$simm8), (BR_IMPL bb_simm8:$simm8)>;
+let isBarrier = 1, isBranch = 1, isTerminator = 1 in
 def PseudoBR : LerosPseudo<(outs), (ins bb_simm8:$simm8), F_BR, [(br bb:$simm8)]>,
                PseudoInstExpansion<(BR_IMPL bb_simm8:$simm8)>;
 
