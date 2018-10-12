@@ -880,31 +880,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
 }
 
 MachineBasicBlock *
-LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
-                                                 MachineBasicBlock *BB) const {
-  switch (MI.getOpcode()) {
-  default:
-    llvm_unreachable("Unexpected instr type to insert");
-  case Leros::Select_GPR_Using_CC_GPR:
-    break;
-  case Leros::SHL_RI_PSEUDO:
-  case Leros::SHL_RR_PSEUDO:
-    return EmitSHL(MI, BB);
-  case Leros::SRL_RI_PSEUDO:
-  case Leros::SRL_RR_PSEUDO:
-    return EmitSRL(MI, BB);
-  case Leros::SRA_RI_PSEUDO:
-    return EmitSRAI(MI, BB);
-  case Leros::SRA_RR_PSEUDO:
-    return EmitSRAR(MI, BB);
-  case Leros::SETEQ_PSEUDO:
-  case Leros::SETGE_PSEUDO:
-  case Leros::SETLT_PSEUDO:
-    return EmitSET(MI, BB);
-  case Leros::LOAD_S8_M_PSEUDO:
-  case Leros::LOAD_S16_M_PSEUDO:
-    return EmitSEXTLOAD(MI, BB);
-  }
+LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
 
   // To "insert" a SELECT instruction, we actually have to insert the triangle
   // control-flow pattern.  The incoming instruction knows the destination
@@ -916,7 +892,7 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   // We produce the following control flow:
   //     HeadMBB
   //     |  \
-  //     |  IfFalseMBB
+    //     |  IfFalseMBB
   //     | /
   //    TailMBB
   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
@@ -962,6 +938,34 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
+}
+
+MachineBasicBlock *
+LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+                                                 MachineBasicBlock *BB) const {
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unexpected instr type to insert");
+  case Leros::Select_GPR_Using_CC_GPR:
+    return EmitSELECT(MI, BB);
+  case Leros::SHL_RI_PSEUDO:
+  case Leros::SHL_RR_PSEUDO:
+    return EmitSHL(MI, BB);
+  case Leros::SRL_RI_PSEUDO:
+  case Leros::SRL_RR_PSEUDO:
+    return EmitSRL(MI, BB);
+  case Leros::SRA_RI_PSEUDO:
+    return EmitSRAI(MI, BB);
+  case Leros::SRA_RR_PSEUDO:
+    return EmitSRAR(MI, BB);
+  case Leros::SETEQ_PSEUDO:
+  case Leros::SETGE_PSEUDO:
+  case Leros::SETLT_PSEUDO:
+    return EmitSET(MI, BB);
+  case Leros::LOAD_S8_M_PSEUDO:
+  case Leros::LOAD_S16_M_PSEUDO:
+    return EmitSEXTLOAD(MI, BB);
+  }
 }
 
 const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
