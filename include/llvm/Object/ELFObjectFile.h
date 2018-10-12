@@ -333,9 +333,9 @@ protected:
     // A symbol is exported if its binding is either GLOBAL or WEAK, and its
     // visibility is either DEFAULT or PROTECTED. All other symbols are not
     // exported.
-    return ((Binding == ELF::STB_GLOBAL || Binding == ELF::STB_WEAK) &&
-            (Visibility == ELF::STV_DEFAULT ||
-             Visibility == ELF::STV_PROTECTED));
+    return (
+        (Binding == ELF::STB_GLOBAL || Binding == ELF::STB_WEAK) &&
+        (Visibility == ELF::STV_DEFAULT || Visibility == ELF::STV_PROTECTED));
   }
 
   // This flag is used for classof, to distinguish ELFObjectFile from
@@ -379,7 +379,8 @@ public:
 
   unsigned getPlatformFlags() const override { return EF.getHeader()->e_flags; }
 
-  std::error_code getBuildAttributes(ARMAttributeParser &Attributes) const override {
+  std::error_code
+  getBuildAttributes(ARMAttributeParser &Attributes) const override {
     auto SectionsOrErr = EF.sections();
     if (!SectionsOrErr)
       return errorToErrorCode(SectionsOrErr.takeError());
@@ -391,7 +392,8 @@ public:
           return errorToErrorCode(ErrorOrContents.takeError());
 
         auto Contents = ErrorOrContents.get();
-        if (Contents[0] != ARMBuildAttrs::Format_Version || Contents.size() == 1)
+        if (Contents[0] != ARMBuildAttrs::Format_Version ||
+            Contents.size() == 1)
           return std::error_code();
 
         Attributes.Parse(Contents, ELFT::TargetEndianness == support::little);
@@ -510,8 +512,7 @@ uint32_t ELFObjectFile<ELFT>::getSymbolAlignment(DataRefImpl Symb) const {
   return 0;
 }
 
-template <class ELFT>
-uint16_t ELFObjectFile<ELFT>::getEMachine() const {
+template <class ELFT> uint16_t ELFObjectFile<ELFT>::getEMachine() const {
   return EF.getHeader()->e_machine;
 }
 
@@ -994,13 +995,11 @@ section_iterator ELFObjectFile<ELFT>::section_end() const {
   return section_iterator(SectionRef(toDRI((*SectionsOrErr).end()), this));
 }
 
-template <class ELFT>
-uint8_t ELFObjectFile<ELFT>::getBytesInAddress() const {
+template <class ELFT> uint8_t ELFObjectFile<ELFT>::getBytesInAddress() const {
   return ELFT::Is64Bits ? 8 : 4;
 }
 
-template <class ELFT>
-StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
+template <class ELFT> StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
   bool IsLittleEndian = ELFT::TargetEndianness == support::little;
   switch (EF.getHeader()->e_ident[ELF::EI_CLASS]) {
   case ELF::ELFCLASS32:
@@ -1025,6 +1024,8 @@ StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
       return "ELF32-ppc";
     case ELF::EM_RISCV:
       return "ELF32-riscv";
+    case ELF::EM_LEROS:
+      return "ELF32-leros";
     case ELF::EM_SPARC:
     case ELF::EM_SPARC32PLUS:
       return "ELF32-sparc";
@@ -1045,6 +1046,8 @@ StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
       return "ELF64-ppc64";
     case ELF::EM_RISCV:
       return "ELF64-riscv";
+    case ELF::EM_LEROS:
+      return "ELF64-leros";
     case ELF::EM_S390:
       return "ELF64-s390";
     case ELF::EM_SPARCV9:
@@ -1101,6 +1104,15 @@ template <class ELFT> Triple::ArchType ELFObjectFile<ELFT>::getArch() const {
       return Triple::riscv32;
     case ELF::ELFCLASS64:
       return Triple::riscv64;
+    default:
+      report_fatal_error("Invalid ELFCLASS!");
+    }
+  case ELF::EM_LEROS:
+    switch (EF.getHeader()->e_ident[ELF::EI_CLASS]) {
+    case ELF::ELFCLASS32:
+      return Triple::leros32;
+    case ELF::ELFCLASS64:
+      return Triple::leros64;
     default:
       report_fatal_error("Invalid ELFCLASS!");
     }
