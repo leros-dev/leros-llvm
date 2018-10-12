@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "MCTargetDesc/LerosFixupKinds.h"
 #include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/MC/MCAsmBackend.h"
@@ -36,14 +37,10 @@ public:
         Is64Bit(Is64Bit) {}
   ~LerosAsmBackend() override {}
 
-  unsigned getNumFixupKinds() const override { return 0; }
-
   void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                   const MCValue &Target, MutableArrayRef<char> Data,
                   uint64_t Value, bool IsResolved,
-                  const MCSubtargetInfo *STI) const override {
-    return;
-  }
+                  const MCSubtargetInfo *STI) const override;
 
   bool mayNeedRelaxation(const MCInst &Inst,
                          const MCSubtargetInfo &STI) const override {
@@ -61,10 +58,86 @@ public:
     return;
   }
 
+  unsigned getNumFixupKinds() const override {
+    return Leros::NumTargetFixupKinds;
+  }
+
+  const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override {
+    const static MCFixupKindInfo Infos[] = {
+        // This table *must* be in the order that the fixup_* kinds are defined
+        // in
+        // LerosFixupKinds.h.
+        //
+        // name                      offset bits  flags
+        {"fixup_leros_b0", 0, 8, 0},
+        {"fixup_leros_b1", 8, 8, 0},
+        {"fixup_leros_b2", 16, 8, 0},
+        {"fixup_leros_b3", 24, 8, 0},
+    };
+    static_assert((array_lengthof(Infos)) == Leros::NumTargetFixupKinds,
+                  "Not all fixup kinds added to Infos array");
+
+    if (Kind < FirstTargetFixupKind)
+      return MCAsmBackend::getFixupKindInfo(Kind);
+
+    assert(unsigned(Kind - FirstTargetFixupKind) < getNumFixupKinds() &&
+           "Invalid kind!");
+    return Infos[Kind - FirstTargetFixupKind];
+  }
+
   std::unique_ptr<MCObjectTargetWriter>
   createObjectTargetWriter() const override;
   bool writeNopData(raw_ostream &OS, uint64_t Count) const override;
 };
+
+static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
+                                 MCContext &Ctx) {
+  unsigned Kind = Fixup.getKind();
+  switch (Kind) {
+  default:
+    llvm_unreachable("Unknown fixup kind!");
+  case FK_Data_1:
+  case FK_Data_2:
+  case FK_Data_4:
+  case FK_Data_8:
+    return Value;
+  case Leros::fixup_leros_b0:
+    return Value & 0xff;
+  case Leros::fixup_leros_b1:
+    return (Value >> 8) & 0xff;
+  case Leros::fixup_leros_b2:
+    return (Value >> 16) & 0xff;
+  case Leros::fixup_leros_b3:
+    return (Value >> 24) & 0xff;
+  }
+}
+
+void LerosAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
+                                 const MCValue &Target,
+                                 MutableArrayRef<char> Data, uint64_t Value,
+                                 bool IsResolved,
+                                 const MCSubtargetInfo *STI) const {
+  MCContext &Ctx = Asm.getContext();
+  MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
+  if (!Value)
+    return; // Doesn't change encoding.
+  // Apply any target-specific value adjustments.
+  Value = adjustFixupValue(Fixup, Value, Ctx);
+
+  // Shift the value into position.
+  Value <<= Info.TargetOffset;
+
+  unsigned Offset = Fixup.getOffset();
+  unsigned NumBytes = alignTo(Info.TargetSize + Info.TargetOffset, 8) / 8;
+
+  assert(Offset + NumBytes <= Data.size() && "Invalid fixup offset!");
+
+  // For each byte of the fragment that the fixup touches, mask in the
+  // bits from the fixup value.
+  for (unsigned i = 0; i != NumBytes; ++i) {
+    Data[Offset + i] |= uint8_t((Value >> (i * 8)) & 0xff);
+  }
+}
 
 bool LerosAsmBackend::writeNopData(raw_ostream &OS, uint64_t Count) const {
   unsigned nopLen = 2;

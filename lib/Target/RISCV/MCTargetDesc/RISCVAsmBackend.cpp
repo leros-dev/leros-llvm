@@ -76,23 +76,23 @@ public:
 
   const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override {
     const static MCFixupKindInfo Infos[] = {
-      // This table *must* be in the order that the fixup_* kinds are defined in
-      // RISCVFixupKinds.h.
-      //
-      // name                      offset bits  flags
-      { "fixup_riscv_hi20",         12,     20,  0 },
-      { "fixup_riscv_lo12_i",       20,     12,  0 },
-      { "fixup_riscv_lo12_s",        0,     32,  0 },
-      { "fixup_riscv_pcrel_hi20",   12,     20,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_pcrel_lo12_i", 20,     12,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_pcrel_lo12_s",  0,     32,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_jal",          12,     20,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_branch",        0,     32,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_rvc_jump",      2,     11,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_rvc_branch",    0,     16,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_call",          0,     64,  MCFixupKindInfo::FKF_IsPCRel },
-      { "fixup_riscv_relax",         0,      0,  0 }
-    };
+        // This table *must* be in the order that the fixup_* kinds are defined
+        // in
+        // RISCVFixupKinds.h.
+        //
+        // name                      offset bits  flags
+        {"fixup_riscv_hi20", 12, 20, 0},
+        {"fixup_riscv_lo12_i", 20, 12, 0},
+        {"fixup_riscv_lo12_s", 0, 32, 0},
+        {"fixup_riscv_pcrel_hi20", 12, 20, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_pcrel_lo12_i", 20, 12, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_pcrel_lo12_s", 0, 32, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_jal", 12, 20, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_branch", 0, 32, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_rvc_jump", 2, 11, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_rvc_branch", 0, 16, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_call", 0, 64, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_riscv_relax", 0, 0, 0}};
     static_assert((array_lengthof(Infos)) == RISCV::NumTargetFixupKinds,
                   "Not all fixup kinds added to Infos array");
 
@@ -111,17 +111,13 @@ public:
   void relaxInstruction(const MCInst &Inst, const MCSubtargetInfo &STI,
                         MCInst &Res) const override;
 
-
   bool writeNopData(raw_ostream &OS, uint64_t Count) const override;
 };
 
-
-bool RISCVAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
-                                                   bool Resolved,
-                                                   uint64_t Value,
-                                                   const MCRelaxableFragment *DF,
-                                                   const MCAsmLayout &Layout,
-                                                   const bool WasForced) const {
+bool RISCVAsmBackend::fixupNeedsRelaxationAdvanced(
+    const MCFixup &Fixup, bool Resolved, uint64_t Value,
+    const MCRelaxableFragment *DF, const MCAsmLayout &Layout,
+    const bool WasForced) const {
   // Return true if the symbol is actually unresolved.
   // Resolved could be always false when shouldForceRelocation return true.
   // We use !WasForced to indicate that the symbol is unresolved and not forced
@@ -289,30 +285,29 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   }
   case RISCV::fixup_riscv_rvc_jump: {
     // Need to produce offset[11|4|9:8|10|6|7|3:1|5] from the 11-bit Value.
-    unsigned Bit11  = (Value >> 11) & 0x1;
-    unsigned Bit4   = (Value >> 4) & 0x1;
+    unsigned Bit11 = (Value >> 11) & 0x1;
+    unsigned Bit4 = (Value >> 4) & 0x1;
     unsigned Bit9_8 = (Value >> 8) & 0x3;
-    unsigned Bit10  = (Value >> 10) & 0x1;
-    unsigned Bit6   = (Value >> 6) & 0x1;
-    unsigned Bit7   = (Value >> 7) & 0x1;
+    unsigned Bit10 = (Value >> 10) & 0x1;
+    unsigned Bit6 = (Value >> 6) & 0x1;
+    unsigned Bit7 = (Value >> 7) & 0x1;
     unsigned Bit3_1 = (Value >> 1) & 0x7;
-    unsigned Bit5   = (Value >> 5) & 0x1;
+    unsigned Bit5 = (Value >> 5) & 0x1;
     Value = (Bit11 << 10) | (Bit4 << 9) | (Bit9_8 << 7) | (Bit10 << 6) |
             (Bit6 << 5) | (Bit7 << 4) | (Bit3_1 << 1) | Bit5;
     return Value;
   }
   case RISCV::fixup_riscv_rvc_branch: {
     // Need to produce offset[8|4:3], [reg 3 bit], offset[7:6|2:1|5]
-    unsigned Bit8   = (Value >> 8) & 0x1;
+    unsigned Bit8 = (Value >> 8) & 0x1;
     unsigned Bit7_6 = (Value >> 6) & 0x3;
-    unsigned Bit5   = (Value >> 5) & 0x1;
+    unsigned Bit5 = (Value >> 5) & 0x1;
     unsigned Bit4_3 = (Value >> 3) & 0x3;
     unsigned Bit2_1 = (Value >> 1) & 0x3;
     Value = (Bit8 << 12) | (Bit4_3 << 10) | (Bit7_6 << 5) | (Bit2_1 << 3) |
             (Bit5 << 2);
     return Value;
   }
-
   }
 }
 

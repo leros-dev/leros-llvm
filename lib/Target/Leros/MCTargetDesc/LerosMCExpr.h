@@ -29,6 +29,7 @@ public:
     VK_Leros_B1,
     VK_Leros_B2,
     VK_Leros_B3,
+    VK_Leros_Invalid
   };
 
 private:

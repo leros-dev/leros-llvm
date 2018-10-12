@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/LerosMCExpr.h"
+#include "MCTargetDesc/LerosFixupKinds.h"
 #include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -119,21 +120,6 @@ LerosMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   return 0;
 }
 
-unsigned
-LerosMCCodeEmitter::getImmOpValueAsr1(const MCInst &MI, unsigned OpNo,
-                                      SmallVectorImpl<MCFixup> &Fixups,
-                                      const MCSubtargetInfo &STI) const {
-  const MCOperand &MO = MI.getOperand(OpNo);
-
-  if (MO.isImm()) {
-    unsigned Res = MO.getImm();
-    assert((Res & 1) == 0 && "LSB is non-zero");
-    return Res >> 1;
-  }
-
-  return getImmOpValue(MI, OpNo, Fixups, STI);
-}
-
 unsigned LerosMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
                                            SmallVectorImpl<MCFixup> &Fixups,
                                            const MCSubtargetInfo &STI) const {
@@ -143,9 +129,42 @@ unsigned LerosMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
   if (MO.isImm())
     return MO.getImm();
 
-  assert(MO.isExpr() && "getImmOpValue expects only expressions or immediates");
+  assert(MO.isExpr() &&
+         "getImmOpValue expects only expressions or immediates");
+  const MCExpr *Expr = MO.getExpr();
+  MCExpr::ExprKind Kind = Expr->getKind();
 
-  llvm_unreachable("Unimplemented for now");
+  Leros::Fixups FixupKind = Leros::fixup_leros_invalid;
+  if (Kind == MCExpr::Target) {
+    const LerosMCExpr *LerosExpr = cast<LerosMCExpr>(Expr);
+
+    switch (LerosExpr->getKind()) {
+    case LerosMCExpr::VK_Leros_None:
+    case LerosMCExpr::VK_Leros_Invalid:
+      llvm_unreachable("Unhandled fixup kind!");
+    case LerosMCExpr::VK_Leros_B0:
+        FixupKind = Leros::fixup_leros_b0;
+        break;
+    case LerosMCExpr::VK_Leros_B1:
+        FixupKind = Leros::fixup_leros_b1;
+        break;
+    case LerosMCExpr::VK_Leros_B2:
+        FixupKind = Leros::fixup_leros_b2;
+        break;
+    case LerosMCExpr::VK_Leros_B3:
+        FixupKind = Leros::fixup_leros_b3;
+        break;
+    }
+  } else if (Kind == MCExpr::SymbolRef &&
+             cast<MCSymbolRefExpr>(Expr)->getKind() == MCSymbolRefExpr::VK_None) {
+      FixupKind = Leros::fixup_leros_b0;
+  }
+
+  assert(FixupKind != Leros::fixup_leros_invalid && "Unhandled expression!");
+
+  Fixups.push_back(
+      MCFixup::create(0, Expr, MCFixupKind(FixupKind), MI.getLoc()));
+  ++MCNumFixups;
 
   return 0;
 }
