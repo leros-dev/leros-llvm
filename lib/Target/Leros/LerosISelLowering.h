@@ -86,6 +86,8 @@ private:
 
   MachineBasicBlock *EmitSHL(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSRAI(MachineInstr &MI, MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitSEXTLOAD(MachineInstr &MI,
+                                  MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSRAR(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSRL(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSET(MachineInstr &MI, MachineBasicBlock *BB) const;

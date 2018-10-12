@@ -267,9 +267,13 @@ defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn\t"     >;
 // Memory access pseudoinstruction definitions
 def STORE_M_PSEUDO      : PSEUDO_Store_M;
 def LOAD_M_PSEUDO       : PSEUDO_Load_M<F_LS>;
-def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M<F_S8L>;
+// Sign-extending loads use custom inserter for the sign extension mechanism, see emitInstrUsingCustomInserter
+let usesCustomInserter=1 in {
+    def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M<F_S8L>;
+    def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M<F_S16L>;
+}
+// Unsigned 8- and 16 bit loads just sets topmost bits to 0 (LerosInstrInfo::expandLS)
 def LOAD_U8_M_PSEUDO    : PSEUDO_Load_M<F_U8L>;
-def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M<F_S16L>;
 def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U8L>;
 
 // NOP instruction. Pseudo NOP can be used without any arguments, later expanded to NOP_IMPL.
