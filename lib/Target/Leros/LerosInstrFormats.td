@@ -95,6 +95,8 @@ class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pa
 
   let Namespace = "Leros";
 
+  let Size = 2; // All leros instructions are 2 bytes
+
   dag OutOperandList = outs;
   dag InOperandList = ins;
   let AsmString = opcodestr # "\t" # argstr;
