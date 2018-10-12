@@ -181,12 +181,10 @@ SDValue LerosTargetLowering::lowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   MVT XLenVT = Subtarget.getXLenVT();
 
   // (select condv, truev, falsev)
-  // -> (lerosisd::select_cc condv, zero, setne, truev, falsev)
-  SDValue Zero = DAG.getConstant(0, DL, XLenVT);
-  SDValue SetNE = DAG.getConstant(ISD::SETNE, DL, XLenVT);
+  // -> (lerosisd::select_cc condv, truev, falsev)
 
   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
-  SDValue Ops[] = {CondV, Zero, SetNE, TrueV, FalseV};
+  SDValue Ops[] = {CondV, TrueV, FalseV};
 
   return DAG.getNode(LEROSISD::SELECT_CC, DL, VTs, Ops);
 }
@@ -881,20 +879,6 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
 
 MachineBasicBlock *
 LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
-
-  // To "insert" a SELECT instruction, we actually have to insert the triangle
-  // control-flow pattern.  The incoming instruction knows the destination
-  // vreg
-  // to set, the condition code register to branch on, the true/false values
-  // to
-  // select between, and the condcode to use to select the appropriate branch.
-  //
-  // We produce the following control flow:
-  //     HeadMBB
-  //     |  \
-    //     |  IfFalseMBB
-  //     | /
-  //    TailMBB
   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
   DebugLoc DL = MI.getDebugLoc();
@@ -903,9 +887,13 @@ LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
   MachineBasicBlock *HeadMBB = BB;
   MachineFunction *F = BB->getParent();
   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
-  MachineBasicBlock *IfFalseMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *IfTrueMBB = F->CreateMachineBasicBlock(LLVM_BB);
 
-  F->insert(I, IfFalseMBB);
+  // We do not do any branching in our SELECT emission - it is expected that rs1
+  // of the select instruction contains a boolean value which selects between
+  // the two registers
+
+  F->insert(I, IfTrueMBB);
   F->insert(I, TailMBB);
   // Move all remaining instructions to TailMBB.
   TailMBB->splice(TailMBB->begin(), HeadMBB,
@@ -914,27 +902,24 @@ LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
   // block to the new block which will contain the Phi node for the select.
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
   // Set the successors for HeadMBB.
-  HeadMBB->addSuccessor(IfFalseMBB);
+  HeadMBB->addSuccessor(IfTrueMBB);
   HeadMBB->addSuccessor(TailMBB);
 
   // Insert appropriate branch.
-  unsigned LHS = MI.getOperand(1).getReg();
-  unsigned RHS = MI.getOperand(2).getReg();
-  auto CC = static_cast<ISD::CondCode>(MI.getOperand(3).getImm());
-  unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
+  unsigned CCReg = MI.getOperand(1).getReg();
 
-  BuildMI(HeadMBB, DL, TII.get(Opcode)).addReg(LHS).addReg(RHS).addMBB(TailMBB);
+  BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRP)).addReg(CCReg).addMBB(TailMBB);
 
-  // IfFalseMBB just falls through to TailMBB.
-  IfFalseMBB->addSuccessor(TailMBB);
+  // IfTrueMBB just falls through to TailMBB.
+  IfTrueMBB->addSuccessor(TailMBB);
 
-  // %Result = phi [ %TrueValue, HeadMBB ], [ %FalseValue, IfFalseMBB ]
+  // %Result = phi [ %TrueValue, IfTrueMBB ], [ %FalseValue, HeadMBB ]
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI),
           MI.getOperand(0).getReg())
-      .addReg(MI.getOperand(4).getReg())
-      .addMBB(HeadMBB)
-      .addReg(MI.getOperand(5).getReg())
-      .addMBB(IfFalseMBB);
+      .addReg(MI.getOperand(2).getReg())
+      .addMBB(IfTrueMBB)
+      .addReg(MI.getOperand(3).getReg())
+      .addMBB(HeadMBB);
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;

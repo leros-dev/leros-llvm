@@ -21,9 +21,8 @@ def SDT_lerosCall         : SDTypeProfile<0, -1, [SDTCisVT<0, XLenVT>]>;
 def SDT_LerosCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 def SDT_LerosCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 
-def SDT_LerosSelectCC     : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
-                                                 SDTCisSameAs<0, 4>,
-                                                 SDTCisSameAs<4, 5>]>;
+def SDT_LerosSelectCC     : SDTypeProfile<1, 3,  [SDTCisSameAs<0, 1>,
+                                                 SDTCisSameAs<1, 2>]>;
 
 def Callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_LerosCallSeqStart,
                            [SDNPHasChain, SDNPSideEffect, SDNPOutGlue]>;
@@ -447,14 +446,12 @@ def : Pat<(add (i32 AddrFI:$Rs), simm8:$imm8),
 //  ----------- SELECT pseudo instruction  -----------
 // will be expanded in EmitInstrWithCustomInserter
 let usesCustomInserter = 1 in
-class SelectCC_rrirr<RegisterClass valty, RegisterClass cmpty>
+class SelectCC_rrr<RegisterClass valty, RegisterClass cmpty>
     : LerosPseudo<(outs valty:$dst),
-             (ins cmpty:$lhs, cmpty:$rhs, ixlenimm:$imm,
-              valty:$truev, valty:$falsev), F_NA,
-             [(set valty:$dst, (SelectCC cmpty:$lhs, cmpty:$rhs,
-              (XLenVT imm:$imm), valty:$truev, valty:$falsev))]>;
+             (ins cmpty:$cc, valty:$truev, valty:$falsev), F_NA,
+             [(set valty:$dst, (SelectCC cmpty:$cc, valty:$truev, valty:$falsev))]>;
 
-def Select_GPR_Using_CC_GPR : SelectCC_rrirr<GPR, GPR>;
+def Select_GPR_Using_CC_GPR : SelectCC_rrr<GPR, GPR>;
 
 //  ----------- Memory load/store patterns -----------
 
