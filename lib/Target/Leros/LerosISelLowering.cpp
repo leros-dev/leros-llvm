@@ -402,9 +402,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
                  &rs2 = MI.getOperand(2).getReg();
 
   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *falseMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *trueMBB = F->CreateMachineBasicBlock(LLVM_BB);
 
   // Insertion order matters, to properly handle BB fallthrough
+  F->insert(I, falseMBB);
   F->insert(I, trueMBB);
   F->insert(I, TailMBB);
 
@@ -416,10 +418,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
 
   // Set successors for remaining MBBs
+  HeadMBB->addSuccessor(falseMBB);
   HeadMBB->addSuccessor(trueMBB);
-  HeadMBB->addSuccessor(TailMBB);
 
   trueMBB->addSuccessor(TailMBB);
+  falseMBB->addSuccessor(TailMBB);
 
   // -------- HeadMBB --------------
   const unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
@@ -433,12 +436,16 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
       .addReg(ScratchReg)
       .addMBB(trueMBB);
 
+  // fallthrough to falseMBB
+
+  // ------- FalseMBB --------
+
   // From here, we know that comparison was false
   // register
   const unsigned falseRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, falseRes, 0);
+  TII.movImm32(*falseMBB, falseMBB->end(), DL, falseRes, 0);
 
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBR))
+  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::PseudoBR))
       .addMBB(TailMBB);
 
   // -------- trueMBB --------------
@@ -451,7 +458,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
       .addReg(falseRes)
-      .addMBB(HeadMBB)
+      .addMBB(falseMBB)
       .addReg(trueRes)
       .addMBB(trueMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
