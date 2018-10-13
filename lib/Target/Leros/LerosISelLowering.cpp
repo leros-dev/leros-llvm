@@ -151,14 +151,27 @@ SDValue LerosTargetLowering::lowerGlobalAddress(SDValue Op,
     report_fatal_error("Unable to lowerGlobalAddress");
 
   // Create the machine node
-  SDValue GA = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_GA);
-  SDValue MN =
-      SDValue(DAG.getMachineNode(Leros::LOAD_RI_PSEUDO, DL, Ty, GA), 0);
+  SDValue GAB0 = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_B0);
+  SDValue GAB1 = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_B1);
+  SDValue GAB2 = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_B2);
+  SDValue GAB3 = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_B3);
+
+  SDValue MNB0 =
+      SDValue(DAG.getMachineNode(Leros::LOAD_RI_PSEUDO, DL, Ty, GAB0), 0);
+
+  SDValue MNB1 = SDValue(
+      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB0, GAB1), 0);
+
+  SDValue MNB2 = SDValue(
+      DAG.getMachineNode(Leros::LOADH2_RI_PSEUDO, DL, Ty, MNB0, GAB2), 0);
+
+  SDValue MNB3 = SDValue(
+      DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB0, GAB3), 0);
 
   if (Offset != 0)
-    return DAG.getNode(ISD::ADD, DL, Ty, MN,
+    return DAG.getNode(ISD::ADD, DL, Ty, MNB3,
                        DAG.getConstant(Offset, DL, XLenVT));
-  return MN;
+  return MNB3;
 }
 
 SDValue LerosTargetLowering::lowerConstantPool(SDValue Op,

@@ -30,7 +30,7 @@ namespace llvm {
 static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
                                     const AsmPrinter &AP) {
   MCContext &Ctx = AP.OutContext;
-  LerosMCExpr::VariantKind Kind;
+  LerosMCExpr::VariantKind Kind = LerosMCExpr::VK_Leros_None;
 
   auto tf = MO.getTargetFlags();
 
@@ -59,6 +59,10 @@ static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
   if (!MO.isJTI() && !MO.isMBB() && MO.getOffset())
     ME = MCBinaryExpr::createAdd(
         ME, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
+
+  if (Kind != LerosMCExpr::VK_Leros_None)
+    ME = LerosMCExpr::create(ME, Kind, Ctx);
+
   return MCOperand::createExpr(ME);
 }
 
