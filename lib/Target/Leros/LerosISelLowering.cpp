@@ -286,6 +286,13 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
 
   HeadMBB->addSuccessor(shiftMBB);
   shiftMBB->addSuccessor(TailMBB);
+  /** @warning: We do NOT set shiftMBB as a successor of itself, even though
+   * this would probably be the correct thing to do. When this is done, because
+   * of the virtual registers used in the function, these are hoisted out of the
+   * loop, and thus invalidated. Insted, we desire to force printing of the loop
+   * label by triggering LerosAsmPrinter::isBlockOnlyReachableByFallthrough,
+   * which analyzes whether any terminators of the loop is self referencing
+    */
 
   if (MI.getOpcode() == Leros::SHL_RI_PSEUDO) {
     // shift by immediate operand
@@ -312,6 +319,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
         .addReg(rs1)
         .addReg(rs1);
+
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
     BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
         .addReg(ScratchReg)
@@ -340,7 +348,6 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
 
     // Zero check
     BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRZ)).addReg(rs2).addMBB(TailMBB);
-    HeadMBB->addSuccessor(shiftMBB);
 
     // shift by register operand
     unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);

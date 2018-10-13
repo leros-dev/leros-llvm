@@ -216,8 +216,10 @@ multiclass INSTR_Pseudo<LerosImmRegOpcode opcode, SDNode opnode>{
 }
 
 multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
+    let isTerminator=1 in {
     def _PSEUDO : Pseudo_Branch;
     def  _IMPL     : INSTR_BranchCond<opcode, opcodestr>;
+    }
 }
 
 // Instruction declarations
