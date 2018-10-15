@@ -30,11 +30,9 @@ namespace llvm {
 static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
                                     const AsmPrinter &AP) {
   MCContext &Ctx = AP.OutContext;
-  LerosMCExpr::VariantKind Kind = LerosMCExpr::VK_Leros_None;
+  LerosMCExpr::VariantKind Kind;
 
-  auto tf = MO.getTargetFlags();
-
-  switch (tf) {
+  switch (MO.getTargetFlags()) {
   default:
     llvm_unreachable("Unknown target flag on GV operand");
   case LEROSTF::MO_None:
@@ -117,8 +115,6 @@ bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
 void LowerLerosMachineInstrToMCInst(const MachineInstr *MI, MCInst &OutMI,
                                     const AsmPrinter &AP) {
   OutMI.setOpcode(MI->getOpcode());
-
-  volatile auto a = MI->getOpcode();
 
   for (const MachineOperand &MO : MI->operands()) {
     MCOperand MCOp;

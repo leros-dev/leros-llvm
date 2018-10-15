@@ -19,7 +19,5 @@ LerosMCAsmInfo::LerosMCAsmInfo(const Triple &TT) {
   CommentString = "#";
   AlignmentIsInBytes = false;
   SupportsDebugInformation = true;
-  // Data16bitsDirective = "\t.half\t"; ///@todo supported?
-  // Data32bitsDirective = "\t.word\t"; ///@todo supported?
 }
 }
