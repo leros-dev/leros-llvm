@@ -31,15 +31,9 @@ public:
   virtual bool isBlockOnlyReachableByFallthrough(
       const MachineBasicBlock *MBB) const override;
 
-  void EmitFunctionEntryLabel() override;
   void EmitInstruction(const MachineInstr *MI) override;
-  void EmitFunctionBodyStart() override;
 };
 } // end of anonymous namespace
-
-void LerosAsmPrinter::EmitFunctionBodyStart() {}
-
-void LerosAsmPrinter::EmitFunctionEntryLabel() {}
 
 void LerosAsmPrinter::EmitInstruction(const MachineInstr *MI) {
   MCInst TmpInst;
