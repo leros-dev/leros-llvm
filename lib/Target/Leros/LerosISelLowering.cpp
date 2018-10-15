@@ -136,6 +136,14 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool, XLenVT, Custom);
 
   setBooleanContents(ZeroOrOneBooleanContent);
+
+  // Function alignments (log2).
+  unsigned FunctionAlignment = 1; // align to 2^1 bytes boundaries
+  setMinFunctionAlignment(FunctionAlignment);
+  setPrefFunctionAlignment(FunctionAlignment);
+
+  // Effectively disable jump table generation.
+  setMinimumJumpTableEntries(INT_MAX);
 }
 
 SDValue LerosTargetLowering::lowerGlobalAddress(SDValue Op,
