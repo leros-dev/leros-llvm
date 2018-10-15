@@ -38,7 +38,23 @@ void LerosMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
 bool LerosMCExpr::evaluateAsRelocatableImpl(MCValue &Res,
                                             const MCAsmLayout *Layout,
                                             const MCFixup *Fixup) const {
-  return false;
+  if (!getSubExpr()->evaluateAsRelocatable(Res, Layout, Fixup))
+    return false;
+
+  // Some custom fixup types are not valid with symbol difference expressions
+  if (Res.getSymA() && Res.getSymB()) {
+    switch (getKind()) {
+    default:
+      return true;
+    case VK_Leros_B0:
+    case VK_Leros_B1:
+    case VK_Leros_B2:
+    case VK_Leros_B3:
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void LerosMCExpr::visitUsedExpr(MCStreamer &Streamer) const {
