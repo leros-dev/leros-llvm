@@ -506,6 +506,30 @@ static const MCSymbolELF *getAssociatedSymbol(const GlobalObject *GO,
   return OtherGO ? dyn_cast<MCSymbolELF>(TM.getSymbol(OtherGO)) : nullptr;
 }
 
+static unsigned getEntrySizeForKind(SectionKind Kind) {
+  if (Kind.isMergeable1ByteCString())
+    return 1;
+  else if (Kind.isMergeable2ByteCString())
+    return 2;
+  else if (Kind.isMergeable4ByteCString())
+    return 4;
+  else if (Kind.isMergeableConst4())
+    return 4;
+  else if (Kind.isMergeableConst8())
+    return 8;
+  else if (Kind.isMergeableConst16())
+    return 16;
+  else if (Kind.isMergeableConst32())
+    return 32;
+  else {
+    // We shouldn't have mergeable C strings or mergeable constants that we
+    // didn't handle above.
+    assert(!Kind.isMergeableCString() && "unknown string width");
+    assert(!Kind.isMergeableConst() && "unknown data width");
+    return 0;
+  }
+}
+
 MCSection *TargetLoweringObjectFileELF::getExplicitSectionGlobal(
     const GlobalObject *GO, SectionKind Kind, const TargetMachine &TM) const {
   StringRef SectionName = GO->getSection();
@@ -550,7 +574,7 @@ MCSection *TargetLoweringObjectFileELF::getExplicitSectionGlobal(
 
   MCSectionELF *Section = getContext().getELFSection(
       SectionName, getELFSectionType(SectionName, Kind), Flags,
-      /*EntrySize=*/0, Group, UniqueID, AssociatedSymbol);
+      getEntrySizeForKind(Kind), Group, UniqueID, AssociatedSymbol);
   // Make sure that we did not get some other section with incompatible sh_link.
   // This should not be possible due to UniqueID code above.
   assert(Section->getAssociatedSymbol() == AssociatedSymbol &&
@@ -575,30 +599,6 @@ static StringRef getSectionPrefixForGlobal(SectionKind Kind) {
     return ".data";
   assert(Kind.isReadOnlyWithRel() && "Unknown section kind");
   return ".data.rel.ro";
-}
-
-static unsigned getEntrySizeForKind(SectionKind Kind) {
-  if (Kind.isMergeable1ByteCString())
-    return 1;
-  else if (Kind.isMergeable2ByteCString())
-    return 2;
-  else if (Kind.isMergeable4ByteCString())
-    return 4;
-  else if (Kind.isMergeableConst4())
-    return 4;
-  else if (Kind.isMergeableConst8())
-    return 8;
-  else if (Kind.isMergeableConst16())
-    return 16;
-  else if (Kind.isMergeableConst32())
-    return 32;
-  else {
-    // We shouldn't have mergeable C strings or mergeable constants that we
-    // didn't handle above.
-    assert(!Kind.isMergeableCString() && "unknown string width");
-    assert(!Kind.isMergeableConst() && "unknown data width");
-    return 0;
-  }
 }
 
 static MCSectionELF *selectELFSectionForGlobal(
@@ -1456,8 +1456,25 @@ static MCSectionCOFF *getCOFFStaticStructorSection(MCContext &Ctx,
                                                    unsigned Priority,
                                                    const MCSymbol *KeySym,
                                                    MCSectionCOFF *Default) {
-  if (T.isKnownWindowsMSVCEnvironment() || T.isWindowsItaniumEnvironment())
-    return Ctx.getAssociativeCOFFSection(Default, KeySym, 0);
+  if (T.isKnownWindowsMSVCEnvironment() || T.isWindowsItaniumEnvironment()) {
+    // If the priority is the default, use .CRT$XCU, possibly associative.
+    if (Priority == 65535)
+      return Ctx.getAssociativeCOFFSection(Default, KeySym, 0);
+
+    // Otherwise, we need to compute a new section name. Low priorities should
+    // run earlier. The linker will sort sections ASCII-betically, and we need a
+    // string that sorts between .CRT$XCA and .CRT$XCU. In the general case, we
+    // make a name like ".CRT$XCT12345", since that runs before .CRT$XCU. Really
+    // low priorities need to sort before 'L', since the CRT uses that
+    // internally, so we use ".CRT$XCA00001" for them.
+    SmallString<24> Name;
+    raw_svector_ostream OS(Name);
+    OS << ".CRT$XC" << (Priority < 200 ? 'A' : 'T') << format("%05u", Priority);
+    MCSectionCOFF *Sec = Ctx.getCOFFSection(
+        Name, COFF::IMAGE_SCN_CNT_INITIALIZED_DATA | COFF::IMAGE_SCN_MEM_READ,
+        SectionKind::getReadOnly());
+    return Ctx.getAssociativeCOFFSection(Sec, KeySym, 0);
+  }
 
   std::string Name = IsCtor ? ".ctors" : ".dtors";
   if (Priority != 65535)

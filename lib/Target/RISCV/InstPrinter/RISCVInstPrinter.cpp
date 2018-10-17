@@ -12,8 +12,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "RISCVInstPrinter.h"
-#include "MCTargetDesc/RISCVBaseInfo.h"
 #include "MCTargetDesc/RISCVMCExpr.h"
+#include "Utils/RISCVBaseInfo.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
@@ -78,10 +78,23 @@ void RISCVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   MO.getExpr()->print(O, &MAI);
 }
 
+void RISCVInstPrinter::printCSRSystemRegister(const MCInst *MI, unsigned OpNo,
+                                              const MCSubtargetInfo &STI,
+                                              raw_ostream &O) {
+  unsigned Imm = MI->getOperand(OpNo).getImm();
+  auto SysReg = RISCVSysReg::lookupSysRegByEncoding(Imm);
+  if (SysReg && SysReg->haveRequiredFeatures(STI.getFeatureBits()))
+    O << SysReg->Name;
+  else
+    O << Imm;
+}
+
 void RISCVInstPrinter::printFenceArg(const MCInst *MI, unsigned OpNo,
                                      const MCSubtargetInfo &STI,
                                      raw_ostream &O) {
   unsigned FenceArg = MI->getOperand(OpNo).getImm();
+  assert (((FenceArg >> 4) == 0) && "Invalid immediate in printFenceArg");
+
   if ((FenceArg & RISCVFenceField::I) != 0)
     O << 'i';
   if ((FenceArg & RISCVFenceField::O) != 0)
@@ -90,6 +103,8 @@ void RISCVInstPrinter::printFenceArg(const MCInst *MI, unsigned OpNo,
     O << 'r';
   if ((FenceArg & RISCVFenceField::W) != 0)
     O << 'w';
+  if (FenceArg == 0)
+    O << "unknown";
 }
 
 void RISCVInstPrinter::printFRMArg(const MCInst *MI, unsigned OpNo,

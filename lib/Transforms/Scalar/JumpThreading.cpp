@@ -25,6 +25,7 @@
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/GlobalsModRef.h"
+#include "llvm/Analysis/GuardUtils.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/Loads.h"
@@ -946,7 +947,7 @@ bool JumpThreadingPass::ComputeValueKnownInPredecessors(
 /// Since we can pick an arbitrary destination, we pick the successor with the
 /// fewest predecessors.  This should reduce the in-degree of the others.
 static unsigned GetBestDestForJumpOnUndef(BasicBlock *BB) {
-  TerminatorInst *BBTerm = BB->getTerminator();
+  Instruction *BBTerm = BB->getTerminator();
   unsigned MinSucc = 0;
   BasicBlock *TestBB = BBTerm->getSuccessor(MinSucc);
   // Compute the successor with the minimum number of predecessors.
@@ -987,7 +988,7 @@ bool JumpThreadingPass::ProcessBlock(BasicBlock *BB) {
   // because now the condition in this block can be threaded through
   // predecessors of our predecessor block.
   if (BasicBlock *SinglePred = BB->getSinglePredecessor()) {
-    const TerminatorInst *TI = SinglePred->getTerminator();
+    const Instruction *TI = SinglePred->getTerminator();
     if (!TI->isExceptionalTerminator() && TI->getNumSuccessors() == 1 &&
         SinglePred != BB && !hasAddressTakenAndUsed(BB)) {
       // If SinglePred was a loop header, BB becomes one.
@@ -1079,7 +1080,7 @@ bool JumpThreadingPass::ProcessBlock(BasicBlock *BB) {
     std::vector<DominatorTree::UpdateType> Updates;
 
     // Fold the branch/switch.
-    TerminatorInst *BBTerm = BB->getTerminator();
+    Instruction *BBTerm = BB->getTerminator();
     Updates.reserve(BBTerm->getNumSuccessors());
     for (unsigned i = 0, e = BBTerm->getNumSuccessors(); i != e; ++i) {
       if (i == BestSucc) continue;
@@ -1548,7 +1549,7 @@ FindMostPopularDest(BasicBlock *BB,
   // successor list.
   if (!SamePopularity.empty()) {
     SamePopularity.push_back(MostPopularDest);
-    TerminatorInst *TI = BB->getTerminator();
+    Instruction *TI = BB->getTerminator();
     for (unsigned i = 0; ; ++i) {
       assert(i != TI->getNumSuccessors() && "Didn't find any successor!");
 
@@ -1668,7 +1669,7 @@ bool JumpThreadingPass::ProcessThreadableEdges(Value *Cond, BasicBlock *BB,
       }
 
       // Finally update the terminator.
-      TerminatorInst *Term = BB->getTerminator();
+      Instruction *Term = BB->getTerminator();
       BranchInst::Create(OnlyDest, Term);
       Term->eraseFromParent();
       DTU->applyUpdates(Updates);
@@ -2005,7 +2006,7 @@ bool JumpThreadingPass::ThreadEdge(BasicBlock *BB,
   // Update the terminator of PredBB to jump to NewBB instead of BB.  This
   // eliminates predecessors from BB, which requires us to simplify any PHI
   // nodes in BB.
-  TerminatorInst *PredTerm = PredBB->getTerminator();
+  Instruction *PredTerm = PredBB->getTerminator();
   for (unsigned i = 0, e = PredTerm->getNumSuccessors(); i != e; ++i)
     if (PredTerm->getSuccessor(i) == BB) {
       BB->removePredecessor(PredBB, true);
@@ -2114,7 +2115,7 @@ BasicBlock *JumpThreadingPass::SplitBlockPreds(BasicBlock *BB,
 }
 
 bool JumpThreadingPass::doesBlockHaveProfileData(BasicBlock *BB) {
-  const TerminatorInst *TI = BB->getTerminator();
+  const Instruction *TI = BB->getTerminator();
   assert(TI->getNumSuccessors() > 1 && "not a split");
 
   MDNode *WeightsNode = TI->getMetadata(LLVMContext::MD_prof);
@@ -2537,7 +2538,7 @@ bool JumpThreadingPass::TryToUnfoldSelectInCurrBB(BasicBlock *BB) {
     if (!SI)
       continue;
     // Expand the select.
-    TerminatorInst *Term =
+    Instruction *Term =
         SplitBlockAndInsertIfThen(SI->getCondition(), SI, false);
     BasicBlock *SplitBB = SI->getParent();
     BasicBlock *NewBB = Term->getParent();
@@ -2607,9 +2608,8 @@ bool JumpThreadingPass::ProcessGuards(BasicBlock *BB) {
 
   if (auto *BI = dyn_cast<BranchInst>(Parent->getTerminator()))
     for (auto &I : *BB)
-      if (match(&I, m_Intrinsic<Intrinsic::experimental_guard>()))
-        if (ThreadGuard(BB, cast<IntrinsicInst>(&I), BI))
-          return true;
+      if (isGuard(&I) && ThreadGuard(BB, cast<IntrinsicInst>(&I), BI))
+        return true;
 
   return false;
 }

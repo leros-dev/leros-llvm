@@ -161,7 +161,8 @@ void TargetLoweringBase::InitLibcalls(const Triple &TT) {
     setLibcallName(RTLIB::FPROUND_F32_F16, "__gnu_f2h_ieee");
   }
 
-  if (TT.isGNUEnvironment() || TT.isOSFuchsia()) {
+  if (TT.isGNUEnvironment() || TT.isOSFuchsia() ||
+      (TT.isAndroid() && !TT.isAndroidVersionLT(9))) {
     setLibcallName(RTLIB::SINCOS_F32, "sincosf");
     setLibcallName(RTLIB::SINCOS_F64, "sincos");
     setLibcallName(RTLIB::SINCOS_F80, "sincosl");
@@ -607,6 +608,7 @@ void TargetLoweringBase::initActions() {
     setOperationAction(ISD::UMIN, VT, Expand);
     setOperationAction(ISD::UMAX, VT, Expand);
     setOperationAction(ISD::ABS, VT, Expand);
+    setOperationAction(ISD::SADDSAT, VT, Expand);
 
     // Overflow operations default to expand
     setOperationAction(ISD::SADDO, VT, Expand);
@@ -666,6 +668,7 @@ void TargetLoweringBase::initActions() {
 
   // These library functions default to expand.
   for (MVT VT : {MVT::f32, MVT::f64, MVT::f128}) {
+    setOperationAction(ISD::FCBRT,      VT, Expand);
     setOperationAction(ISD::FLOG ,      VT, Expand);
     setOperationAction(ISD::FLOG2,      VT, Expand);
     setOperationAction(ISD::FLOG10,     VT, Expand);

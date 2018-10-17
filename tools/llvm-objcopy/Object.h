@@ -10,6 +10,8 @@
 #ifndef LLVM_TOOLS_OBJCOPY_OBJECT_H
 #define LLVM_TOOLS_OBJCOPY_OBJECT_H
 
+#include "Buffer.h"
+#include "CopyConfig.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Twine.h"
@@ -26,9 +28,9 @@
 #include <vector>
 
 namespace llvm {
+enum class DebugCompressionType;
 namespace objcopy {
 
-class Buffer;
 class SectionBase;
 class Section;
 class OwnedDataSection;
@@ -39,6 +41,8 @@ class DynamicRelocationSection;
 class GnuDebugLinkSection;
 class GroupSection;
 class SectionIndexSection;
+class CompressedSection;
+class DecompressedSection;
 class Segment;
 class Object;
 struct Symbol;
@@ -64,15 +68,6 @@ public:
 
 enum ElfType { ELFT_ELF32LE, ELFT_ELF64LE, ELFT_ELF32BE, ELFT_ELF64BE };
 
-// This type keeps track of the machine info for various architectures. This
-// lets us map architecture names to ELF types and the e_machine value of the
-// ELF file.
-struct MachineInfo {
-  uint16_t EMachine;
-  bool Is64Bit;
-  bool IsLittleEndian;
-};
-
 class SectionVisitor {
 public:
   virtual ~SectionVisitor();
@@ -86,6 +81,8 @@ public:
   virtual void visit(const GnuDebugLinkSection &Sec) = 0;
   virtual void visit(const GroupSection &Sec) = 0;
   virtual void visit(const SectionIndexSection &Sec) = 0;
+  virtual void visit(const CompressedSection &Sec) = 0;
+  virtual void visit(const DecompressedSection &Sec) = 0;
 };
 
 class SectionWriter : public SectionVisitor {
@@ -104,6 +101,8 @@ public:
   virtual void visit(const GnuDebugLinkSection &Sec) override = 0;
   virtual void visit(const GroupSection &Sec) override = 0;
   virtual void visit(const SectionIndexSection &Sec) override = 0;
+  virtual void visit(const CompressedSection &Sec) override = 0;
+  virtual void visit(const DecompressedSection &Sec) override = 0;
 
   explicit SectionWriter(Buffer &Buf) : Out(Buf) {}
 };
@@ -122,6 +121,8 @@ public:
   void visit(const GnuDebugLinkSection &Sec) override;
   void visit(const GroupSection &Sec) override;
   void visit(const SectionIndexSection &Sec) override;
+  void visit(const CompressedSection &Sec) override;
+  void visit(const DecompressedSection &Sec) override;
 
   explicit ELFSectionWriter(Buffer &Buf) : SectionWriter(Buf) {}
 };
@@ -139,50 +140,10 @@ public:
   void visit(const GnuDebugLinkSection &Sec) override;
   void visit(const GroupSection &Sec) override;
   void visit(const SectionIndexSection &Sec) override;
+  void visit(const CompressedSection &Sec) override;
+  void visit(const DecompressedSection &Sec) override;
 
   explicit BinarySectionWriter(Buffer &Buf) : SectionWriter(Buf) {}
-};
-
-// The class Buffer abstracts out the common interface of FileOutputBuffer and
-// WritableMemoryBuffer so that the hierarchy of Writers depends on this
-// abstract interface and doesn't depend on a particular implementation.
-// TODO: refactor the buffer classes in LLVM to enable us to use them here
-// directly.
-class Buffer {
-  StringRef Name;
-
-public:
-  virtual ~Buffer();
-  virtual void allocate(size_t Size) = 0;
-  virtual uint8_t *getBufferStart() = 0;
-  virtual Error commit() = 0;
-
-  explicit Buffer(StringRef Name) : Name(Name) {}
-  StringRef getName() const { return Name; }
-};
-
-class FileBuffer : public Buffer {
-  std::unique_ptr<FileOutputBuffer> Buf;
-
-public:
-  void allocate(size_t Size) override;
-  uint8_t *getBufferStart() override;
-  Error commit() override;
-
-  explicit FileBuffer(StringRef FileName) : Buffer(FileName) {}
-};
-
-class MemBuffer : public Buffer {
-  std::unique_ptr<WritableMemoryBuffer> Buf;
-
-public:
-  void allocate(size_t Size) override;
-  uint8_t *getBufferStart() override;
-  Error commit() override;
-
-  explicit MemBuffer(StringRef Name) : Buffer(Name) {}
-
-  std::unique_ptr<WritableMemoryBuffer> releaseMemoryBuffer();
 };
 
 class Writer {
@@ -246,7 +207,7 @@ public:
 
 class SectionBase {
 public:
-  StringRef Name;
+  std::string Name;
   Segment *ParentSegment = nullptr;
   uint64_t HeaderOffset;
   uint64_t OriginalOffset = std::numeric_limits<uint64_t>::max();
@@ -264,6 +225,9 @@ public:
   uint64_t Size = 0;
   uint64_t Type = ELF::SHT_NULL;
   ArrayRef<uint8_t> OriginalData;
+
+  SectionBase() = default;
+  SectionBase(const SectionBase &) = default;
 
   virtual ~SectionBase() = default;
 
@@ -341,13 +305,54 @@ class OwnedDataSection : public SectionBase {
 public:
   OwnedDataSection(StringRef SecName, ArrayRef<uint8_t> Data)
       : Data(std::begin(Data), std::end(Data)) {
-    Name = SecName;
+    Name = SecName.str();
     Type = ELF::SHT_PROGBITS;
     Size = Data.size();
     OriginalOffset = std::numeric_limits<uint64_t>::max();
   }
 
   void accept(SectionVisitor &Sec) const override;
+};
+
+class CompressedSection : public SectionBase {
+  MAKE_SEC_WRITER_FRIEND
+
+  DebugCompressionType CompressionType;
+  uint64_t DecompressedSize;
+  uint64_t DecompressedAlign;
+  SmallVector<char, 128> CompressedData;
+
+public:
+  CompressedSection(const SectionBase &Sec,
+                    DebugCompressionType CompressionType);
+  CompressedSection(ArrayRef<uint8_t> CompressedData, uint64_t DecompressedSize,
+                    uint64_t DecompressedAlign);
+
+  uint64_t getDecompressedSize() const { return DecompressedSize; }
+  uint64_t getDecompressedAlign() const { return DecompressedAlign; }
+
+  void accept(SectionVisitor &Visitor) const override;
+
+  static bool classof(const SectionBase *S) {
+    return (S->Flags & ELF::SHF_COMPRESSED) ||
+           (StringRef(S->Name).startswith(".zdebug"));
+  }
+};
+
+class DecompressedSection : public SectionBase {
+  MAKE_SEC_WRITER_FRIEND
+
+public:
+  explicit DecompressedSection(const CompressedSection &Sec)
+      : SectionBase(Sec) {
+    Size = Sec.getDecompressedSize();
+    Align = Sec.getDecompressedAlign();
+    Flags = (Flags & ~ELF::SHF_COMPRESSED);
+    if (StringRef(Name).startswith(".zdebug"))
+      Name = "." + Name.substr(2);
+  }
+
+  void accept(SectionVisitor &Visitor) const override;
 };
 
 // There are two types of string tables that can exist, dynamic and not dynamic.

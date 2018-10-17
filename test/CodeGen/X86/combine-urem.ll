@@ -62,8 +62,8 @@ define <4 x i32> @combine_vec_urem_by_negone(<4 x i32> %x) {
 define i32 @combine_urem_by_minsigned(i32 %x) {
 ; CHECK-LABEL: combine_urem_by_minsigned:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    andl $2147483647, %edi # imm = 0x7FFFFFFF
 ; CHECK-NEXT:    movl %edi, %eax
+; CHECK-NEXT:    andl $2147483647, %eax # imm = 0x7FFFFFFF
 ; CHECK-NEXT:    retq
   %1 = urem i32 %x, -2147483648
   ret i32 %1
@@ -157,14 +157,11 @@ define <4 x i32> @combine_vec_urem_zero(<4 x i32> %x) {
   ret <4 x i32> %1
 }
 
-; TODO fold (urem x, x) -> 0
+; fold (urem x, x) -> 0
 define i32 @combine_urem_dupe(i32 %x) {
 ; CHECK-LABEL: combine_urem_dupe:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    xorl %edx, %edx
-; CHECK-NEXT:    movl %edi, %eax
-; CHECK-NEXT:    divl %edi
-; CHECK-NEXT:    movl %edx, %eax
+; CHECK-NEXT:    xorl %eax, %eax
 ; CHECK-NEXT:    retq
   %1 = urem i32 %x, %x
   ret i32 %1
@@ -173,45 +170,12 @@ define i32 @combine_urem_dupe(i32 %x) {
 define <4 x i32> @combine_vec_urem_dupe(<4 x i32> %x) {
 ; SSE-LABEL: combine_vec_urem_dupe:
 ; SSE:       # %bb.0:
-; SSE-NEXT:    pextrd $1, %xmm0, %eax
-; SSE-NEXT:    xorl %edx, %edx
-; SSE-NEXT:    divl %eax
-; SSE-NEXT:    movl %edx, %ecx
-; SSE-NEXT:    movd %xmm0, %eax
-; SSE-NEXT:    xorl %edx, %edx
-; SSE-NEXT:    divl %eax
-; SSE-NEXT:    movd %edx, %xmm1
-; SSE-NEXT:    pinsrd $1, %ecx, %xmm1
-; SSE-NEXT:    pextrd $2, %xmm0, %eax
-; SSE-NEXT:    xorl %edx, %edx
-; SSE-NEXT:    divl %eax
-; SSE-NEXT:    pinsrd $2, %edx, %xmm1
-; SSE-NEXT:    pextrd $3, %xmm0, %eax
-; SSE-NEXT:    xorl %edx, %edx
-; SSE-NEXT:    divl %eax
-; SSE-NEXT:    pinsrd $3, %edx, %xmm1
-; SSE-NEXT:    movdqa %xmm1, %xmm0
+; SSE-NEXT:    xorps %xmm0, %xmm0
 ; SSE-NEXT:    retq
 ;
 ; AVX-LABEL: combine_vec_urem_dupe:
 ; AVX:       # %bb.0:
-; AVX-NEXT:    vpextrd $1, %xmm0, %eax
-; AVX-NEXT:    xorl %edx, %edx
-; AVX-NEXT:    divl %eax
-; AVX-NEXT:    movl %edx, %ecx
-; AVX-NEXT:    vmovd %xmm0, %eax
-; AVX-NEXT:    xorl %edx, %edx
-; AVX-NEXT:    divl %eax
-; AVX-NEXT:    vmovd %edx, %xmm1
-; AVX-NEXT:    vpinsrd $1, %ecx, %xmm1, %xmm1
-; AVX-NEXT:    vpextrd $2, %xmm0, %eax
-; AVX-NEXT:    xorl %edx, %edx
-; AVX-NEXT:    divl %eax
-; AVX-NEXT:    vpinsrd $2, %edx, %xmm1, %xmm1
-; AVX-NEXT:    vpextrd $3, %xmm0, %eax
-; AVX-NEXT:    xorl %edx, %edx
-; AVX-NEXT:    divl %eax
-; AVX-NEXT:    vpinsrd $3, %edx, %xmm1, %xmm0
+; AVX-NEXT:    vxorps %xmm0, %xmm0, %xmm0
 ; AVX-NEXT:    retq
   %1 = urem <4 x i32> %x, %x
   ret <4 x i32> %1
@@ -414,4 +378,108 @@ define <4 x i32> @combine_vec_urem_by_shl_pow2b(<4 x i32> %x, <4 x i32> %y) {
   %1 = shl <4 x i32> <i32 1, i32 4, i32 8, i32 16>, %y
   %2 = urem <4 x i32> %x, %1
   ret <4 x i32> %2
+}
+
+define i1 @bool_urem(i1 %x, i1 %y) {
+; CHECK-LABEL: bool_urem:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    andb $1, %sil
+; CHECK-NEXT:    andb $1, %dil
+; CHECK-NEXT:    movzbl %dil, %eax
+; CHECK-NEXT:    # kill: def $eax killed $eax def $ax
+; CHECK-NEXT:    divb %sil
+; CHECK-NEXT:    movzbl %ah, %eax
+; CHECK-NEXT:    # kill: def $al killed $al killed $eax
+; CHECK-NEXT:    retq
+  %r = urem i1 %x, %y
+  ret i1 %r
+}
+
+define <4 x i1> @boolvec_urem(<4 x i1> %x, <4 x i1> %y) {
+; SSE-LABEL: boolvec_urem:
+; SSE:       # %bb.0:
+; SSE-NEXT:    movdqa {{.*#+}} xmm2 = [1,1,1,1]
+; SSE-NEXT:    pand %xmm2, %xmm1
+; SSE-NEXT:    pand %xmm2, %xmm0
+; SSE-NEXT:    pextrd $1, %xmm0, %eax
+; SSE-NEXT:    pextrd $1, %xmm1, %ecx
+; SSE-NEXT:    xorl %edx, %edx
+; SSE-NEXT:    divl %ecx
+; SSE-NEXT:    movl %edx, %ecx
+; SSE-NEXT:    movd %xmm0, %eax
+; SSE-NEXT:    movd %xmm1, %esi
+; SSE-NEXT:    xorl %edx, %edx
+; SSE-NEXT:    divl %esi
+; SSE-NEXT:    movd %edx, %xmm2
+; SSE-NEXT:    pinsrd $1, %ecx, %xmm2
+; SSE-NEXT:    pextrd $2, %xmm0, %eax
+; SSE-NEXT:    pextrd $2, %xmm1, %ecx
+; SSE-NEXT:    xorl %edx, %edx
+; SSE-NEXT:    divl %ecx
+; SSE-NEXT:    pinsrd $2, %edx, %xmm2
+; SSE-NEXT:    pextrd $3, %xmm0, %eax
+; SSE-NEXT:    pextrd $3, %xmm1, %ecx
+; SSE-NEXT:    xorl %edx, %edx
+; SSE-NEXT:    divl %ecx
+; SSE-NEXT:    pinsrd $3, %edx, %xmm2
+; SSE-NEXT:    movdqa %xmm2, %xmm0
+; SSE-NEXT:    retq
+;
+; AVX1-LABEL: boolvec_urem:
+; AVX1:       # %bb.0:
+; AVX1-NEXT:    vmovdqa {{.*#+}} xmm2 = [1,1,1,1]
+; AVX1-NEXT:    vpand %xmm2, %xmm1, %xmm1
+; AVX1-NEXT:    vpand %xmm2, %xmm0, %xmm0
+; AVX1-NEXT:    vpextrd $1, %xmm0, %eax
+; AVX1-NEXT:    vpextrd $1, %xmm1, %ecx
+; AVX1-NEXT:    xorl %edx, %edx
+; AVX1-NEXT:    divl %ecx
+; AVX1-NEXT:    movl %edx, %ecx
+; AVX1-NEXT:    vmovd %xmm0, %eax
+; AVX1-NEXT:    vmovd %xmm1, %esi
+; AVX1-NEXT:    xorl %edx, %edx
+; AVX1-NEXT:    divl %esi
+; AVX1-NEXT:    vmovd %edx, %xmm2
+; AVX1-NEXT:    vpinsrd $1, %ecx, %xmm2, %xmm2
+; AVX1-NEXT:    vpextrd $2, %xmm0, %eax
+; AVX1-NEXT:    vpextrd $2, %xmm1, %ecx
+; AVX1-NEXT:    xorl %edx, %edx
+; AVX1-NEXT:    divl %ecx
+; AVX1-NEXT:    vpinsrd $2, %edx, %xmm2, %xmm2
+; AVX1-NEXT:    vpextrd $3, %xmm0, %eax
+; AVX1-NEXT:    vpextrd $3, %xmm1, %ecx
+; AVX1-NEXT:    xorl %edx, %edx
+; AVX1-NEXT:    divl %ecx
+; AVX1-NEXT:    vpinsrd $3, %edx, %xmm2, %xmm0
+; AVX1-NEXT:    retq
+;
+; AVX2-LABEL: boolvec_urem:
+; AVX2:       # %bb.0:
+; AVX2-NEXT:    vpbroadcastd {{.*#+}} xmm2 = [1,1,1,1]
+; AVX2-NEXT:    vpand %xmm2, %xmm1, %xmm1
+; AVX2-NEXT:    vpand %xmm2, %xmm0, %xmm0
+; AVX2-NEXT:    vpextrd $1, %xmm0, %eax
+; AVX2-NEXT:    vpextrd $1, %xmm1, %ecx
+; AVX2-NEXT:    xorl %edx, %edx
+; AVX2-NEXT:    divl %ecx
+; AVX2-NEXT:    movl %edx, %ecx
+; AVX2-NEXT:    vmovd %xmm0, %eax
+; AVX2-NEXT:    vmovd %xmm1, %esi
+; AVX2-NEXT:    xorl %edx, %edx
+; AVX2-NEXT:    divl %esi
+; AVX2-NEXT:    vmovd %edx, %xmm2
+; AVX2-NEXT:    vpinsrd $1, %ecx, %xmm2, %xmm2
+; AVX2-NEXT:    vpextrd $2, %xmm0, %eax
+; AVX2-NEXT:    vpextrd $2, %xmm1, %ecx
+; AVX2-NEXT:    xorl %edx, %edx
+; AVX2-NEXT:    divl %ecx
+; AVX2-NEXT:    vpinsrd $2, %edx, %xmm2, %xmm2
+; AVX2-NEXT:    vpextrd $3, %xmm0, %eax
+; AVX2-NEXT:    vpextrd $3, %xmm1, %ecx
+; AVX2-NEXT:    xorl %edx, %edx
+; AVX2-NEXT:    divl %ecx
+; AVX2-NEXT:    vpinsrd $3, %edx, %xmm2, %xmm0
+; AVX2-NEXT:    retq
+  %r = urem <4 x i1> %x, %y
+  ret <4 x i1> %r
 }

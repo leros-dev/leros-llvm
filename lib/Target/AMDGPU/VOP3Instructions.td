@@ -17,16 +17,16 @@ class getVOP3ModPat<VOPProfile P, SDPatternOperator node> {
     (VOP3Mods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp));
 
   list<dag> ret3 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT src0),
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT src0),
           (P.Src1VT (VOP3Mods P.Src1VT:$src1, i32:$src1_modifiers)),
           (P.Src2VT (VOP3Mods P.Src2VT:$src2, i32:$src2_modifiers))))];
 
   list<dag> ret2 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT src0),
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT src0),
           (P.Src1VT (VOP3Mods P.Src1VT:$src1, i32:$src1_modifiers))))];
 
   list<dag> ret1 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT src0)))];
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT src0)))];
 
   list<dag> ret = !if(!eq(P.NumSrcArgs, 3), ret3,
                   !if(!eq(P.NumSrcArgs, 2), ret2,
@@ -35,18 +35,18 @@ class getVOP3ModPat<VOPProfile P, SDPatternOperator node> {
 
 class getVOP3PModPat<VOPProfile P, SDPatternOperator node> {
   list<dag> ret3 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT !if(P.HasClamp, (VOP3PMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp),
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT !if(P.HasClamp, (VOP3PMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp),
                                     (VOP3PMods P.Src0VT:$src0, i32:$src0_modifiers))),
           (P.Src1VT (VOP3PMods P.Src1VT:$src1, i32:$src1_modifiers)),
           (P.Src2VT (VOP3PMods P.Src2VT:$src2, i32:$src2_modifiers))))];
 
   list<dag> ret2 = [(set P.DstVT:$vdst,
-    (node !if(P.HasClamp, (P.Src0VT (VOP3PMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp)),
+    (DivergentFragOrOp<node, P>.ret !if(P.HasClamp, (P.Src0VT (VOP3PMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp)),
                           (P.Src0VT (VOP3PMods P.Src0VT:$src0, i32:$src0_modifiers))),
           (P.Src1VT (VOP3PMods P.Src1VT:$src1, i32:$src1_modifiers))))];
 
   list<dag> ret1 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT (VOP3PMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp))))];
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT (VOP3PMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp))))];
 
   list<dag> ret = !if(!eq(P.NumSrcArgs, 3), ret3,
                   !if(!eq(P.NumSrcArgs, 2), ret2,
@@ -55,18 +55,18 @@ class getVOP3PModPat<VOPProfile P, SDPatternOperator node> {
 
 class getVOP3OpSelPat<VOPProfile P, SDPatternOperator node> {
   list<dag> ret3 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT !if(P.HasClamp, (VOP3OpSel0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp),
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT !if(P.HasClamp, (VOP3OpSel0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp),
                                     (VOP3OpSel P.Src0VT:$src0, i32:$src0_modifiers))),
           (P.Src1VT (VOP3OpSel P.Src1VT:$src1, i32:$src1_modifiers)),
           (P.Src2VT (VOP3OpSel P.Src2VT:$src2, i32:$src2_modifiers))))];
 
   list<dag> ret2 = [(set P.DstVT:$vdst,
-    (node !if(P.HasClamp, (P.Src0VT (VOP3OpSel0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp)),
+    (DivergentFragOrOp<node, P>.ret !if(P.HasClamp, (P.Src0VT (VOP3OpSel0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp)),
                           (P.Src0VT (VOP3OpSel P.Src0VT:$src0, i32:$src0_modifiers))),
           (P.Src1VT (VOP3OpSel P.Src1VT:$src1, i32:$src1_modifiers))))];
 
   list<dag> ret1 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT (VOP3OpSel0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp))))];
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT (VOP3OpSel0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp))))];
 
   list<dag> ret = !if(!eq(P.NumSrcArgs, 3), ret3,
                   !if(!eq(P.NumSrcArgs, 2), ret2,
@@ -75,18 +75,18 @@ class getVOP3OpSelPat<VOPProfile P, SDPatternOperator node> {
 
 class getVOP3OpSelModPat<VOPProfile P, SDPatternOperator node> {
   list<dag> ret3 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT !if(P.HasClamp, (VOP3OpSelMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp),
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT !if(P.HasClamp, (VOP3OpSelMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp),
                                     (VOP3OpSelMods P.Src0VT:$src0, i32:$src0_modifiers))),
           (P.Src1VT (VOP3OpSelMods P.Src1VT:$src1, i32:$src1_modifiers)),
           (P.Src2VT (VOP3OpSelMods P.Src2VT:$src2, i32:$src2_modifiers))))];
 
   list<dag> ret2 = [(set P.DstVT:$vdst,
-    (node !if(P.HasClamp, (P.Src0VT (VOP3OpSelMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp)),
+    (DivergentFragOrOp<node, P>.ret !if(P.HasClamp, (P.Src0VT (VOP3OpSelMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp)),
                           (P.Src0VT (VOP3OpSelMods P.Src0VT:$src0, i32:$src0_modifiers))),
           (P.Src1VT (VOP3OpSelMods P.Src1VT:$src1, i32:$src1_modifiers))))];
 
   list<dag> ret1 = [(set P.DstVT:$vdst,
-    (node (P.Src0VT (VOP3OpSelMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp))))];
+    (DivergentFragOrOp<node, P>.ret (P.Src0VT (VOP3OpSelMods0 P.Src0VT:$src0, i32:$src0_modifiers, i1:$clamp))))];
 
   list<dag> ret = !if(!eq(P.NumSrcArgs, 3), ret3,
                   !if(!eq(P.NumSrcArgs, 2), ret2,
@@ -94,9 +94,9 @@ class getVOP3OpSelModPat<VOPProfile P, SDPatternOperator node> {
 }
 
 class getVOP3Pat<VOPProfile P, SDPatternOperator node> {
-  list<dag> ret3 = [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2))];
-  list<dag> ret2 = [(set P.DstVT:$vdst, (node P.Src0VT:$src0, P.Src1VT:$src1))];
-  list<dag> ret1 = [(set P.DstVT:$vdst, (node P.Src0VT:$src0))];
+  list<dag> ret3 = [(set P.DstVT:$vdst, (DivergentFragOrOp<node, P>.ret P.Src0VT:$src0, P.Src1VT:$src1, P.Src2VT:$src2))];
+  list<dag> ret2 = [(set P.DstVT:$vdst, (DivergentFragOrOp<node, P>.ret P.Src0VT:$src0, P.Src1VT:$src1))];
+  list<dag> ret1 = [(set P.DstVT:$vdst, (DivergentFragOrOp<node, P>.ret P.Src0VT:$src0))];
   list<dag> ret = !if(!eq(P.NumSrcArgs, 3), ret3,
                   !if(!eq(P.NumSrcArgs, 2), ret2,
                   ret1));
@@ -185,6 +185,7 @@ class VOP3_Profile<VOPProfile P, VOP3Features Features = VOP3_REGULAR> : VOPProf
                   getAsm64<HasDst, NumSrcArgs, HasIntClamp,
                            HasModifiers, HasOMod, DstVT>.ret,
                   P.Asm64));
+  let NeedPatGen = P.NeedPatGen;
 }
 
 class VOP3b_Profile<ValueType vt> : VOPProfile<[vt, vt, vt, vt]> {
@@ -381,12 +382,12 @@ def V_TRIG_PREOP_F64 : VOP3Inst <"v_trig_preop_f64", VOP3_Profile<VOP_F64_F64_I3
 
 let SchedRW = [Write64Bit] in {
 // These instructions only exist on SI and CI
-let SubtargetPredicate = isSICI in {
-def V_LSHL_B64 : VOP3Inst <"v_lshl_b64", VOP3_Profile<VOP_I64_I64_I32>>;
-def V_LSHR_B64 : VOP3Inst <"v_lshr_b64", VOP3_Profile<VOP_I64_I64_I32>>;
-def V_ASHR_I64 : VOP3Inst <"v_ashr_i64", VOP3_Profile<VOP_I64_I64_I32>>;
+let SubtargetPredicate = isSICI, Predicates = [isSICI] in {
+def V_LSHL_B64 : VOP3Inst <"v_lshl_b64", VOP3_Profile<VOP_PAT_GEN<VOP_I64_I64_I32>>, shl>;
+def V_LSHR_B64 : VOP3Inst <"v_lshr_b64", VOP3_Profile<VOP_PAT_GEN<VOP_I64_I64_I32>>, srl>;
+def V_ASHR_I64 : VOP3Inst <"v_ashr_i64", VOP3_Profile<VOP_PAT_GEN<VOP_I64_I64_I32>>, sra>;
 def V_MULLIT_F32 : VOP3Inst <"v_mullit_f32", VOP3_Profile<VOP_F32_F32_F32_F32>>;
-} // End SubtargetPredicate = isSICI
+} // End SubtargetPredicate = isSICI, Predicates = [isSICI]
 
 let SubtargetPredicate = isVI in {
 def V_LSHLREV_B64 : VOP3Inst <"v_lshlrev_b64", VOP3_Profile<VOP_I64_I32_I64>>;
@@ -394,6 +395,22 @@ def V_LSHRREV_B64 : VOP3Inst <"v_lshrrev_b64", VOP3_Profile<VOP_I64_I32_I64>>;
 def V_ASHRREV_I64 : VOP3Inst <"v_ashrrev_i64", VOP3_Profile<VOP_I64_I32_I64>>;
 } // End SubtargetPredicate = isVI
 } // End SchedRW = [Write64Bit]
+
+let Predicates = [isVI] in {
+def : GCNPat <
+ (getDivergentFrag<shl>.ret i64:$x, i32:$y),
+ (V_LSHLREV_B64 $y, $x)
+>;
+def : AMDGPUPat <
+ (getDivergentFrag<srl>.ret i64:$x, i32:$y),
+ (V_LSHRREV_B64 $y, $x)
+>;
+def : AMDGPUPat <
+ (getDivergentFrag<sra>.ret i64:$x, i32:$y),
+ (V_ASHRREV_I64 $y, $x)
+>;
+}
+
 
 let SubtargetPredicate = isCIVI in {
 
@@ -651,23 +668,23 @@ defm V_MAD_I64_I32      : VOP3be_Real_ci <0x177>;
 let AssemblerPredicates = [isVI], DecoderNamespace = "VI" in {
 
 multiclass VOP3_Real_vi<bits<10> op> {
-  def _vi : VOP3_Real<!cast<VOP3_Pseudo>(NAME), SIEncodingFamily.VI>,
-            VOP3e_vi <op, !cast<VOP3_Pseudo>(NAME).Pfl>;
+  def _vi : VOP3_Real<!cast<VOP_Pseudo>(NAME), SIEncodingFamily.VI>,
+            VOP3e_vi <op, !cast<VOP_Pseudo>(NAME).Pfl>;
 }
 
 multiclass VOP3be_Real_vi<bits<10> op> {
-  def _vi : VOP3_Real<!cast<VOP3_Pseudo>(NAME), SIEncodingFamily.VI>,
-            VOP3be_vi <op, !cast<VOP3_Pseudo>(NAME).Pfl>;
+  def _vi : VOP3_Real<!cast<VOP_Pseudo>(NAME), SIEncodingFamily.VI>,
+            VOP3be_vi <op, !cast<VOP_Pseudo>(NAME).Pfl>;
 }
 
 multiclass VOP3OpSel_Real_gfx9<bits<10> op> {
-  def _vi : VOP3_Real<!cast<VOP3_Pseudo>(NAME), SIEncodingFamily.VI>,
-            VOP3OpSel_gfx9 <op, !cast<VOP3_Pseudo>(NAME).Pfl>;
+  def _vi : VOP3_Real<!cast<VOP_Pseudo>(NAME), SIEncodingFamily.VI>,
+            VOP3OpSel_gfx9 <op, !cast<VOP_Pseudo>(NAME).Pfl>;
 }
 
 multiclass VOP3Interp_Real_vi<bits<10> op> {
-  def _vi : VOP3_Real<!cast<VOP3_Pseudo>(NAME), SIEncodingFamily.VI>,
-            VOP3Interp_vi <op, !cast<VOP3_Pseudo>(NAME).Pfl>;
+  def _vi : VOP3_Real<!cast<VOP_Pseudo>(NAME), SIEncodingFamily.VI>,
+            VOP3Interp_vi <op, !cast<VOP_Pseudo>(NAME).Pfl>;
 }
 
 } // End AssemblerPredicates = [isVI], DecoderNamespace = "VI"
@@ -812,6 +829,9 @@ defm V_MUL_LO_I32       : VOP3_Real_vi <0x285>;
 
 defm V_MUL_HI_U32       : VOP3_Real_vi <0x286>;
 defm V_MUL_HI_I32       : VOP3_Real_vi <0x287>;
+
+defm V_READLANE_B32     : VOP3_Real_vi <0x289>;
+defm V_WRITELANE_B32    : VOP3_Real_vi <0x28a>;
 
 defm V_LSHLREV_B64      : VOP3_Real_vi <0x28f>;
 defm V_LSHRREV_B64      : VOP3_Real_vi <0x290>;

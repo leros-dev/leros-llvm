@@ -256,6 +256,14 @@ namespace ISD {
     /// Same for multiplication.
     SMULO, UMULO,
 
+    /// RESULT = SADDSAT(LHS, RHS) - Perform signed saturation addition on 2
+    /// integers with the same bit width (W). If the true value of LHS + RHS
+    /// exceeds the largest signed value that can be represented by W bits, the
+    /// resulting value is this maximum value. Otherwise, if this value is less
+    /// than the smallest signed value that can be represented by W bits, the
+    /// resulting value is this minimum value.
+    SADDSAT,
+
     /// Simple binary floating point operators.
     FADD, FSUB, FMUL, FDIV, FREM,
 
@@ -550,11 +558,8 @@ namespace ISD {
     /// is often a storage-only type but has native conversions.
     FP16_TO_FP, FP_TO_FP16,
 
-    /// FNEG, FABS, FSQRT, FSIN, FCOS, FPOWI, FPOW,
-    /// FLOG, FLOG2, FLOG10, FEXP, FEXP2,
-    /// FCEIL, FTRUNC, FRINT, FNEARBYINT, FROUND, FFLOOR - Perform various unary
-    /// floating point operations. These are inspired by libm.
-    FNEG, FABS, FSQRT, FSIN, FCOS, FPOWI, FPOW,
+    /// Perform various unary floating-point operations inspired by libm.
+    FNEG, FABS, FSQRT, FCBRT, FSIN, FCOS, FPOWI, FPOW,
     FLOG, FLOG2, FLOG10, FEXP, FEXP2,
     FCEIL, FTRUNC, FRINT, FNEARBYINT, FROUND, FFLOOR,
     /// FMINNUM/FMAXNUM - Perform floating-point minimum or maximum on two
@@ -563,8 +568,9 @@ namespace ISD {
     ///
     /// The return value of (FMINNUM 0.0, -0.0) could be either 0.0 or -0.0.
     FMINNUM, FMAXNUM,
-    /// FMINNAN/FMAXNAN - Behave identically to FMINNUM/FMAXNUM, except that
-    /// when a single input is NaN, NaN is returned.
+    /// FMINNAN/FMAXNAN - NaN-propagating minimum/maximum that also treat -0.0
+    /// as less than 0.0. While FMINNUM/FMAXNUM follow IEEE 754-2008 semantics,
+    /// FMINNAN/FMAXNAN follow IEEE 754-2018 draft semantics.
     FMINNAN, FMAXNAN,
 
     /// FSINCOS - Compute both fsin and fcos as a single operation.
@@ -786,11 +792,20 @@ namespace ISD {
     // Masked load and store - consecutive vector load and store operations
     // with additional mask operand that prevents memory accesses to the
     // masked-off lanes.
+    //
+    // Val, OutChain = MLOAD(BasePtr, Mask, PassThru)
+    // OutChain = MSTORE(Value, BasePtr, Mask)
     MLOAD, MSTORE,
 
     // Masked gather and scatter - load and store operations for a vector of
     // random addresses with additional mask operand that prevents memory
     // accesses to the masked-off lanes.
+    //
+    // Val, OutChain = GATHER(InChain, PassThru, Mask, BasePtr, Index, Scale)
+    // OutChain = SCATTER(InChain, Value, Mask, BasePtr, Index, Scale)
+    //
+    // The Index operand can have more vector elements than the other operands
+    // due to type legalization. The extra elements are ignored.
     MGATHER, MSCATTER,
 
     /// This corresponds to the llvm.lifetime.* intrinsics. The first operand

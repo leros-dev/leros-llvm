@@ -27,6 +27,7 @@ namespace llvm {
 class FunctionPass;
 class ModulePass;
 class OptimizationRemarkEmitter;
+class Comdat;
 
 /// Instrumentation passes often insert conditional checks into entry blocks.
 /// Call this function before splitting the entry block to move instructions
@@ -35,6 +36,16 @@ class OptimizationRemarkEmitter;
 /// block.
 BasicBlock::iterator PrepareToSplitEntryBlock(BasicBlock &BB,
                                               BasicBlock::iterator IP);
+
+// Create a constant for Str so that we can pass it to the run-time lib.
+GlobalVariable *createPrivateGlobalForString(Module &M, StringRef Str,
+                                             bool AllowMerging,
+                                             const char *NamePrefix = "");
+
+// Returns F.getComdat() if it exists.
+// Otherwise creates a new comdat, sets F's comdat, and returns it.
+// Returns nullptr on failure.
+Comdat *GetOrCreateFunctionComdat(Function &F, const std::string &ModuleId);
 
 // Insert GCOV profiling instrumentation
 struct GCOVOptions {
@@ -134,7 +145,8 @@ ModulePass *createAddressSanitizerModulePass(bool CompileKernel = false,
 
 // Insert MemorySanitizer instrumentation (detection of uninitialized reads)
 FunctionPass *createMemorySanitizerPass(int TrackOrigins = 0,
-                                        bool Recover = false);
+                                        bool Recover = false,
+                                        bool EnableKmsan = false);
 
 FunctionPass *createHWAddressSanitizerPass(bool CompileKernel = false,
                                            bool Recover = false);

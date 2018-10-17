@@ -11,7 +11,7 @@ include(HandleLLVMStdlib)
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
-if(CMAKE_LINKER MATCHES "lld-link.exe" OR (WIN32 AND LLVM_USE_LINKER STREQUAL "lld"))
+if(CMAKE_LINKER MATCHES "lld-link\.exe" OR (WIN32 AND LLVM_USE_LINKER STREQUAL "lld") OR LLVM_ENABLE_LLD)
   set(LINKER_IS_LLD_LINK TRUE)
 else()
   set(LINKER_IS_LLD_LINK FALSE)
@@ -23,7 +23,7 @@ string(TOUPPER "${LLVM_ENABLE_LTO}" uppercase_LLVM_ENABLE_LTO)
 # Ninja Job Pool support
 # The following only works with the Ninja generator in CMake >= 3.0.
 set(LLVM_PARALLEL_COMPILE_JOBS "" CACHE STRING
-  "Define the maximum number of concurrent compilation jobs.")
+  "Define the maximum number of concurrent compilation jobs (Ninja only).")
 if(LLVM_PARALLEL_COMPILE_JOBS)
   if(NOT CMAKE_MAKE_PROGRAM MATCHES "ninja")
     message(WARNING "Job pooling is only available with Ninja generators.")
@@ -34,7 +34,7 @@ if(LLVM_PARALLEL_COMPILE_JOBS)
 endif()
 
 set(LLVM_PARALLEL_LINK_JOBS "" CACHE STRING
-  "Define the maximum number of concurrent link jobs.")
+  "Define the maximum number of concurrent link jobs (Ninja only).")
 if(CMAKE_MAKE_PROGRAM MATCHES "ninja")
   if(NOT LLVM_PARALLEL_LINK_JOBS AND uppercase_LLVM_ENABLE_LTO STREQUAL "THIN")
     message(STATUS "ThinLTO provides its own parallel linking - limiting parallel link jobs to 2.")
@@ -585,6 +585,10 @@ if (LLVM_ENABLE_WARNINGS AND (LLVM_COMPILER_IS_GCC_COMPATIBLE OR CLANG_CL))
   check_cxx_compiler_flag("-Wclass-memaccess" CXX_SUPPORTS_CLASS_MEMACCESS_FLAG)
   append_if(CXX_SUPPORTS_CLASS_MEMACCESS_FLAG "-Wno-class-memaccess" CMAKE_CXX_FLAGS)
 
+  # The LLVM libraries have no stable C++ API, so -Wnoexcept-type is not useful.
+  check_cxx_compiler_flag("-Wnoexcept-type" CXX_SUPPORTS_NOEXCEPT_TYPE_FLAG)
+  append_if(CXX_SUPPORTS_NOEXCEPT_TYPE_FLAG "-Wno-noexcept-type" CMAKE_CXX_FLAGS)
+
   # Check if -Wnon-virtual-dtor warns even though the class is marked final.
   # If it does, don't add it. So it won't be added on clang 3.4 and older.
   # This also catches cases when -Wnon-virtual-dtor isn't supported by
@@ -864,12 +868,19 @@ else()
   set(LLVM_ENABLE_PLUGINS ON)
 endif()
 
+# By default we should enable LLVM_ENABLE_IDE only for multi-configuration
+# generators. This option disables optional build system features that make IDEs
+# less usable.
 set(LLVM_ENABLE_IDE_default OFF)
-if (XCODE OR MSVC_IDE OR CMAKE_EXTRA_GENERATOR)
+if (CMAKE_CONFIGURATION_TYPES)
   set(LLVM_ENABLE_IDE_default ON)
 endif()
-option(LLVM_ENABLE_IDE "Generate targets and process sources for use with an IDE"
-    ${LLVM_ENABLE_IDE_default})
+option(LLVM_ENABLE_IDE
+       "Disable optional build system features that cause problems for IDE generators"
+       ${LLVM_ENABLE_IDE_default})
+if (CMAKE_CONFIGURATION_TYPES AND NOT LLVM_ENABLE_IDE)
+  message(WARNING "Disabling LLVM_ENABLE_IDE on multi-configuration generators is not recommended.")
+endif()
 
 function(get_compile_definitions)
   get_directory_property(top_dir_definitions DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS)

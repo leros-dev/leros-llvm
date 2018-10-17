@@ -293,6 +293,10 @@ struct VPTransformState {
     /// of replication, maps the BasicBlock of the last replica created.
     SmallDenseMap<VPBasicBlock *, BasicBlock *> VPBB2IRBB;
 
+    /// Vector of VPBasicBlocks whose terminator instruction needs to be fixed
+    /// up at the end of vector code generation.
+    SmallVector<VPBasicBlock *, 8> VPBBsToFix;
+
     CFGState() = default;
   } CFG;
 
@@ -765,10 +769,14 @@ public:
 class VPInterleaveRecipe : public VPRecipeBase {
 private:
   const InterleaveGroup *IG;
+  std::unique_ptr<VPUser> User;
 
 public:
-  VPInterleaveRecipe(const InterleaveGroup *IG)
-      : VPRecipeBase(VPInterleaveSC), IG(IG) {}
+  VPInterleaveRecipe(const InterleaveGroup *IG, VPValue *Mask)
+      : VPRecipeBase(VPInterleaveSC), IG(IG) {
+    if (Mask) // Create a VPInstruction to register as a user of the mask.
+      User.reset(new VPUser({Mask}));
+  }
   ~VPInterleaveRecipe() override = default;
 
   /// Method to support type inquiry through isa, cast, and dyn_cast.
@@ -1114,6 +1122,9 @@ private:
   /// Holds the VPLoopInfo analysis for this VPlan.
   VPLoopInfo VPLInfo;
 
+  /// Holds the condition bit values built during VPInstruction to VPRecipe transformation.
+  SmallVector<VPValue *, 4> VPCBVs;
+
 public:
   VPlan(VPBlockBase *Entry = nullptr) : Entry(Entry) {}
 
@@ -1124,6 +1135,8 @@ public:
       delete MapEntry.second;
     for (VPValue *Def : VPExternalDefs)
       delete Def;
+    for (VPValue *CBV : VPCBVs)
+      delete CBV;
   }
 
   /// Generate the IR code for this VPlan.
@@ -1146,6 +1159,11 @@ public:
   /// in the pool.
   void addExternalDef(VPValue *VPVal) {
     VPExternalDefs.insert(VPVal);
+  }
+
+  /// Add \p CBV to the vector of condition bit values.
+  void addCBV(VPValue *CBV) {
+    VPCBVs.push_back(CBV);
   }
 
   void addVPValue(Value *V) {

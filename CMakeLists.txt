@@ -287,6 +287,7 @@ set(LLVM_ALL_TARGETS
   PowerPC
   Sparc
   SystemZ
+  WebAssembly
   X86
   XCore
   )
@@ -978,6 +979,27 @@ if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
                              DEPENDS llvm-headers
                              COMPONENT llvm-headers)
   endif()
+
+  # Custom target to install all libraries.
+  add_custom_target(llvm-libraries)
+  set_target_properties(llvm-libraries PROPERTIES FOLDER "Misc")
+
+  if (NOT LLVM_ENABLE_IDE)
+    add_llvm_install_targets(install-llvm-libraries
+                             DEPENDS llvm-libraries
+                             COMPONENT llvm-libraries)
+  endif()
+
+  get_property(LLVM_LIBS GLOBAL PROPERTY LLVM_LIBS)
+  if(LLVM_LIBS)
+    list(REMOVE_DUPLICATES LLVM_LIBS)
+    foreach(lib ${LLVM_LIBS})
+      add_dependencies(llvm-libraries ${lib})
+      if (NOT LLVM_ENABLE_IDE)
+        add_dependencies(install-llvm-libraries install-${lib})
+      endif()
+    endforeach()
+  endif()
 endif()
 
 # This must be at the end of the LLVM root CMakeLists file because it must run
@@ -1026,6 +1048,8 @@ if (LLVM_INCLUDE_BENCHMARKS)
   set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "Don't install benchmark" FORCE)
   set(BENCHMARK_DOWNLOAD_DEPENDENCIES OFF CACHE BOOL "Don't download dependencies" FORCE)
   set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "Disable Google Test in benchmark" FORCE)
+  # Since LLVM requires C++11 it is safe to assume that std::regex is available.
+  set(HAVE_STD_REGEX ON CACHE BOOL "OK" FORCE)
 
   add_subdirectory(utils/benchmark)
   add_subdirectory(benchmarks)

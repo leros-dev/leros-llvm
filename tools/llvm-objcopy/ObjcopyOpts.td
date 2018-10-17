@@ -10,6 +10,10 @@ defm binary_architecture : Eq<"binary-architecture">,
                            HelpText<"Used when transforming an architecture-less format (such as binary) to another format">;
 def B : JoinedOrSeparate<["-"], "B">,
         Alias<binary_architecture>;
+defm target : Eq<"target">,
+              HelpText<"Format of the input and output file">,
+              Values<"binary">;
+def F : JoinedOrSeparate<[ "-" ], "F">, Alias<target>;
 defm input_target : Eq<"input-target">,
                     HelpText<"Format of the input file">,
                     Values<"binary">;
@@ -17,6 +21,14 @@ def I : JoinedOrSeparate<[ "-" ], "I">, Alias<input_target>;
 defm output_target : Eq<"output-target">,
                      HelpText<"Format of the output file">,
                      Values<"binary">;
+def compress_debug_sections : Flag<["--", "-"], "compress-debug-sections">;
+def compress_debug_sections_eq : Joined<["--", "-"], "compress-debug-sections=">,
+                                 MetaVarName<"[ zlib | zlib-gnu ]">,
+                                 HelpText<"Compress DWARF debug sections using "
+                                          "specified style. Supported styles: "
+                                          "'zlib-gnu' and 'zlib'">;
+def decompress_debug_sections : Flag<["-", "--"], "decompress-debug-sections">,
+                                HelpText<"Decompress DWARF debug sections.">;
 def O : JoinedOrSeparate<["-"], "O">,
         Alias<output_target>;
 defm split_dwo : Eq<"split-dwo">,
@@ -59,6 +71,8 @@ defm add_section : Eq<"add-section">,
                    HelpText<"Make a section named <section> with the contents of <file>.">;
 def strip_all : Flag<["-", "--"], "strip-all">,
                 HelpText<"Remove non-allocated sections other than .gnu.warning* sections">;
+def S : Flag<["-"], "S">,
+        Alias<strip_all>;
 def strip_all_gnu : Flag<["-", "--"], "strip-all-gnu">,
                     HelpText<"Compaitable with GNU objcopy's --strip-all">;
 def strip_debug : Flag<["-", "--"], "strip-debug">,
@@ -98,6 +112,9 @@ defm keep_global_symbols
 	  "contains one symbol per line and may contain comments beginning "
 	  "with '#'. Leading and trailing whitespace is stripped from each "
 	  "line. May be repeated to read symbols from many files.">;
+
+def version : Flag<[ "-", "--" ], "version">,
+              HelpText<"Print the version and exit.">;
 
 defm weaken_symbol : Eq<"weaken-symbol">,
                        MetaVarName<"symbol">,
