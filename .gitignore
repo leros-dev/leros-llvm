@@ -56,7 +56,7 @@ tools/clang
 # LLDB, which is tracked independently.
 tools/lldb
 # lld, which is tracked independently.
-tools/lld
+// tools/lld
 # llgo, which is tracked independently.
 tools/llgo
 # Polly, which is tracked independently.
