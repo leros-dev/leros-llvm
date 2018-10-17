@@ -141,7 +141,7 @@ def BYTE3 : SDNodeXForm<imm, [{
 //===----------------------------------------------------------------------===//
     // Instructions with dependency: Acc -> (Acc, Reg)
     class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr>
-        : LerosImmInst<opcode, (outs), (ins GPR:$r),
+        : LerosRegInst<opcode, (outs), (ins GPR:$r),
             opcodestr, "$r", []>;
 
     // Instructions with dependency: Acc -> (Acc, Imm)
@@ -151,12 +151,12 @@ def BYTE3 : SDNodeXForm<imm, [{
 
     // Instructions with dependency: Reg -> (Acc)
     class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
-        : LerosImmInst<opcode, (outs GPR:$r), (ins),
+        : LerosRegInst<opcode, (outs GPR:$r), (ins),
             opcodestr, "$r", []>;
     
     // Instructions with dependency: Acc -> (reg)
     class INSTR_AccReg<LerosImmRegOpcode opcode, string opcodestr>
-        : LerosImmInst<opcode, (outs), (ins GPR:$r),
+        : LerosRegInst<opcode, (outs), (ins GPR:$r),
             opcodestr, "$r", []>;
     
     // Instructions with dependency: Acc -> (imm)
