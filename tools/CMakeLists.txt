@@ -45,6 +45,7 @@ add_llvm_tool_subdirectory(llvm-profdata)
 add_llvm_external_project(clang)
 add_llvm_external_project(llgo)
 add_llvm_external_project(lld)
+add_llvm_external_project(leros-lld)
 add_llvm_external_project(lldb)
 
 # Automatically add remaining sub-directories containing a 'CMakeLists.txt'
