@@ -132,6 +132,13 @@ StringRef llvm::object::getELFRelocationTypeName(uint32_t Machine,
       break;
     }
     break;
+  case ELF::EM_LEROS:
+    switch (Type) {
+#include "llvm/BinaryFormat/ELFRelocs/Leros.def"
+    default:
+      break;
+    }
+    break;
   case ELF::EM_BPF:
     switch (Type) {
 #include "llvm/BinaryFormat/ELFRelocs/BPF.def"
@@ -304,12 +311,12 @@ ELFFile<ELFT>::decode_relrs(Elf_Relr_Range relrs) const {
 
   // Number of bits used for the relocation offsets bitmap.
   // These many relative relocations can be encoded in a single entry.
-  const size_t NBits = 8*WordSize - 1;
+  const size_t NBits = 8 * WordSize - 1;
 
   Word Base = 0;
   for (const Elf_Relr &R : relrs) {
     Word Entry = R;
-    if ((Entry&1) == 0) {
+    if ((Entry & 1) == 0) {
       // Even entry: encodes the offset for next relocation.
       Rela.r_offset = Entry;
       Relocs.push_back(Rela);
@@ -322,7 +329,7 @@ ELFFile<ELFT>::decode_relrs(Elf_Relr_Range relrs) const {
     Word Offset = Base;
     while (Entry != 0) {
       Entry >>= 1;
-      if ((Entry&1) != 0) {
+      if ((Entry & 1) != 0) {
         Rela.r_offset = Offset;
         Relocs.push_back(Rela);
       }
@@ -378,7 +385,8 @@ ELFFile<ELFT>::android_relas(const Elf_Shdr *Sec) const {
 
     uint64_t GroupFlags = ReadSLEB();
     bool GroupedByInfo = GroupFlags & ELF::RELOCATION_GROUPED_BY_INFO_FLAG;
-    bool GroupedByOffsetDelta = GroupFlags & ELF::RELOCATION_GROUPED_BY_OFFSET_DELTA_FLAG;
+    bool GroupedByOffsetDelta =
+        GroupFlags & ELF::RELOCATION_GROUPED_BY_OFFSET_DELTA_FLAG;
     bool GroupedByAddend = GroupFlags & ELF::RELOCATION_GROUPED_BY_ADDEND_FLAG;
     bool GroupHasAddend = GroupFlags & ELF::RELOCATION_GROUP_HAS_ADDEND_FLAG;
 

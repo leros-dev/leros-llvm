@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "MCTargetDesc/LerosFixupKinds.h"
 #include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "memory"
 #include "llvm/MC/MCELFObjectWriter.h"
@@ -27,23 +28,39 @@ public:
   // section plus offset.
   bool needsRelocateWithSymbol(const MCSymbol &Sym,
                                unsigned Type) const override {
-    // TODO: this is very conservative, update once RISC-V psABI requirements
-    //       are clarified.
+
     return true;
   }
 
   unsigned getRelocType(MCContext &Ctx, const MCValue &Target,
-                        const MCFixup &Fixup, bool IsPCRel) const override {
-    return false;
-  }
+                        const MCFixup &Fixup, bool IsPCRel) const override;
 };
-}
+} // namespace
 
 LerosELFObjectWriter::LerosELFObjectWriter(uint8_t OSABI, bool Is64Bit)
-    : MCELFObjectTargetWriter(Is64Bit, OSABI, ELF::EM_NONE,
+    : MCELFObjectTargetWriter(Is64Bit, OSABI, ELF::EM_LEROS,
                               /*HasRelocationAddend*/ true) {}
 
 LerosELFObjectWriter::~LerosELFObjectWriter() {}
+
+unsigned LerosELFObjectWriter::getRelocType(MCContext &Ctx,
+                                            const MCValue &Target,
+                                            const MCFixup &Fixup,
+                                            bool IsPCRel) const {
+  // Determine the type of the relocation
+  switch ((unsigned)Fixup.getKind()) {
+  default:
+    llvm_unreachable("invalid fixup kind!");
+  case Leros::fixup_leros_b0:
+    return ELF::R_LEROS_BYTE0;
+  case Leros::fixup_leros_b1:
+    return ELF::R_LEROS_BYTE1;
+  case Leros::fixup_leros_b2:
+    return ELF::R_LEROS_BYTE2;
+  case Leros::fixup_leros_b3:
+    return ELF::R_LEROS_BYTE3;
+  }
+}
 
 std::unique_ptr<MCObjectTargetWriter>
 llvm::createLerosELFObjectWriter(uint8_t OSABI, bool Is64Bit) {

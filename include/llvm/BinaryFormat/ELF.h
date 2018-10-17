@@ -616,6 +616,11 @@ enum {
 #include "ELFRelocs/Lanai.def"
 };
 
+// ELF Relocation type for Lanai.
+enum {
+#include "ELFRelocs/Leros.def"
+};
+
 // RISCV Specific e_flags
 enum : unsigned {
   EF_RISCV_RVC = 0x0001,
