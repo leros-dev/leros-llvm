@@ -352,6 +352,7 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
     default: {
       // Full word load, just store the value
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      break;
     }
     case LEROSIF::Unsigned8BitLoad: {
       // Mask the lower byte
