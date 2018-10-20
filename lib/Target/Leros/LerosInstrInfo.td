@@ -86,12 +86,24 @@ def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
   let ParserMatchClass = SImmAsmOperand<8>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<8>";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isInt<8>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
 }
 
 def bb_simm8 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<8>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<8>";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isInt<8>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
 }
 
 // Standalone (codegen-only) immleaf patterns - used for loading constants greater than
@@ -223,7 +235,9 @@ multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
 }
 
 // Instruction declarations
+let isReMaterializable = 1 in
 defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add\t",    add>;
+
 defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub\t",    sub>;
 defm AND  : INSTR_ImmReg<OPC_AND     ,    "and\t",    and>;
 defm OR   : INSTR_ImmReg<OPC_OR      ,    "or\t",     or>;
@@ -442,6 +456,8 @@ def AddrFI : ComplexPattern<iPTR, 1, "SelectAddrFI", [frameindex], []>;
 /// FrameIndex calculations
 def : Pat<(add (i32 AddrFI:$Rs), simm8:$imm8),
           (ADD_RI_PSEUDO (i32 AddrFI:$Rs), simm8:$imm8)>;
+def : Pat<(IsOrAdd (i32 AddrFI:$Rs), simm8:$imm8),
+          (ADD_RI_PSEUDO (i32 AddrFI:$Rs), simm8:$imm8)>;
 
 //  ----------- SELECT pseudo instruction  -----------
 // will be expanded in EmitInstrWithCustomInserter
@@ -461,8 +477,10 @@ multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
             (Inst GPR:$rs1, simm8:$imm8)>;
   def : Pat<(LoadOp (add AddrFI:$rs1, simm8:$imm8)),
             (Inst AddrFI:$rs1, simm8:$imm8)>;
-  def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
-  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0)>;
+  def : Pat<(LoadOp GPR:$rs1), 
+            (Inst GPR:$rs1, 0)>;
+  def : Pat<(LoadOp AddrFI:$rs1), 
+            (Inst AddrFI:$rs1, 0)>;
   def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm8:$imm8)),
             (Inst AddrFI:$rs1, simm8:$imm8)>;
 }
@@ -478,8 +496,10 @@ defm : LdPat<zextloadi16, LOAD_U8_M_PSEUDO>;
 
 // Stores
 multiclass StPat<PatFrag StoreOp> {
-  def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), (STORE_M_PSEUDO GPR:$rs2, GPR:$rs1, 0)>;
-  def : Pat<(StoreOp GPR:$rs2, AddrFI:$rs1), (STORE_M_PSEUDO GPR:$rs2, AddrFI:$rs1, 0)>;
+  def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), 
+            (STORE_M_PSEUDO GPR:$rs2, GPR:$rs1, 0)>;
+  def : Pat<(StoreOp GPR:$rs2, AddrFI:$rs1), 
+            (STORE_M_PSEUDO GPR:$rs2, AddrFI:$rs1, 0)>;
   def : Pat<(StoreOp GPR:$rs2, (add GPR:$rs1, simm8:$imm8)),
             (STORE_M_PSEUDO GPR:$rs2, GPR:$rs1, simm8:$imm8)>;
   def : Pat<(StoreOp GPR:$rs2, (add AddrFI:$rs1, simm8:$imm8)),
