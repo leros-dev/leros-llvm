@@ -358,6 +358,12 @@ def ADJCALLSTACKUP   : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_N
                                   [(Callseq_end timm:$amt1, timm:$amt2)]>;
 }
 
+/// Predicates
+
+def IsOrAdd: PatFrag<(ops node:$A, node:$B), (or node:$A, node:$B), [{
+  return isOrEquivalentToAdd(N);
+}]>;
+
 //===----------------------------------------------------------------------===//
 // Immediate patterns
 //===----------------------------------------------------------------------===//
@@ -458,27 +464,31 @@ def Select_GPR_Using_CC_GPR : SelectCC_rrr<GPR, GPR>;
 //  ----------- Memory load/store patterns -----------
 
 // Stores
-multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst, RegisterClass StTy> {
-  def : Pat<(StoreOp StTy:$rs2, GPR:$rs1), (Inst StTy:$rs2, GPR:$rs1, 0)>;
-  def : Pat<(StoreOp StTy:$rs2, AddrFI:$rs1), (Inst StTy:$rs2, AddrFI:$rs1, 0)>;
-  def : Pat<(StoreOp StTy:$rs2, (add GPR:$rs1, simm8:$imm8)),
-            (Inst StTy:$rs2, GPR:$rs1, simm8:$imm8)>;
-  def : Pat<(StoreOp StTy:$rs2, (add AddrFI:$rs1, simm8:$imm8)),
-            (Inst StTy:$rs2, AddrFI:$rs1, simm8:$imm8)>;
+multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst> {
+  def : Pat<(StoreOp GPR:$rs2, (add GPR:$rs1, simm8:$imm8)), 
+            (Inst GPR:$rs2, GPR:$rs1, simm8:$imm8)>;
+  def : Pat<(StoreOp GPR:$rs2, (add AddrFI:$rs1, simm8:$imm8)),
+            (Inst GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
+  def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), (Inst GPR:$rs2, GPR:$rs1, 0)>;
+  def : Pat<(StoreOp GPR:$rs2, AddrFI:$rs1), (Inst GPR:$rs2, AddrFI:$rs1, 0)>;
+  def : Pat<(StoreOp GPR:$rs2, (IsOrAdd AddrFI:$rs1, simm8:$imm8)),
+            (Inst GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
 }
 
 
-defm : StPat<store, STORE_M_PSEUDO, GPR>;
-defm : StPat<truncstorei8, STORE_M_PSEUDO, GPR>;
-defm : StPat<truncstorei16, STORE_M_PSEUDO, GPR>;
+defm : StPat<store, STORE_M_PSEUDO>;
+defm : StPat<truncstorei8, STORE_M_PSEUDO>;
+defm : StPat<truncstorei16, STORE_M_PSEUDO>;
 
 // Loads
 multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
-  def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
-  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0)>;
   def : Pat<(LoadOp (add GPR:$rs1, simm8:$imm8)),
             (Inst GPR:$rs1, simm8:$imm8)>;
   def : Pat<(LoadOp (add AddrFI:$rs1, simm8:$imm8)),
+            (Inst AddrFI:$rs1, simm8:$imm8)>;
+  def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
+  def : Pat<(LoadOp AddrFI:$rs1), (Inst AddrFI:$rs1, 0)>;
+  def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm8:$imm8)),
             (Inst AddrFI:$rs1, simm8:$imm8)>;
 }
 
