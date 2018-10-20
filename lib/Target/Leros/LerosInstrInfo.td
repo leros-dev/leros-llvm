@@ -350,14 +350,6 @@ def : Pat<(Call texternalsym:$func), (PseudoCALL texternalsym:$func)>;
 def MOV : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA,
     [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
 
-// Stack pointer adjustments
-let Defs = [SP], Uses = [SP], hasSideEffects = 1 in {
-def ADJCALLSTACKDOWN : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
-                                  [(Callseq_start timm:$amt1, timm:$amt2)]>;
-def ADJCALLSTACKUP   : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
-                                  [(Callseq_end timm:$amt1, timm:$amt2)]>;
-}
-
 /// Predicates
 
 def IsOrAdd: PatFrag<(ops node:$A, node:$B), (or node:$A, node:$B), [{
@@ -463,23 +455,6 @@ def Select_GPR_Using_CC_GPR : SelectCC_rrr<GPR, GPR>;
 
 //  ----------- Memory load/store patterns -----------
 
-// Stores
-multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst> {
-  def : Pat<(StoreOp GPR:$rs2, (add GPR:$rs1, simm8:$imm8)), 
-            (Inst GPR:$rs2, GPR:$rs1, simm8:$imm8)>;
-  def : Pat<(StoreOp GPR:$rs2, (add AddrFI:$rs1, simm8:$imm8)),
-            (Inst GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
-  def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), (Inst GPR:$rs2, GPR:$rs1, 0)>;
-  def : Pat<(StoreOp GPR:$rs2, AddrFI:$rs1), (Inst GPR:$rs2, AddrFI:$rs1, 0)>;
-  def : Pat<(StoreOp GPR:$rs2, (IsOrAdd AddrFI:$rs1, simm8:$imm8)),
-            (Inst GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
-}
-
-
-defm : StPat<store, STORE_M_PSEUDO>;
-defm : StPat<truncstorei8, STORE_M_PSEUDO>;
-defm : StPat<truncstorei16, STORE_M_PSEUDO>;
-
 // Loads
 multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
   def : Pat<(LoadOp (add GPR:$rs1, simm8:$imm8)),
@@ -500,3 +475,29 @@ defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO>;
 defm : LdPat<extloadi16, LOAD_S16_M_PSEUDO>;
 defm : LdPat<zextloadi8, LOAD_U8_M_PSEUDO>;
 defm : LdPat<zextloadi16, LOAD_U8_M_PSEUDO>;
+
+// Stores
+multiclass StPat<PatFrag StoreOp> {
+  def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), (STORE_M_PSEUDO GPR:$rs2, GPR:$rs1, 0)>;
+  def : Pat<(StoreOp GPR:$rs2, AddrFI:$rs1), (STORE_M_PSEUDO GPR:$rs2, AddrFI:$rs1, 0)>;
+  def : Pat<(StoreOp GPR:$rs2, (add GPR:$rs1, simm8:$imm8)),
+            (STORE_M_PSEUDO GPR:$rs2, GPR:$rs1, simm8:$imm8)>;
+  def : Pat<(StoreOp GPR:$rs2, (add AddrFI:$rs1, simm8:$imm8)),
+            (STORE_M_PSEUDO GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
+  def : Pat<(StoreOp GPR:$rs2, (IsOrAdd AddrFI:$rs1, simm8:$imm8)),
+            (STORE_M_PSEUDO GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
+}
+
+
+defm : StPat<store>;
+defm : StPat<truncstorei8>;
+defm : StPat<truncstorei16>;
+
+
+// Stack pointer adjustments
+let Defs = [SP], Uses = [SP] in {
+def ADJCALLSTACKDOWN : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
+                                  [(Callseq_start timm:$amt1, timm:$amt2)]>;
+def ADJCALLSTACKUP   : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
+                                  [(Callseq_end timm:$amt1, timm:$amt2)]>;
+}
