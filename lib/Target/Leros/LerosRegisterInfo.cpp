@@ -57,6 +57,7 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   MachineInstr &MI = *II;
   MachineFunction &MF = *MI.getParent()->getParent();
+  MachineRegisterInfo &MRI = MF.getRegInfo();
   const LerosInstrInfo *TII = MF.getSubtarget<LerosSubtarget>().getInstrInfo();
   DebugLoc DL = MI.getDebugLoc();
 
@@ -72,20 +73,24 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   }
 
   MachineBasicBlock &MBB = *MI.getParent();
+  bool FrameRegIsKill = false;
 
-  assert(isInt<32>(Offset) && "Int32 expected");
-  // Move the offset into a scratch register which will be used by
-  // loadaddr
-  unsigned ScratchReg =
-      RS->getRegsAvailable(&Leros::GPRNoReserveRegClass).find_first();
-  TII->movImm32(MBB, II, DL, ScratchReg, Offset);
-  BuildMI(MBB, II, DL, TII->get(Leros::ADD_RR_PSEUDO), ScratchReg)
-      .addReg(FrameReg)
-      .addReg(ScratchReg, RegState::Kill);
-  Offset = 0;
-  bool ScratchRegIsKill = true;
+  if (!isInt<8>(Offset)) {
+    assert(isInt<32>(Offset) && "Int32 expected");
+    // The offset won't fit in an immediate, so use a scratch register instead
+    // Modify Offset and FrameReg appropriately
+    unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    TII->movImm32(MBB, II, DL, ScratchReg, Offset);
+    BuildMI(MBB, II, DL, TII->get(Leros::ADD_RR_PSEUDO), ScratchReg)
+        .addReg(FrameReg)
+        .addReg(ScratchReg, RegState::Kill);
+    Offset = 0;
+    FrameReg = ScratchReg;
+    FrameRegIsKill = true;
+  }
+
   MI.getOperand(FIOperandNum)
-      .ChangeToRegister(ScratchReg, false, false, ScratchRegIsKill);
+      .ChangeToRegister(FrameReg, false, false, FrameRegIsKill);
   MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
 }
 
