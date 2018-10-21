@@ -377,6 +377,9 @@ def IsOrAdd: PatFrag<(ops node:$A, node:$B), (or node:$A, node:$B), [{
 // We want to be able to capture immediate loading patterns through the target
 // description files. The following sequence minimizes the required loads and stores
 // which are selected for an immediate
+def : Pat<(simm8:$imm), 
+        (LOAD_RI_PSEUDO imm:$imm)>;
+
 def : Pat<(simm16:$imm), 
     (LOADH_RI_PSEUDO 
         (LOAD_RI_PSEUDO (BYTE0 imm:$imm)), 
