@@ -76,12 +76,16 @@ public:
   }
 
   bool addInstSelector() override;
+  void addPreEmitPass() override;
 };
 } // namespace
 
 TargetPassConfig *LerosTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new LerosPassConfig(*this, PM);
 }
+
+void LerosPassConfig::addPreEmitPass() { addPass(createLerosUseAccumulatorPass()); }
+
 
 bool LerosPassConfig::addInstSelector() {
   addPass(createLerosISelDag(getLerosTargetMachine()));

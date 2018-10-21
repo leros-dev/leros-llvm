@@ -21,6 +21,7 @@ add_llvm_target(LerosCodeGen
  LerosMCInstLower.cpp
  LerosTargetObjectFile.cpp
  LerosISelLowering.cpp
+ LerosUseAccumulator.cpp
 )
 
 add_subdirectory(InstPrinter)

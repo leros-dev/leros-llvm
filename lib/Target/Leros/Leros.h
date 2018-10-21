@@ -32,6 +32,9 @@ bool LowerLerosMachineOperandToMCOperand(const MachineOperand &MO,
                                          MCOperand &MCOp, const AsmPrinter &AP);
 
 FunctionPass *createLerosISelDag(LerosTargetMachine &TM);
+
+FunctionPass *createLerosUseAccumulatorPass();
+void initializeLerosUseAccumulatorPass(PassRegistry &);
 }
 
 #endif
