@@ -48,6 +48,7 @@ public:
 private:
   bool removeRedundantLoadMBB(MachineBasicBlock &MBB);
   bool removeRedundantStoreMBB(MachineBasicBlock &MBB);
+  bool removeRedundantLDADDR(MachineBasicBlock &MBB);
 
   bool removeRedundantLoad(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MBBI,
@@ -62,6 +63,7 @@ bool LerosUseAccumulator::runOnMachineFunction(MachineFunction &MF) {
   for (auto &MBB : MF) {
     Modified |= removeRedundantLoadMBB(MBB);
     Modified |= removeRedundantStoreMBB(MBB);
+    Modified |= removeRedundantLDADDR(MBB);
   }
   return Modified;
 }
@@ -111,6 +113,44 @@ bool LerosUseAccumulator::removeRedundantStoreMBB(MachineBasicBlock &MBB) {
     }
     MBBI = NMBBI;
     index++;
+  }
+
+  return Modified;
+} // namespace
+
+bool LerosUseAccumulator::removeRedundantLDADDR(MachineBasicBlock &MBB) {
+  bool Modified = false;
+
+  int currentAddressReg = -1;
+  bool modifiedRegInAdressReg = false;
+
+  MachineBasicBlock::iterator MBBI = MBB.begin(), E = MBB.end();
+  while (MBBI != E) {
+    bool eraseMBBI = false;
+    if (MBBI->getOpcode() == Leros::LDADDR) {
+      const int &reg = static_cast<int>(MBBI->getOperand(0).getReg());
+      if (reg == currentAddressReg && !modifiedRegInAdressReg) {
+        // We are loading the same register as is already present in the address
+        // register. The register has not been modified since the last ldaddr,
+        // so we can safely remove this instruction
+        eraseMBBI = true;
+      }
+      currentAddressReg = reg;
+    } else if (MBBI->getOpcode() == Leros::STORE_R) {
+      const int &reg = static_cast<int>(MBBI->getOperand(0).getReg());
+      if (reg == currentAddressReg) {
+        // Modified the register which is currently present
+        // in the adress register. A subsequent ldaddr should be accepted
+        modifiedRegInAdressReg = true;
+      }
+    }
+    // Iterate to next block
+    MachineBasicBlock::iterator NMBBI = std::next(MBBI);
+    if (eraseMBBI) {
+      MBBI->eraseFromParent();
+      Modified |= true;
+    }
+    MBBI = NMBBI;
   }
 
   return Modified;
