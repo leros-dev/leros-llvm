@@ -355,15 +355,14 @@ namespace llvm {
       // Bit field extract.
       BEXTR,
 
+      // Zero High Bits Starting with Specified Bit Position.
+      BZHI,
+
       // LOW, HI, FLAGS = umul LHS, RHS.
       UMUL,
 
       // 8-bit SMUL/UMUL - AX, FLAGS = smul8/umul8 AL, RHS.
       SMUL8, UMUL8,
-
-      // 8-bit divrem that zero-extend the high result (AH).
-      UDIVREM8_ZEXT_HREG,
-      SDIVREM8_SEXT_HREG,
 
       // X86-specific multiply by immediate.
       MUL_IMM,
@@ -940,6 +939,8 @@ namespace llvm {
     /// add a register and the immediate without having to materialize
     /// the immediate into a register.
     bool isLegalAddImmediate(int64_t Imm) const override;
+
+    bool isLegalStoreImmediate(int64_t Imm) const override;
 
     /// Return the cost of the scaling factor used in the addressing
     /// mode represented by AM for this target, for a load/store

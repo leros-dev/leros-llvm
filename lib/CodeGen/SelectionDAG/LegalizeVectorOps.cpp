@@ -130,6 +130,7 @@ class VectorLegalizer {
   SDValue ExpandBITREVERSE(SDValue Op);
   SDValue ExpandCTLZ(SDValue Op);
   SDValue ExpandCTTZ(SDValue Op);
+  SDValue ExpandFMINNUM_FMAXNUM(SDValue Op);
   SDValue ExpandStrictFPOp(SDValue Op);
 
   /// Implements vector promotion.
@@ -353,6 +354,8 @@ SDValue VectorLegalizer::LegalizeOp(SDValue Op) {
   case ISD::FABS:
   case ISD::FMINNUM:
   case ISD::FMAXNUM:
+  case ISD::FMINNUM_IEEE:
+  case ISD::FMAXNUM_IEEE:
   case ISD::FMINNAN:
   case ISD::FMAXNAN:
   case ISD::FCOPYSIGN:
@@ -387,6 +390,7 @@ SDValue VectorLegalizer::LegalizeOp(SDValue Op) {
   case ISD::UMUL_LOHI:
   case ISD::FCANONICALIZE:
   case ISD::SADDSAT:
+  case ISD::UADDSAT:
     Action = TLI.getOperationAction(Node->getOpcode(), Node->getValueType(0));
     break;
   case ISD::FP_ROUND_INREG:
@@ -721,6 +725,9 @@ SDValue VectorLegalizer::Expand(SDValue Op) {
   case ISD::CTTZ:
   case ISD::CTTZ_ZERO_UNDEF:
     return ExpandCTTZ(Op);
+  case ISD::FMINNUM:
+  case ISD::FMAXNUM:
+    return ExpandFMINNUM_FMAXNUM(Op);
   case ISD::STRICT_FADD:
   case ISD::STRICT_FSUB:
   case ISD::STRICT_FMUL:
@@ -1074,49 +1081,28 @@ SDValue VectorLegalizer::ExpandFSUB(SDValue Op) {
 }
 
 SDValue VectorLegalizer::ExpandCTLZ(SDValue Op) {
-  EVT VT = Op.getValueType();
-  unsigned NumBitsPerElt = VT.getScalarSizeInBits();
-
-  // If the non-ZERO_UNDEF version is supported we can use that instead.
-  if (Op.getOpcode() == ISD::CTLZ_ZERO_UNDEF &&
-      TLI.isOperationLegalOrCustom(ISD::CTLZ, VT)) {
-    SDLoc DL(Op);
-    return DAG.getNode(ISD::CTLZ, DL, VT, Op.getOperand(0));
-  }
-
-  // If we have the appropriate vector bit operations, it is better to use them
-  // than unrolling and expanding each component.
-  if (isPowerOf2_32(NumBitsPerElt) &&
-      TLI.isOperationLegalOrCustom(ISD::CTPOP, VT) &&
-      TLI.isOperationLegalOrCustom(ISD::SRL, VT) &&
-      TLI.isOperationLegalOrCustomOrPromote(ISD::OR, VT))
-    return Op;
+  // Attempt to expand using TargetLowering.
+  SDValue Result;
+  if (TLI.expandCTLZ(Op.getNode(), Result, DAG))
+    return Result;
 
   // Otherwise go ahead and unroll.
   return DAG.UnrollVectorOp(Op.getNode());
 }
 
 SDValue VectorLegalizer::ExpandCTTZ(SDValue Op) {
-  EVT VT = Op.getValueType();
-  unsigned NumBitsPerElt = VT.getScalarSizeInBits();
-
-  // If the non-ZERO_UNDEF version is supported we can use that instead.
-  if (TLI.isOperationLegalOrCustom(ISD::CTTZ, VT)) {
-    SDLoc DL(Op);
-    return DAG.getNode(ISD::CTTZ, DL, VT, Op.getOperand(0));
-  }
-
-  // If we have the appropriate vector bit operations, it is better to use them
-  // than unrolling and expanding each component.
-  if (isPowerOf2_32(NumBitsPerElt) &&
-      (TLI.isOperationLegalOrCustom(ISD::CTPOP, VT) ||
-       TLI.isOperationLegalOrCustom(ISD::CTLZ, VT)) &&
-      TLI.isOperationLegalOrCustom(ISD::SUB, VT) &&
-      TLI.isOperationLegalOrCustomOrPromote(ISD::AND, VT) &&
-      TLI.isOperationLegalOrCustomOrPromote(ISD::XOR, VT))
-    return Op;
+  // Attempt to expand using TargetLowering.
+  SDValue Result;
+  if (TLI.expandCTTZ(Op.getNode(), Result, DAG))
+    return Result;
 
   // Otherwise go ahead and unroll.
+  return DAG.UnrollVectorOp(Op.getNode());
+}
+
+SDValue VectorLegalizer::ExpandFMINNUM_FMAXNUM(SDValue Op) {
+  if (SDValue Expanded = TLI.expandFMINNUM_FMAXNUM(Op.getNode(), DAG))
+    return Expanded;
   return DAG.UnrollVectorOp(Op.getNode());
 }
 

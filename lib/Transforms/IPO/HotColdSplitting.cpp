@@ -335,6 +335,7 @@ Function *
 HotColdSplitting::extractColdRegion(const SmallVectorImpl<BasicBlock *> &Region,
                                     DominatorTree *DT, BlockFrequencyInfo *BFI,
                                     OptimizationRemarkEmitter &ORE) {
+  assert(!Region.empty());
   LLVM_DEBUG(for (auto *BB : Region)
           llvm::dbgs() << "\nExtracting: " << *BB;);
 
@@ -348,6 +349,7 @@ HotColdSplitting::extractColdRegion(const SmallVectorImpl<BasicBlock *> &Region,
   if (Outputs.size() > 0)
     return nullptr;
 
+  Function *OrigF = Region[0]->getParent();
   if (Function *OutF = CE.extractCodeRegion()) {
     User *U = *OutF->user_begin();
     CallInst *CI = cast<CallInst>(U);
@@ -358,7 +360,20 @@ HotColdSplitting::extractColdRegion(const SmallVectorImpl<BasicBlock *> &Region,
       CS.setCallingConv(CallingConv::Cold);
     }
     CI->setIsNoInline();
+
+    // Try to make the outlined code as small as possible on the assumption
+    // that it's cold.
+    assert(!OutF->hasFnAttribute(Attribute::OptimizeNone) &&
+           "An outlined function should never be marked optnone");
+    OutF->addFnAttr(Attribute::MinSize);
+
     LLVM_DEBUG(llvm::dbgs() << "Outlined Region: " << *OutF);
+    ORE.emit([&]() {
+      return OptimizationRemark(DEBUG_TYPE, "HotColdSplit",
+                                &*Region[0]->begin())
+             << ore::NV("Original", OrigF) << " split cold code into "
+             << ore::NV("Split", OutF);
+    });
     return OutF;
   }
 

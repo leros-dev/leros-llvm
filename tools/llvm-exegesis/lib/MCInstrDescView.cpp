@@ -15,6 +15,7 @@
 
 #include "llvm/ADT/STLExtras.h"
 
+namespace llvm {
 namespace exegesis {
 
 unsigned Variable::getIndex() const {
@@ -27,7 +28,14 @@ unsigned Variable::getPrimaryOperandIndex() const {
   return TiedOperands[0];
 }
 
-bool Variable::hasTiedOperands() const { return TiedOperands.size() > 1; }
+bool Variable::hasTiedOperands() const {
+  assert(TiedOperands.size() <= 2 &&
+         "No more than two operands can be tied together");
+  // By definition only Use and Def operands can be tied together.
+  // TiedOperands[0] is the Def operand (LLVM stores defs first).
+  // TiedOperands[1] is the Use operand.
+  return TiedOperands.size() > 1;
+}
 
 unsigned Operand::getIndex() const {
   assert(Index >= 0 && "Index must be set");
@@ -167,7 +175,7 @@ const Operand &Instruction::getPrimaryOperand(const Variable &Var) const {
 }
 
 bool Instruction::hasMemoryOperands() const {
-  return std::any_of(Operands.begin(), Operands.end(), [](const Operand &Op) {
+  return any_of(Operands, [](const Operand &Op) {
     return Op.isReg() && Op.isExplicit() && Op.isMemory();
   });
 }
@@ -195,6 +203,10 @@ bool Instruction::hasTiedRegisters() const {
 
 bool Instruction::hasAliasingRegisters() const {
   return AllDefRegs.anyCommon(AllUseRegs);
+}
+
+bool Instruction::hasOneUseOrOneDef() const {
+  return AllDefRegs.count() || AllUseRegs.count();
 }
 
 void Instruction::dump(const llvm::MCRegisterInfo &RegInfo,
@@ -288,8 +300,7 @@ bool AliasingConfigurations::hasImplicitAliasing() const {
 }
 
 AliasingConfigurations::AliasingConfigurations(
-    const Instruction &DefInstruction, const Instruction &UseInstruction)
-    : DefInstruction(DefInstruction), UseInstruction(UseInstruction) {
+    const Instruction &DefInstruction, const Instruction &UseInstruction) {
   if (UseInstruction.AllUseRegs.anyCommon(DefInstruction.AllDefRegs)) {
     auto CommonRegisters = UseInstruction.AllUseRegs;
     CommonRegisters &= DefInstruction.AllDefRegs;
@@ -333,3 +344,4 @@ void DumpMCInst(const llvm::MCRegisterInfo &MCRegisterInfo,
 }
 
 } // namespace exegesis
+} // namespace llvm
