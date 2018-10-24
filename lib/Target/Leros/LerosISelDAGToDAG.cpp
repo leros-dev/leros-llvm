@@ -57,35 +57,34 @@ private:
 };
 } // end anonymous namespace
 
-void LerosDAGToDAGISel::PostprocessISelDAG() {
-  doPeepholeLoadStoreADDI();
-}
+void LerosDAGToDAGISel::PostprocessISelDAG() { doPeepholeLoadStoreADDI(); }
 
 void LerosDAGToDAGISel::Select(SDNode *Node) {
-    // If we have a custom node, we have already selected.
-    if (Node->isMachineOpcode()) {
-      LLVM_DEBUG(dbgs() << "== "; Node->dump(CurDAG); dbgs() << "\n");
-      Node->setNodeId(-1);
-      return;
-    }
+  // If we have a custom node, we have already selected.
+  if (Node->isMachineOpcode()) {
+    LLVM_DEBUG(dbgs() << "== "; Node->dump(CurDAG); dbgs() << "\n");
+    Node->setNodeId(-1);
+    return;
+  }
 
-    // Instruction Selection not handled by the auto-generated tablegen selection
-    // should be handled here.
-    unsigned Opcode = Node->getOpcode();
-    MVT XLenVT = Subtarget->getXLenVT();
-    SDLoc DL(Node);
-    EVT VT = Node->getValueType(0);
+  // Instruction Selection not handled by the auto-generated tablegen selection
+  // should be handled here.
+  unsigned Opcode = Node->getOpcode();
+  MVT XLenVT = Subtarget->getXLenVT();
+  SDLoc DL(Node);
+  EVT VT = Node->getValueType(0);
 
-    if(Opcode == ISD::FrameIndex) {
-      SDValue Imm = CurDAG->getTargetConstant(0, DL, XLenVT);
-      int FI = cast<FrameIndexSDNode>(Node)->getIndex();
-      SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
-      ReplaceNode(Node, CurDAG->getMachineNode(Leros::ADD_RI_PSEUDO, DL, VT, TFI, Imm));
-      return;
-    }
+  if (Opcode == ISD::FrameIndex) {
+    SDValue Imm = CurDAG->getTargetConstant(0, DL, XLenVT);
+    int FI = cast<FrameIndexSDNode>(Node)->getIndex();
+    SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
+    ReplaceNode(Node,
+                CurDAG->getMachineNode(Leros::ADD_RI_PSEUDO, DL, VT, TFI, Imm));
+    return;
+  }
 
-    // Select the default instruction.
-    SelectCode(Node);
+  // Select the default instruction.
+  SelectCode(Node);
 }
 
 bool LerosDAGToDAGISel::SelectAddrFI(SDValue Addr, SDValue &Base) {
@@ -96,10 +95,10 @@ bool LerosDAGToDAGISel::SelectAddrFI(SDValue Addr, SDValue &Base) {
   return false;
 }
 
-// Merge an ADD_RI_PSEUDO into the offset of a load/store instruction where possible.
-// This is only possible for offsets in a signed 8 bit range, and as such we only do it
-// if the source operand for a load/store instruction stems from a ADD_RI_PSEUDO and not a
-// loadh sequence
+// Merge an ADD_RI_PSEUDO into the offset of a load/store instruction where
+// possible. This is only possible for offsets in a signed 8 bit range, and as
+// such we only do it if the source operand for a load/store instruction stems
+// from a ADD_RI_PSEUDO and not a loadh sequence
 void LerosDAGToDAGISel::doPeepholeLoadStoreADDI() {
   SelectionDAG::allnodes_iterator Position(CurDAG->getRoot().getNode());
   ++Position;
@@ -136,7 +135,8 @@ void LerosDAGToDAGISel::doPeepholeLoadStoreADDI() {
     SDValue Base = N->getOperand(BaseOpIdx);
 
     // If the base is an LOAD_RI_PSEUDO, we can merge it in to the load/store.
-    if (!Base.isMachineOpcode() || Base.getMachineOpcode() != Leros::ADD_RI_PSEUDO)
+    if (!Base.isMachineOpcode() ||
+        Base.getMachineOpcode() != Leros::ADD_RI_PSEUDO)
       continue;
 
     SDValue ImmOperand = Base.getOperand(1);
@@ -171,11 +171,11 @@ void LerosDAGToDAGISel::doPeepholeLoadStoreADDI() {
       CurDAG->RemoveDeadNode(Base.getNode());
   }
 }
+} // namespace llvm
 
 /// createLerosISelDag - This pass converts a Lerosalized DAG into a
 /// Leros-specific DAG, ready for instruction scheduling.
 ///
-FunctionPass *llvm::createLerosISelDag(LerosTargetMachine &TM) {
+llvm::FunctionPass *llvm::createLerosISelDag(LerosTargetMachine &TM) {
   return new LerosDAGToDAGISel(TM);
 }
-} // namespace llvm
