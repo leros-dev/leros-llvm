@@ -134,6 +134,9 @@ bool LerosUseAccumulator::removeRedundantLDADDR(MachineBasicBlock &MBB) {
         // register. The register has not been modified since the last ldaddr,
         // so we can safely remove this instruction
         eraseMBBI = true;
+      } else {
+        // Reset the modify flag when reloading the address register
+        modifiedRegInAdressReg = false;
       }
       currentAddressReg = reg;
     } else if (MBBI->getOpcode() == Leros::STORE_R) {
