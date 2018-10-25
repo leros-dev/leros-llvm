@@ -1,6 +1,3 @@
-[submodule "tools/leros-lld"]
-	path = tools/leros-lld
-	url = https://github.com/mortbopet/leros-lld.git
 [submodule "tools/leros-clang"]
 	path = tools/leros-clang
 	url = https://github.com/leros-dev/leros-clang.git
