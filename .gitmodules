@@ -4,3 +4,6 @@
 [submodule "tools/clang"]
 	path = tools/clang
 	url = https://github.com/llvm-mirror/clang
+[submodule "tools/leros-clang"]
+	path = tools/leros-clang
+	url = https://github.com/leros-dev/leros-clang.git
