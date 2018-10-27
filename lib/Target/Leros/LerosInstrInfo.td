@@ -242,12 +242,12 @@ multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
 
 // Instruction declarations
 let isReMaterializable = 1 in
-defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add\t",    add>;
+defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add",    add>;
 
-defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub\t",    sub>;
-defm AND  : INSTR_ImmReg<OPC_AND     ,    "and\t",    and>;
-defm OR   : INSTR_ImmReg<OPC_OR      ,    "or\t",     or>;
-defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor\t",    xor>;
+defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub",    sub>;
+defm AND  : INSTR_ImmReg<OPC_AND     ,    "and",    and>;
+defm OR   : INSTR_ImmReg<OPC_OR      ,    "or",     or>;
+defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor>;
 
 def LDADDR : INSTR_AccAccReg<OPC_LDADDR, "ldaddr">;
 
@@ -287,11 +287,11 @@ defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
 
 let isBarrier = 1, isBranch = 1, isTerminator = 1 in
-def  BR_IMPL : INSTR_BranchCond<OPC_BR,  "br\t"       >; // unconditional branch, pseudo version is handled by PseudoBR
-defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz\t"      >;
+def  BR_IMPL : INSTR_BranchCond<OPC_BR,  "br"       >; // unconditional branch, pseudo version is handled by PseudoBR
+defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz"      >;
 defm BRNZ    : INSTR_BrImpl<OPC_BRNZ,    "brnz"     >;
-defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp\t"      >;
-defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn\t"     >;
+defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp"      >;
+defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn"     >;
 
 // Memory access pseudoinstruction definitions
 def STORE_M_PSEUDO      : PSEUDO_Store_M;
@@ -335,14 +335,14 @@ def PseudoBRN : Pseudo_BranchCC;
 
 // Instructions where format is specific to the instruction 
     let isCall = 1, Defs=[RA] in
-    def JAL_call     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
+    def JAL_call     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
         bits<8> r;
         let RegOrImm = r;
         let Inst{15-11} = OPC_JAL.Value;
     }
 
     let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA], isCodeGenOnly=1 in
-    def JAL_ret     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
+    def JAL_ret     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
         let Inst{15-11} = OPC_JAL.Value;
     }
 
