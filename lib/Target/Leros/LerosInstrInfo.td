@@ -96,12 +96,12 @@ def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
 
 def bb_simm8 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<8>;
-  let EncoderMethod = "getImmOpValue";
-  let DecoderMethod = "decodeSImmOperand<8>";
+  let EncoderMethod = "getImmOpValueAsr1";
+  let DecoderMethod = "decodeSImmOperandAndLsl1<13>";
   let MCOperandPredicate = [{
     int64_t Imm;
     if (MCOp.evaluateAsConstantImm(Imm))
-      return isInt<8>(Imm);
+      return isShiftedInt<12, 1>(Imm);
     return MCOp.isBareSymbolRef();
   }];
 }

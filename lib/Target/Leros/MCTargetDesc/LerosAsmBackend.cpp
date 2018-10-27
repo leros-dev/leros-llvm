@@ -69,6 +69,7 @@ public:
         // LerosFixupKinds.h.
         //
         // name                      offset bits  flags
+        {"fixup_leros_branch", 0, 32, MCFixupKindInfo::FKF_IsPCRel},
         {"fixup_leros_b0", 0, 8, 0},
         {"fixup_leros_b1", 8, 8, 0},
         {"fixup_leros_b2", 16, 8, 0},
@@ -100,6 +101,16 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   case FK_Data_2:
   case FK_Data_4:
   case FK_Data_8:
+    return Value;
+  case Leros::fixup_leros_branch:
+    if (!isInt<12>(Value))
+      Ctx.reportError(
+          Fixup.getLoc(),
+          "fixup value out of range - branch range must fit in 12 bits");
+    if (Value & 0x1)
+      Ctx.reportError(Fixup.getLoc(),
+                      "branch fixup value must be 2-byte aligned");
+    Value = Value >> 1;
     return Value;
   case Leros::fixup_leros_b0:
     return Value & 0xff;

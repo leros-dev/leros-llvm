@@ -37,6 +37,7 @@ static MCOperand lowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym,
     llvm_unreachable("Unknown target flag on GV operand");
   case LEROSTF::MO_None:
     Kind = LerosMCExpr::VK_Leros_None;
+    break;
   case LEROSTF::MO_B0:
     Kind = LerosMCExpr::VK_Leros_B0;
     break;
