@@ -178,6 +178,11 @@ bool LerosUseAccumulator::removeRedundantLoad(
   MachineInstr &MI = *MBBI;
   DebugLoc DL = MI.getDebugLoc();
 
+  if (NextMBBI == MBB.end()) {
+    // Basic block with one instruction
+    return false;
+  }
+
   if (MBBI->getOpcode() == Leros::STORE_R &&
       NextMBBI->getOpcode() == Leros::LOAD_R) {
     // Check operands
