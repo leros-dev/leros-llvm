@@ -191,12 +191,6 @@ def BYTE3 : SDNodeXForm<imm, [{
                 let Inst{7-0} = imm8;
             }
 
-// To be determined instruction - to avoid errors in LLVM tests.
-// These instructions are basically because a deliberation on the ISA
-// is required
-class TBD_SET_C : LerosInst<(outs GPR:$rs), (ins GPR:$r1, GPR:$r2), "TBD", "$r1 $r2", []>;
-def TBD_SET : TBD_SET_C;
-
 // ------------- Pseudo ISA wrapper classes -------------
 // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
 class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm8:$simm8), F_BRCC, []> {
