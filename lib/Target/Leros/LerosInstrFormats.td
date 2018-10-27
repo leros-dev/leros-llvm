@@ -31,7 +31,7 @@ class LerosJalOpcode<bits<5> val>{
 def OPC_NOP     : LerosImmRegOpcode<0b0000000>;
 def OPC_ADD     : LerosImmRegOpcode<0b0000100>;
 def OPC_SUB     : LerosImmRegOpcode<0b0000110>;
-def OPC_SHR     : LerosImmRegOpcode<0b0010000>;
+def OPC_SHR     : LerosImmRegOpcode<0b0001000>;
 def OPC_UNUSED  : LerosImmRegOpcode<0b0001100>;
 def OPC_LOAD    : LerosImmRegOpcode<0b0010000>;
 def OPC_AND     : LerosImmRegOpcode<0b0010001>;
