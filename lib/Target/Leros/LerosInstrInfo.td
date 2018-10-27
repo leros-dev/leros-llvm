@@ -336,6 +336,8 @@ def PseudoBRN : Pseudo_BranchCC;
 // Instructions where format is specific to the instruction 
     let isCall = 1, Defs=[RA] in
     def JAL_call     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
+        bits<8> r;
+        let RegOrImm = r;
         let Inst{15-11} = OPC_JAL.Value;
     }
 
