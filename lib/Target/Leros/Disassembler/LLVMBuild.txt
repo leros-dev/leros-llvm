@@ -1,4 +1,4 @@
-;===- ./lib/Target/Leros/LLVMBuild.txt -------------------------*- Conf -*--===;
+;===- ./lib/Target/Leros/Disassembler/LLVMBuild.txt ------------*- Conf -*--===;
 ;
 ;                     The LLVM Compiler Infrastructure
 ;
@@ -15,28 +15,10 @@
 ;
 ;===------------------------------------------------------------------------===;
 
-[common]
-subdirectories = Disassembler MCTargetDesc TargetInfo InstPrinter
-
 [component_0]
-type = TargetGroup
-name = Leros
-parent = Target
-has_asmprinter = 1
-has_disassembler = 1
-
-[component_1]
 type = Library
-name = LerosCodeGen
+name = LerosDisassembler
 parent = Leros
-required_libraries =
- AsmPrinter
- CodeGen
- Core
- MC
- SelectionDAG
- LerosInfo
- LerosAsmPrinter
- Support
- Target
+required_libraries = MCDisassembler LerosInfo Support
 add_to_library_groups = Leros
+

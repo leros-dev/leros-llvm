@@ -7,6 +7,7 @@ tablegen(LLVM LerosGenDAGISel.inc -gen-dag-isel)
 tablegen(LLVM LerosGenCallingConv.inc -gen-callingconv)
 tablegen(LLVM LerosGenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM LerosGenMCCodeEmitter.inc -gen-emitter)
+tablegen(LLVM LerosGenDisassemblerTables.inc -gen-disassembler)
 
 add_public_tablegen_target(LerosCommonTableGen)
 
@@ -27,3 +28,4 @@ add_llvm_target(LerosCodeGen
 add_subdirectory(InstPrinter)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)
+add_subdirectory(Disassembler)
