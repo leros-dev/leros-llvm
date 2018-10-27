@@ -17,11 +17,6 @@ class LerosBOpcode<bits<8> val> {
     bits<8>Value = val;
 }
 
-// Opcode class for indirect load/store and jal operations
-class LerosLSOpcode<bits<5> val> {
-    bits<5>Value = val;
-}
-
 class LerosJalOpcode<bits<5> val>{
     bits<5>Value = val;
 }
@@ -38,8 +33,8 @@ def OPC_AND     : LerosImmRegOpcode<0b0010001>;
 def OPC_OR      : LerosImmRegOpcode<0b0010010>;
 def OPC_XOR     : LerosImmRegOpcode<0b0010011>;
 def OPC_LOADH   : LerosImmRegOpcode<0b0010100>;
-def OPC_LOADH2 : LerosImmRegOpcode<0b0010101>;
-def OPC_LOADH3 : LerosImmRegOpcode<0b0010110>;
+def OPC_LOADH2  : LerosImmRegOpcode<0b0010101>;
+def OPC_LOADH3  : LerosImmRegOpcode<0b0010110>;
 def OPC_STORE   : LerosImmRegOpcode<0b0011000>;
 def OPC_OUT     : LerosImmRegOpcode<0b0011100>;
 def OPC_IN      : LerosImmRegOpcode<0b0000010>;
@@ -53,9 +48,9 @@ def OPC_BRP     : LerosBOpcode<0b01001011>;
 def OPC_BRN     : LerosBOpcode<0b01001100>;
 
 // Load/Store opcodes
-def OPC_LDADDR  : LerosLSOpcode<0b01010>;
-def OPC_LDIND   : LerosLSOpcode<0b01100>;
-def OPC_STIND   : LerosLSOpcode<0b01110>;
+def OPC_LDADDR  : LerosImmRegOpcode<0b0101000>;
+def OPC_LDIND   : LerosImmRegOpcode<0b0110000>;
+def OPC_STIND   : LerosImmRegOpcode<0b0111000>;
 
 // JAL
 def OPC_JAL     : LerosJalOpcode<0b01000>;

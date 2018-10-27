@@ -255,6 +255,14 @@ defm AND  : INSTR_ImmReg<OPC_AND     ,    "and\t",    and>;
 defm OR   : INSTR_ImmReg<OPC_OR      ,    "or\t",     or>;
 defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor\t",    xor>;
 
+def LDADDR : INSTR_AccAccReg<OPC_LDADDR, "ldaddr">;
+
+let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
+def LDIND : INSTR_AccAccImm<OPC_LDIND, "ldind">;
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
+def STIND : INSTR_AccAccImm<OPC_STIND, "stind">;
+
 // Shifts are all pseudo instructions since they require custom emmission. 
 // shr has an actual leros instruction, whereas shl and sra are emissions of small algorithms
 def SHRByOne_Pseudo: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
@@ -331,21 +339,7 @@ def PseudoBRP : Pseudo_BranchCC;
 def PseudoBRN : Pseudo_BranchCC;
 
 
-// Instructions where format is specific to the instruction
-    def LDADDR  : LerosInst<(outs), (ins GPR:$r), "ldaddr", "$r", []>{
-        let Inst{15-11} = OPC_LDADDR.Value;
-    }
-
-    let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-    def LDIND : LerosInst<(outs), (ins simm8:$imm8), "ldind", "$imm8", []>{
-        let Inst{15-11} = OPC_LDIND.Value;
-    }
-
-    let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
-    def STIND : LerosInst<(outs), (ins simm8:$imm8), "stind", "$imm8", []>{
-        let Inst{15-11} = OPC_STIND.Value;
-    }
-    
+// Instructions where format is specific to the instruction 
     let isCall = 1, Defs=[RA] in
     def JAL_call     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
         let Inst{15-11} = OPC_JAL.Value;
