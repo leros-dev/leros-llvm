@@ -127,18 +127,24 @@ class LerosImmRegInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcode
 class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodestr, string argstr,
     list<dag> pattern>
     : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr, pattern>{
+    bits<8> r;
+    let RegOrImm = r;
     let Inst{8} = 0;
 }
 
 class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
     list<dag> pattern>
     : LerosImmRegInst<opcode, outs, ins, opcodestr, argstr, pattern>{
+    bits<8> imm8;
+    let RegOrImm = imm8;
     let Inst{8} = 1;
 }
 
 class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
     list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
+    bits<8> imm8;
+    let RegOrImm = imm8;
     let Inst{15-8} = opcode.Value;
     let isBranch = 1;
 } 

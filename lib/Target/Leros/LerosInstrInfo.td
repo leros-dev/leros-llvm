@@ -154,30 +154,42 @@ def BYTE3 : SDNodeXForm<imm, [{
     // Instructions with dependency: Acc -> (Acc, Reg)
     class INSTR_AccAccReg<LerosImmRegOpcode opcode, string opcodestr>
         : LerosRegInst<opcode, (outs), (ins GPR:$r),
-            opcodestr, "$r", []>;
+            opcodestr, "$r", []>{
+                let Inst{7-0} = r;
+            }
 
     // Instructions with dependency: Acc -> (Acc, Imm)
     class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr>
         : LerosImmInst<opcode, (outs), (ins simm8:$imm8), 
-            opcodestr, "$imm8", []>;
+            opcodestr, "$imm8", []>{
+                let Inst{7-0} = imm8;
+            }
 
     // Instructions with dependency: Reg -> (Acc)
     class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
         : LerosRegInst<opcode, (outs GPR:$r), (ins),
-            opcodestr, "$r", []>;
+            opcodestr, "$r", []>{
+                let Inst{7-0} = r;
+            }
     
     // Instructions with dependency: Acc -> (reg)
     class INSTR_AccReg<LerosImmRegOpcode opcode, string opcodestr>
         : LerosRegInst<opcode, (outs), (ins GPR:$r),
-            opcodestr, "$r", []>;
+            opcodestr, "$r", []>{
+                let RegOrImm{7-0} = r;
+            }
     
     // Instructions with dependency: Acc -> (imm)
     class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr>
         : LerosImmInst<opcode, (outs), (ins simm8:$imm8),
-            opcodestr, "$imm8", []>;
+            opcodestr, "$imm8", []>{
+                let Inst{7-0} = imm8;
+            }
 
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
-        : LerosBranchInst<opcode, (outs), (ins bb_simm8:$simm8), opcodestr, "$simm8", []>;
+        : LerosBranchInst<opcode, (outs), (ins bb_simm8:$imm8), opcodestr, "$imm8", []>{
+                let Inst{7-0} = imm8;
+            }
 
 // To be determined instruction - to avoid errors in LLVM tests.
 // These instructions are basically because a deliberation on the ISA
@@ -296,6 +308,7 @@ def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U8L>;
 def  NOP   : LerosPseudo<(outs ), (ins), F_NA, []>;
 def  NOP_IMPL   : LerosInst<(outs), (ins simm8:$imm), "nop", "", []>{
         let Inst{15-9} = OPC_NOP.Value;
+        let Inst{8} = 0;
         let Inst{7-0} = 0;
     }
 
@@ -338,7 +351,7 @@ def PseudoBRN : Pseudo_BranchCC;
         let Inst{15-11} = OPC_JAL.Value;
     }
 
-    let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in
+    let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA], isCodeGenOnly=1 in
     def JAL_ret     : LerosInst<(outs GPR:$r), (ins), "jal\t", "$r", []>{
         let Inst{15-11} = OPC_JAL.Value;
     }
