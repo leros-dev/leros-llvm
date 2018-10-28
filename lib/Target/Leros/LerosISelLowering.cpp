@@ -260,7 +260,6 @@ SDValue LerosTargetLowering::lowerRETURNADDR(SDValue Op,
   return DAG.getCopyFromReg(DAG.getEntryNode(), DL, Reg, XLenVT);
 }
 
-
 SDValue LerosTargetLowering::LowerOperation(SDValue Op,
                                             SelectionDAG &DAG) const {
 
@@ -355,7 +354,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
    * loop, and thus invalidated. Insted, we desire to force printing of the loop
    * label by triggering LerosAsmPrinter::isBlockOnlyReachableByFallthrough,
    * which analyzes whether any terminators of the loop is self referencing
-    */
+   */
 
   if (MI.getOpcode() == Leros::SHL_RI_PSEUDO) {
     // shift by immediate operand
@@ -995,21 +994,21 @@ LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
   HeadMBB->addSuccessor(IfTrueMBB);
   HeadMBB->addSuccessor(TailMBB);
 
-  // Insert appropriate branch.
+  // Insert appropriate branch. If CC is 0, we branch to TailMBB and the select
+  // the 2nd register
   unsigned CCReg = MI.getOperand(1).getReg();
+  BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRZ)).addReg(CCReg).addMBB(TailMBB);
 
-  BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRP)).addReg(CCReg).addMBB(TailMBB);
-
-  // IfTrueMBB just falls through to TailMBB.
+  // IfTrueMBB just falls through to TailMBB. We select the 1st register here
   IfTrueMBB->addSuccessor(TailMBB);
 
   // %Result = phi [ %TrueValue, IfTrueMBB ], [ %FalseValue, HeadMBB ]
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI),
           MI.getOperand(0).getReg())
-      .addReg(MI.getOperand(2).getReg())
-      .addMBB(IfTrueMBB)
       .addReg(MI.getOperand(3).getReg())
-      .addMBB(HeadMBB);
+      .addMBB(HeadMBB)
+      .addReg(MI.getOperand(2).getReg())
+      .addMBB(IfTrueMBB);
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
