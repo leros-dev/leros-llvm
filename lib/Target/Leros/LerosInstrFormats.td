@@ -13,8 +13,8 @@ class LerosImmRegOpcode<bits<7> val> {
 }
 
 // Opcode class for branch instructions
-class LerosBOpcode<bits<8> val> {
-    bits<8>Value = val;
+class LerosBOpcode<bits<5> val> {
+    bits<5>Value = val;
 }
 
 class LerosJalOpcode<bits<5> val>{
@@ -41,11 +41,11 @@ def OPC_IN      : LerosImmRegOpcode<0b0000010>;
 
 
 // Branch opcodes
-def OPC_BR      : LerosBOpcode<0b01001000>;
-def OPC_BRZ     : LerosBOpcode<0b01001001>;
-def OPC_BRNZ    : LerosBOpcode<0b01001010>;
-def OPC_BRP     : LerosBOpcode<0b01001011>;
-def OPC_BRN     : LerosBOpcode<0b01001100>;
+def OPC_BR      : LerosBOpcode<0b10000>;
+def OPC_BRZ     : LerosBOpcode<0b10001>;
+def OPC_BRNZ    : LerosBOpcode<0b10010>;
+def OPC_BRP     : LerosBOpcode<0b10011>;
+def OPC_BRN     : LerosBOpcode<0b10100>;
 
 // Load/Store opcodes
 def OPC_LDADDR  : LerosImmRegOpcode<0b0101000>;
@@ -90,9 +90,6 @@ class LerosInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pa
   field bits<32> SoftFail = 0;
 
   field bits<16> Inst;
-  bits<8> RegOrImm;
-
-  let Inst{7-0} = RegOrImm;
 
   let Namespace = "Leros";
 
@@ -116,7 +113,8 @@ class LerosPseudo<dag outs, dag ins, PseudoFormat format, list<dag> pattern>
 
 class LerosImmRegInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
-    let Inst{15-9} = opcode.Value;
+    bits<8> RegOrImm;
+    let Inst{7-0} = RegOrImm;
 }
 
 class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodestr, string argstr,
@@ -125,6 +123,7 @@ class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodest
     bits<8> r;
     let RegOrImm = r;
     let Inst{8} = 0;
+    let Inst{15-9} = opcode.Value;
 }
 
 class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
@@ -133,13 +132,14 @@ class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr
     bits<8> imm8;
     let RegOrImm = imm8;
     let Inst{8} = 1;
+    let Inst{15-9} = opcode.Value;
 }
 
 class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
     list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
-    bits<8> imm8;
-    let RegOrImm = imm8;
-    let Inst{15-8} = opcode.Value;
+    bits<11> imm11;
+    let Inst{10-0} = imm11;
+    let Inst{15-11} = opcode.Value;
     let isBranch = 1;
 } 

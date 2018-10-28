@@ -110,7 +110,7 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
     if (Value & 0x1)
       Ctx.reportError(Fixup.getLoc(),
                       "branch fixup value must be 2-byte aligned");
-    Value = Value >> 1;
+    Value = (Value >> 1) & 0x7ff;
     return Value;
   case Leros::fixup_leros_b0:
     return Value & 0xff;
