@@ -49,29 +49,49 @@ bool LerosInstrInfo::isBranchOffsetInRange(unsigned, int64_t BrOffset) const {
 
 void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
                               MachineBasicBlock::iterator MBBI,
-                              const DebugLoc &DL, unsigned DstReg,
-                              uint64_t val) const {
+                              const DebugLoc &DL, unsigned DstReg, uint64_t val,
+                              MachineInstr::MIFlag Flag) const {
   assert(isInt<32>(val) && "Can only materialize 32-bit constants");
 
   // Materialize a constant into a register through repeated usage of loadh
   // operations
   if (isInt<8>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val)&0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+        .addImm((val)&0xff)
+        .setMIFlag(Flag);
   } else if (isInt<16>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val)&0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 8) & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+        .addImm((val)&0xff)
+        .setMIFlag(Flag);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI))
+        .addImm((val >> 8) & 0xff)
+        .setMIFlag(Flag);
   } else if (isInt<24>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm(val & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 8) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI)).addImm((val >> 16) & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+        .addImm(val & 0xff)
+        .setMIFlag(Flag);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI))
+        .addImm((val >> 8) & 0xff)
+        .setMIFlag(Flag);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI))
+        .addImm((val >> 16) & 0xff)
+        .setMIFlag(Flag);
   } else {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I)).addImm((val)&0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI)).addImm((val >> 8) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI)).addImm((val >> 16) & 0xff);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH3_AI)).addImm((val >> 24) & 0xff);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+        .addImm((val)&0xff)
+        .setMIFlag(Flag);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI))
+        .addImm((val >> 8) & 0xff)
+        .setMIFlag(Flag);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI))
+        .addImm((val >> 16) & 0xff)
+        .setMIFlag(Flag);
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH3_AI))
+        .addImm((val >> 24) & 0xff)
+        .setMIFlag(Flag);
   }
 
-  BuildMI(MBB, MBBI, DL, get(Leros::STORE_R), DstReg);
+  BuildMI(MBB, MBBI, DL, get(Leros::STORE_R), DstReg).setMIFlag(Flag);
 }
 
 void LerosInstrInfo::movUImm32(MachineBasicBlock &MBB,

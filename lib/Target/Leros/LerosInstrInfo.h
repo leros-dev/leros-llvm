@@ -50,7 +50,8 @@ public:
   bool expandPostRAPseudo(MachineInstr &MI) const override;
 
   void movImm32(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
-                const DebugLoc &DL, unsigned DstReg, uint64_t Val) const;
+                const DebugLoc &DL, unsigned DstReg, uint64_t Val,
+                MachineInstr::MIFlag Flag = MachineInstr::NoFlags) const;
 
   void movUImm32(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
                  const DebugLoc &DL, unsigned DstReg, uint64_t Val) const;
