@@ -43,7 +43,14 @@ struct LerosRegisterInfo : public LerosGenRegisterInfo {
   bool requiresRegisterScavenging(const MachineFunction &MF) const override {
     return true;
   }
+
+  // We may eliminate the frame index during PrologEpilogInserter, which is post
+  // register alocation, and as such we need to enable frame index scavenging,
+  // such that the virtual register defined in eliminateFrameIndex is handled
+  bool requiresFrameIndexScavenging(const MachineFunction &MF) const override {
+    return true;
+  }
 };
-}
+} // namespace llvm
 
 #endif
