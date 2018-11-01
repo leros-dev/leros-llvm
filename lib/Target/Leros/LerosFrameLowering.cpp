@@ -126,7 +126,7 @@ void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
     }
 
     unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    TII->movImm32(MBB, MBBI, DL, ScratchReg, Val);
+    TII->movImm32(MBB, MBBI, DL, ScratchReg, Val, Flag);
     BuildMI(MBB, MBBI, DL, TII->get(Opc), DestReg)
         .addReg(SrcReg)
         .addReg(ScratchReg, RegState::Kill)
