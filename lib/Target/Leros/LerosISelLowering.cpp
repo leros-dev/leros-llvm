@@ -385,15 +385,15 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
 
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
     BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
-        .addReg(ScratchReg)
+        .addReg(ScratchReg, RegState::Kill)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes)
+        .addReg(SubRes, RegState::Kill)
         .addMBB(shiftMBB);
 
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::MOV), dstReg)
-        .addReg(ShiftRes);
+        .addReg(ShiftRes, RegState::Kill);
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return TailMBB;
   } else {
@@ -422,14 +422,14 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addReg(rs2)
         .addImm(1);
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes)
+        .addReg(SubRes, RegState::Kill)
         .addMBB(shiftMBB);
 
     // move rs1 to rsd as first instruction in TailMBB
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
         .addReg(rs1)
         .addMBB(HeadMBB)
-        .addReg(ShiftRes)
+        .addReg(ShiftRes, RegState::Kill)
         .addMBB(shiftMBB);
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return TailMBB;
@@ -503,7 +503,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
 
   // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(opcode))
-      .addReg(ScratchReg)
+      .addReg(ScratchReg, RegState::Kill)
       .addMBB(trueMBB);
 
   // fallthrough to falseMBB
@@ -527,9 +527,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   // -------- tailMBB --------------
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
-      .addReg(falseRes)
+      .addReg(falseRes, RegState::Kill)
       .addMBB(falseMBB)
-      .addReg(trueRes)
+      .addReg(trueRes, RegState::Kill)
       .addMBB(trueMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -604,7 +604,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // still in accumulator
   const unsigned SEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(opcode), SEXTRes)
-      .addReg(ScratchReg)
+      .addReg(ScratchReg, RegState::Kill)
       .addImm(0xFF);
 
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBR))
@@ -614,7 +614,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // From here we know that the loaded operand is positive - bitmask lower bits
   const unsigned ZEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*posMBB, posMBB->end(), DL, TII.get(opcode), ZEXTRes)
-      .addReg(ScratchReg)
+      .addReg(ScratchReg, RegState::Kill)
       .addImm(0x0);
 
   // Fallthrough to tail
@@ -622,9 +622,9 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // -------- tailMBB --------------
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
-      .addReg(SEXTRes)
+      .addReg(SEXTRes, RegState::Kill)
       .addMBB(HeadMBB)
-      .addReg(ZEXTRes)
+      .addReg(ZEXTRes, RegState::Kill)
       .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -694,16 +694,16 @@ MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
   // Sign extend
   const unsigned NSEShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
-      .addReg(NShiftRes)
-      .addReg(SER);
+      .addReg(NShiftRes, RegState::Kill)
+      .addReg(SER, RegState::Kill);
 
   const unsigned NSubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), NSubRes)
-      .addReg(ScratchReg)
+      .addReg(ScratchReg, RegState::Kill)
       .addImm(1);
 
   BuildMI(negMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(NSubRes)
+      .addReg(NSubRes, RegState::Kill)
       .addMBB(negMBB);
 
   // Finished sign-extended shift - unconditional branch to tail
@@ -719,7 +719,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
       .addImm(1);
 
   BuildMI(posMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(PSubRes)
+      .addReg(PSubRes, RegState::Kill)
       .addMBB(posMBB);
 
   // Fallthrough to tail
@@ -727,9 +727,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
   // -------- tailMBB --------------
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
-      .addReg(NSEShiftRes)
+      .addReg(NSEShiftRes, RegState::Kill)
       .addMBB(negMBB)
-      .addReg(PShiftRes)
+      .addReg(PShiftRes, RegState::Kill)
       .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -801,8 +801,8 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
   // Sign extend
   const unsigned NSEShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
-      .addReg(NShiftRes)
-      .addReg(SER);
+      .addReg(NShiftRes, RegState::Kill)
+      .addReg(SER, RegState::Kill);
 
   const unsigned NSubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), NSubRes)
@@ -810,7 +810,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addImm(1);
 
   BuildMI(negMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(NSubRes)
+      .addReg(NSubRes, RegState::Kill)
       .addMBB(negMBB);
 
   // Finished sign-extended shift - unconditional branch to tail
@@ -826,7 +826,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addImm(1);
 
   BuildMI(posMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(PSubRes)
+      .addReg(PSubRes, RegState::Kill)
       .addMBB(posMBB);
 
   // Fallthrough to tail
@@ -836,9 +836,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
       .addReg(rs1)
       .addMBB(HeadMBB)
-      .addReg(NSEShiftRes)
+      .addReg(NSEShiftRes, RegState::Kill)
       .addMBB(negMBB)
-      .addReg(PShiftRes)
+      .addReg(PShiftRes, RegState::Kill)
       .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -917,15 +917,15 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
         .addReg(rs1);
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
     BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
-        .addReg(ScratchReg)
+        .addReg(ScratchReg, RegState::Kill)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes)
+        .addReg(SubRes, RegState::Kill)
         .addMBB(shiftMBB);
 
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::MOV), dstReg)
-        .addReg(ShiftRes);
+        .addReg(ShiftRes, RegState::Kill);
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return TailMBB;
   } else {
@@ -954,14 +954,14 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
         .addReg(rs2)
         .addImm(1);
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes)
+        .addReg(SubRes, RegState::Kill)
         .addMBB(shiftMBB);
 
     // move rs1 to rsd as first instruction in TailMBB
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
         .addReg(rs1)
         .addMBB(HeadMBB)
-        .addReg(ShiftRes)
+        .addReg(ShiftRes, RegState::Kill)
         .addMBB(shiftMBB);
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return TailMBB;
