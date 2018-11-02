@@ -630,8 +630,8 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   return TailMBB;
 }
 
-MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
-                                                 MachineBasicBlock *BB) const {
+MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
+                                                MachineBasicBlock *BB) const {
   const LerosInstrInfo &TII =
       *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
@@ -888,6 +888,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
 
   HeadMBB->addSuccessor(shiftMBB);
+  HeadMBB->addSuccessor(TailMBB);
   shiftMBB->addSuccessor(TailMBB);
 
   if (MI.getOpcode() == Leros::SRL_RI_PSEUDO) {
@@ -1030,7 +1031,7 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case Leros::SRL_RR_PSEUDO:
     return EmitSRL(MI, BB);
   case Leros::SRA_RI_PSEUDO:
-    return EmitSRAI(MI, BB);
+    return EmitSRA(MI, BB);
   case Leros::SRA_RR_PSEUDO:
     return EmitSRAR(MI, BB);
   case Leros::SETEQ_PSEUDO:
