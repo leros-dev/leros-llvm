@@ -163,15 +163,12 @@ SDValue LerosTargetLowering::lowerGlobalAddress(SDValue Op,
 
   SDValue MNB0 =
       SDValue(DAG.getMachineNode(Leros::LOAD_RI_PSEUDO, DL, Ty, GAB0), 0);
-
   SDValue MNB1 = SDValue(
       DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB0, GAB1), 0);
-
   SDValue MNB2 = SDValue(
-      DAG.getMachineNode(Leros::LOADH2_RI_PSEUDO, DL, Ty, MNB0, GAB2), 0);
-
+      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB1, GAB2), 0);
   SDValue MNB3 = SDValue(
-      DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB0, GAB3), 0);
+      DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB2, GAB3), 0);
 
   if (Offset != 0)
     return DAG.getNode(ISD::ADD, DL, Ty, MNB3,
@@ -187,8 +184,30 @@ SDValue LerosTargetLowering::lowerConstantPool(SDValue Op,
 
 SDValue LerosTargetLowering::lowerBlockAddress(SDValue Op,
                                                SelectionDAG &DAG) const {
-  llvm_unreachable("lowerBlockAddress unimplemented");
-  return SDValue();
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  BlockAddressSDNode *N = cast<BlockAddressSDNode>(Op);
+  const BlockAddress *BA = N->getBlockAddress();
+  int64_t Offset = N->getOffset();
+
+  if (isPositionIndependent())
+    report_fatal_error("Unable to lowerBlockAddress");
+
+  SDValue BAB0 = DAG.getTargetBlockAddress(BA, Ty, Offset, LEROSTF::MO_B0);
+  SDValue BAB1 = DAG.getTargetBlockAddress(BA, Ty, Offset, LEROSTF::MO_B1);
+  SDValue BAB2 = DAG.getTargetBlockAddress(BA, Ty, Offset, LEROSTF::MO_B2);
+  SDValue BAB3 = DAG.getTargetBlockAddress(BA, Ty, Offset, LEROSTF::MO_B3);
+
+  SDValue MNB0 =
+      SDValue(DAG.getMachineNode(Leros::LOAD_RI_PSEUDO, DL, Ty, BAB0), 0);
+  SDValue MNB1 = SDValue(
+      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB0, BAB1), 0);
+  SDValue MNB2 = SDValue(
+      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB1, BAB2), 0);
+  SDValue MNB3 = SDValue(
+      DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB2, BAB3), 0);
+
+  return MNB3;
 }
 
 SDValue LerosTargetLowering::lowerSELECT(SDValue Op, SelectionDAG &DAG) const {
@@ -347,7 +366,6 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
 
   HeadMBB->addSuccessor(shiftMBB);
-  HeadMBB->addSuccessor(TailMBB);
   shiftMBB->addSuccessor(TailMBB);
   /** @warning: We do NOT set shiftMBB as a successor of itself, even though
    * this would probably be the correct thing to do. When this is done, because
@@ -389,7 +407,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes, RegState::Kill)
+        .addReg(SubRes)
         .addMBB(shiftMBB);
 
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::MOV), dstReg)
@@ -397,6 +415,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return TailMBB;
   } else {
+    HeadMBB->addSuccessor(TailMBB);
     // We here do the following control flow
     //     HeadMBB
     //       |
@@ -422,7 +441,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addReg(rs2)
         .addImm(1);
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes, RegState::Kill)
+        .addReg(SubRes)
         .addMBB(shiftMBB);
 
     // move rs1 to rsd as first instruction in TailMBB
@@ -694,8 +713,8 @@ MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
   // Sign extend
   const unsigned NSEShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
-      .addReg(NShiftRes, RegState::Kill)
-      .addReg(SER, RegState::Kill);
+      .addReg(NShiftRes)
+      .addReg(SER);
 
   const unsigned NSubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), NSubRes)
@@ -719,7 +738,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
       .addImm(1);
 
   BuildMI(posMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(PSubRes, RegState::Kill)
+      .addReg(PSubRes)
       .addMBB(posMBB);
 
   // Fallthrough to tail
@@ -801,8 +820,8 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
   // Sign extend
   const unsigned NSEShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
-      .addReg(NShiftRes, RegState::Kill)
-      .addReg(SER, RegState::Kill);
+      .addReg(NShiftRes)
+      .addReg(SER);
 
   const unsigned NSubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(negMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), NSubRes)
@@ -810,7 +829,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addImm(1);
 
   BuildMI(negMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(NSubRes, RegState::Kill)
+      .addReg(NSubRes)
       .addMBB(negMBB);
 
   // Finished sign-extended shift - unconditional branch to tail
@@ -826,7 +845,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addImm(1);
 
   BuildMI(posMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(PSubRes, RegState::Kill)
+      .addReg(PSubRes)
       .addMBB(posMBB);
 
   // Fallthrough to tail
@@ -917,11 +936,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
         .addReg(rs1);
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
     BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
-        .addReg(ScratchReg, RegState::Kill)
+        .addReg(ScratchReg)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes, RegState::Kill)
+        .addReg(SubRes)
         .addMBB(shiftMBB);
 
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::MOV), dstReg)
@@ -954,7 +973,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
         .addReg(rs2)
         .addImm(1);
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes, RegState::Kill)
+        .addReg(SubRes)
         .addMBB(shiftMBB);
 
     // move rs1 to rsd as first instruction in TailMBB

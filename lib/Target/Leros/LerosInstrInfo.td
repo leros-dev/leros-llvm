@@ -332,6 +332,8 @@ def PseudoBRZ : Pseudo_BranchCC;
 def PseudoBRP : Pseudo_BranchCC;
 def PseudoBRN : Pseudo_BranchCC;
 
+def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BR, [(brind GPR:$rd)]>;
+
 
 // Instructions where format is specific to the instruction 
     let isCall = 1, Defs=[RA] in

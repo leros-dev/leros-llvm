@@ -184,6 +184,9 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
   if (MI.getOperand(2).getType() == MachineOperand::MO_GlobalAddress) {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode))
         .addGlobalAddress(MI.getOperand(2).getGlobal());
+  } else if (MI.getOperand(2).getType() == MachineOperand::MO_BlockAddress) {
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode))
+        .addBlockAddress(MI.getOperand(2).getBlockAddress());
   } else {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode))
         .addImm(MI.getOperand(2).getImm());
@@ -198,6 +201,9 @@ void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
   if (MI.getOperand(1).getType() == MachineOperand::MO_GlobalAddress) {
     BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
         .addGlobalAddress(MI.getOperand(1).getGlobal());
+  } else if (MI.getOperand(1).getType() == MachineOperand::MO_BlockAddress) {
+    BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
+        .addBlockAddress(MI.getOperand(1).getBlockAddress());
   } else {
     BuildMI(MBB, MI, DL, get(Leros::LOAD_I)).addImm(MI.getOperand(1).getImm());
   }
@@ -340,6 +346,16 @@ void LerosInstrInfo::expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::BR_IMPL)).addMBB(bb);
 }
 
+void LerosInstrInfo::expandBRIND(MachineBasicBlock &MBB,
+                                 MachineInstr &MI) const {
+  const auto &reg = MI.getOperand(0).getReg();
+  // Since we do not want to link here, we use a scratch register to dump the
+  // linked address into
+  auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(reg);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(scratchReg);
+}
+
 void LerosInstrInfo::expandNOP(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::NOP_IMPL)).addImm(0);
 }
@@ -463,6 +479,10 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     case Leros::PseudoBRP:
     case Leros::PseudoBRN:
       expandBRCC(MBB, MI, true);
+      break;
+    case Leros::PseudoBRIND:
+      expandBRIND(MBB, MI);
+      break;
     }
   }
   }
