@@ -358,6 +358,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
   MachineBasicBlock *shiftMBB = F->CreateMachineBasicBlock(LLVM_BB);
   F->insert(I, shiftMBB);
   F->insert(I, TailMBB);
+
   // Move all remaining instructions to TailMBB.
   TailMBB->splice(TailMBB->begin(), HeadMBB,
                   std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
@@ -367,6 +368,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
 
   HeadMBB->addSuccessor(shiftMBB);
   shiftMBB->addSuccessor(TailMBB);
+
   /** @warning: We do NOT set shiftMBB as a successor of itself, even though
    * this would probably be the correct thing to do. When this is done, because
    * of the virtual registers used in the function, these are hoisted out of the
@@ -380,7 +382,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     // We here do the following control flow
     //     HeadMBB
     //       |
-    //     load immediate
+    //     load immediate & and input argument
     //       |
     //     shiftBB   <-------
     //       |              ^
@@ -392,18 +394,31 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
     TII.movImm32(*HeadMBB, HeadMBB->end(), DL, ScratchReg, imm);
 
-    // Create shiftBB
-    // Because of SSA, we cant do buildMI(...,rs1,rs1,rs1), so temporary
-    // registers has to be deleted. Stuff like this can be optimized away in a
-    // late-stage peephole pass
-    unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
-        .addReg(rs1)
-        .addReg(rs1);
+    // Fallthrough to shiftMBB
 
+    // Determine reg to shift from whether we are starting the loop or iterating
+    unsigned RegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegToShift)
+        .addReg(rs1)
+        .addMBB(HeadMBB)
+        .addReg(ShiftRes)
+        .addMBB(shiftMBB);
+
+    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
+        .addReg(RegToShift)
+        .addReg(RegToShift);
+
+    unsigned RegToIter = MRI.createVirtualRegister(&Leros::GPRRegClass);
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegToIter)
+        .addReg(ScratchReg)
+        .addMBB(HeadMBB)
+        .addReg(SubRes)
+        .addMBB(shiftMBB);
+
     BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
-        .addReg(ScratchReg, RegState::Kill)
+        .addReg(RegToIter, RegState::Kill)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
@@ -421,9 +436,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     //       |
     //     CheckIfZero
     //       | \
-        //       |  shiftBB   <-------
-    //       |  |            ^
-    //       | /
+    //       |  moveArg
+    //       |   \
+    //      shiftBB   <-------
+    //       |   |---------- ^
+    //       |  /
     //       |
     //     TailMBB
     // Set the successors for HeadMBB.
@@ -431,15 +448,34 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     // Zero check
     BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRZ)).addReg(rs2).addMBB(TailMBB);
 
-    // shift by register operand
+    // Determine reg to shift from whether we are starting the loop or iterating
+    unsigned RegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
     unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
+    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegToShift)
         .addReg(rs1)
-        .addReg(rs1);
+        .addMBB(HeadMBB)
+        .addReg(ShiftRes)
+        .addMBB(shiftMBB);
+
+    // shift by register operand
+    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
+        .addReg(RegToShift)
+        .addReg(RegToShift);
+
+    // Determine iteration value reg from whether we are starting the loop or
+    // iterating
+    unsigned RegWithIter = MRI.createVirtualRegister(&Leros::GPRRegClass);
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
+    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegWithIter)
         .addReg(rs2)
+        .addMBB(HeadMBB)
+        .addReg(SubRes)
+        .addMBB(shiftMBB);
+
+    BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
+        .addReg(RegWithIter)
         .addImm(1);
+
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
         .addReg(SubRes, RegState::Kill)
         .addMBB(shiftMBB);
