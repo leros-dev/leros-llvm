@@ -441,14 +441,14 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addReg(rs2)
         .addImm(1);
     BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
-        .addReg(SubRes)
+        .addReg(SubRes, RegState::Kill)
         .addMBB(shiftMBB);
 
     // move rs1 to rsd as first instruction in TailMBB
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
         .addReg(rs1)
         .addMBB(HeadMBB)
-        .addReg(ShiftRes, RegState::Kill)
+        .addReg(ShiftRes)
         .addMBB(shiftMBB);
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return TailMBB;
@@ -546,9 +546,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   // -------- tailMBB --------------
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
-      .addReg(falseRes, RegState::Kill)
+      .addReg(falseRes)
       .addMBB(falseMBB)
-      .addReg(trueRes, RegState::Kill)
+      .addReg(trueRes)
       .addMBB(trueMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -641,9 +641,9 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // -------- tailMBB --------------
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
-      .addReg(SEXTRes, RegState::Kill)
+      .addReg(SEXTRes)
       .addMBB(HeadMBB)
-      .addReg(ZEXTRes, RegState::Kill)
+      .addReg(ZEXTRes)
       .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -746,9 +746,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSRA(MachineInstr &MI,
   // -------- tailMBB --------------
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
-      .addReg(NSEShiftRes, RegState::Kill)
+      .addReg(NSEShiftRes)
       .addMBB(negMBB)
-      .addReg(PShiftRes, RegState::Kill)
+      .addReg(PShiftRes)
       .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -855,9 +855,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
       .addReg(rs1)
       .addMBB(HeadMBB)
-      .addReg(NSEShiftRes, RegState::Kill)
+      .addReg(NSEShiftRes)
       .addMBB(negMBB)
-      .addReg(PShiftRes, RegState::Kill)
+      .addReg(PShiftRes)
       .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
@@ -980,7 +980,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
         .addReg(rs1)
         .addMBB(HeadMBB)
-        .addReg(ShiftRes, RegState::Kill)
+        .addReg(ShiftRes)
         .addMBB(shiftMBB);
     MI.eraseFromParent(); // The pseudo instruction is gone now.
     return TailMBB;
