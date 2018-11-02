@@ -347,6 +347,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
 
   HeadMBB->addSuccessor(shiftMBB);
+  HeadMBB->addSuccessor(TailMBB);
   shiftMBB->addSuccessor(TailMBB);
   /** @warning: We do NOT set shiftMBB as a successor of itself, even though
    * this would probably be the correct thing to do. When this is done, because
