@@ -344,11 +344,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     }
     if (imm == 1) {
       // A single rs1 self addition is sufficient
-      BuildMI(HeadMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), dstReg)
+      BuildMI(*BB, MI, DL, TII.get(Leros::ADD_RR_PSEUDO), dstReg)
           .addReg(rs1)
           .addReg(rs1);
       MI.eraseFromParent(); // The pseudo instruction is gone now.
-      return HeadMBB;
+      return BB;
     }
   } else {
     rs2 = MI.getOperand(2).getReg();
