@@ -94,6 +94,23 @@ def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
   }];
 }
 
+
+// Boolean operations are only able to safely parse immediates that can be expressed
+// as 7-bit immediates. If they immediate is in the 8th bit, we risk sign extension and
+// thus expressing the wrong operation. ie. 'and -1' for bitmasking the lower byte is incorrect,
+// because -1 will sign extend. 
+def uimm7 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<7>(Imm);}]> {
+  let ParserMatchClass = UImmAsmOperand<7>;
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeUImmOperand<7>";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isUInt<7>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
+}
+
 def bb_simm12 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<12>;
   let EncoderMethod = "getImmOpValueAsr1";
@@ -199,8 +216,8 @@ class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm12:$imm1
 }
 
 // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
-class PSEUDO_AccAccImm<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
-   simm8:$simm8), F_RRI, [(set i32:$rd, (opnode i32:$r1, simm8:$simm8))]>;
+class PSEUDO_AccAccImm<SDNode opnode, Operand ImmClass> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
+   ImmClass:$simm), F_RRI, [(set i32:$rd, (opnode i32:$r1, ImmClass:$simm))]>;
 
     // Pseudo instruction wrapper for memory access functions
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
@@ -216,9 +233,9 @@ class PSEUDO_AccAccReg<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1
 class PSEUDO_RegImm : LerosPseudo<(outs GPR:$rd), (ins simm8:$imm), F_RI, []>;
 
 
-multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode>{
+multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnode, Operand immClass>{
     // Wrapper pseudo instruction definitions
-    def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode>; // Register-immediate instruction
+    def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode, immClass>; // Register-immediate instruction
     def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
 
     // Instruction definitions
@@ -226,9 +243,9 @@ multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnod
     def _AR  : INSTR_AccAccReg<opcode, opcodestr>; 
 }
 
-multiclass INSTR_Pseudo<LerosImmRegOpcode opcode, SDNode opnode>{
+multiclass INSTR_Pseudo<LerosImmRegOpcode opcode, SDNode opnode, Operand immClass>{
     let usesCustomInserter = 1 in {
-        def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode>; // Register-immediate instruction
+        def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode, immClass>; // Register-immediate instruction
         def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
     }
 }
@@ -242,12 +259,13 @@ multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
 
 // Instruction declarations
 let isReMaterializable = 1 in
-defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add",    add>;
+defm ADD  : INSTR_ImmReg<OPC_ADD     ,    "add",    add,    simm8>;
 
-defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub",    sub>;
-defm AND  : INSTR_ImmReg<OPC_AND     ,    "and",    and>;
-defm OR   : INSTR_ImmReg<OPC_OR      ,    "or",     or>;
-defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor>;
+defm SUB  : INSTR_ImmReg<OPC_SUB     ,    "sub",    sub,    simm8>;
+
+defm AND  : INSTR_ImmReg<OPC_AND     ,    "and",    and,    uimm7>;
+defm OR   : INSTR_ImmReg<OPC_OR      ,    "or",     or,     uimm7>;
+defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor,    uimm7>;
 
 def LDADDR : INSTR_AccAccReg<OPC_LDADDR, "ldaddr">;
 
@@ -263,9 +281,9 @@ def SHRByOne_Pseudo: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
 def SHR_IMPL  : LerosImmInst<OPC_SHR, (outs), (ins simm8:$imm8), 
             "shr", "", []>;
 
-defm SRL  : INSTR_Pseudo<OPC_SHR     , srl>; // This instruction will get expanded by EmitSRL
-defm SHL  : INSTR_Pseudo<OPC_NOP     , shl>; // This instruction will get expanded by EmitSHL
-defm SRA  : INSTR_Pseudo<OPC_NOP     , sra>; // This instruction will get expanded by EmitSRA
+defm SRL  : INSTR_Pseudo<OPC_SHR     , srl,  simm8>; // This instruction will get expanded by EmitSRL
+defm SHL  : INSTR_Pseudo<OPC_NOP     , shl,  simm8>; // This instruction will get expanded by EmitSHL
+defm SRA  : INSTR_Pseudo<OPC_NOP     , sra,  simm8>; // This instruction will get expanded by EmitSRA
 
 // Set pseudo-instructions will be emitted as custom branch sequences with phi nodes
 let usesCustomInserter = 1 in {
@@ -279,9 +297,9 @@ def LOAD_R : INSTR_AccReg<OPC_LOAD, "load">;
 def LOAD_I : INSTR_AccImm<OPC_LOAD, "load">;
 def LOAD_RI_PSEUDO : PSEUDO_RegImm;
 
-defm LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH>;
-defm LOADH2   : INSTR_ImmReg<OPC_LOADH2   ,  "loadh2",  LOADH2>;
-defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3>;
+defm LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH,  simm8>;
+defm LOADH2   : INSTR_ImmReg<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8>;
+defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8>;
 
 // Accumulator->register store
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
