@@ -381,24 +381,32 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
   case Leros::LOAD_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
 
     // Check whether we have to zero or sign extend the load if this was not a
     // full-word load
     switch (MI.getDesc().TSFlags) {
     default: {
-      // Full word load, just store the value
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      // Full word load, we exit here
       break;
     }
     case LEROSIF::Unsigned8BitLoad: {
       // Mask the lower byte
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AI)).addImm(0xFF);
+      // Build the operand which we have to OR with. We use a register from
+      // GPRPseudoExpandRegClass since we are post reg allocation
+      auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
+      movImm32(MBB, MI, MI.getDebugLoc(), scratchReg, 0xFF);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOADH_AI))
+          .addImm(0x0); // ensure that the topmost bits are 0
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
+          .addReg(scratchReg);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AR)).addReg(scratchReg);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
       break;
     }
     case LEROSIF::Unsigned16BitLoad: {
-      // mask the lower half-word
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      // Mask the lower halfword
       // Build the operand which we have to OR with. We use a register from
       // GPRPseudoExpandRegClass since we are post reg allocation
       auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
@@ -409,8 +417,7 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
           .addReg(scratchReg);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AR)).addReg(scratchReg);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
-          .addReg(scratchReg);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
       break;
     }
     }
