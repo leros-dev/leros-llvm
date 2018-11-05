@@ -3,6 +3,7 @@ set(LLVM_TARGET_DEFINITIONS Leros.td)
 tablegen(LLVM LerosGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM LerosGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM LerosGenAsmWriter.inc -gen-asm-writer)
+tablegen(LLVM LerosGenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM LerosGenDAGISel.inc -gen-dag-isel)
 tablegen(LLVM LerosGenCallingConv.inc -gen-callingconv)
 tablegen(LLVM LerosGenSubtargetInfo.inc -gen-subtarget)
@@ -25,6 +26,7 @@ add_llvm_target(LerosCodeGen
  LerosUseAccumulator.cpp
 )
 
+add_subdirectory(AsmParser)
 add_subdirectory(InstPrinter)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)

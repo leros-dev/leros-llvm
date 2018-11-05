@@ -32,6 +32,7 @@ let RegAltNameIndices = [NoRegAltName] in {
         def R#Index# : LerosReg<Index, "r"#Index>, DwarfRegNum<[Index]>;
     }
 }
+} // namespace Leros
 
 
 def XLenVT : ValueTypeByHwMode<[Leros32, Leros64, DefaultMode],
@@ -60,6 +61,4 @@ def GPRPseudoExpand : RegisterClass<"Leros", [XLenVT], 32, (add
   )> {
     let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
-}
-
 }

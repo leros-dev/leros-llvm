@@ -129,6 +129,7 @@ def BareSymbol : AsmOperandClass {
   let Name = "BareSymbol";
   let RenderMethod = "addImmOperands";
   let DiagnosticType = "InvalidBareSymbol";
+  let ParserMethod = "parseBareSymbol";
 }
 
 // A bare symbol.

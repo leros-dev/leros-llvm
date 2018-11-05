@@ -5,4 +5,5 @@ add_llvm_library(LLVMLerosDesc
     LerosMCCodeEmitter.cpp
     LerosAsmBackend.cpp
     LerosELFObjectWriter.cpp
+    LerosTargetStreamer.cpp
 )
