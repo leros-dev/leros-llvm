@@ -69,7 +69,7 @@ public:
         // LerosFixupKinds.h.
         //
         // name                      offset bits  flags
-        {"fixup_leros_branch", 0, 32, MCFixupKindInfo::FKF_IsPCRel},
+        {"fixup_leros_branch", 0, 12, MCFixupKindInfo::FKF_IsPCRel},
         {"fixup_leros_b0", 0, 8, 0},
         {"fixup_leros_b1", 8, 8, 0},
         {"fixup_leros_b2", 16, 8, 0},
