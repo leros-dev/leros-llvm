@@ -240,7 +240,25 @@ public:
     return IsValid && VK == LerosMCExpr::VK_Leros_None;
   }
 
+  // True if operand is a symbol with no modifiers, or a constant with no
+  // modifiers
+  template <int N> bool isBareSimm() const {
+    int64_t Imm;
+    LerosMCExpr::VariantKind VK;
+    if (!isImm())
+      return false;
+    bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
+    bool IsValid;
+    if (!IsConstantImm)
+      IsValid = LerosAsmParser::classifySymbolRef(getImm(), VK, Imm);
+    return IsValid && VK == LerosMCExpr::VK_Leros_None;
+  }
+
   bool isSImm12Lsb0() const { return isBareSimmNLsb0<12>(); }
+
+  // Operand parser for signed 8-bit immediates which are either constants
+  // or symbol references (used for load operations)
+  bool isSImm8SymbolRef() const { return isBareSimm<8>(); }
 
   bool isImmXLen() const {
     int64_t Imm;

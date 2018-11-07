@@ -94,6 +94,22 @@ def simm8 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
   }];
 }
 
+// Special case signed 8-bit immediate that can match immediates through LLVM IR -> Leros
+// or symbol references through Leros assembly. Used for Load operations that
+// reference symbols. We create a separate operand type as to not allow all other
+// immediate instructions to refer to symbols.
+def simm8_symbolref : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<8>(Imm);}]> {
+  let ParserMatchClass = SImmAsmOperand<8, "SymbolRef">;
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeSImmOperand<8>";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isInt<8>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
+}
+
 
 // Boolean operations are only able to safely parse immediates that can be expressed
 // as 7-bit immediates. If they immediate is in the 8th bit, we risk sign extension and
@@ -172,8 +188,8 @@ def BYTE3 : SDNodeXForm<imm, [{
             }
 
     // Instructions with dependency: Acc -> (Acc, Imm)
-    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr>
-        : LerosImmInst<opcode, (outs), (ins simm8:$imm8), 
+    class INSTR_AccAccImm<LerosImmRegOpcode opcode, string opcodestr, Operand immClass>
+        : LerosImmInst<opcode, (outs), (ins immClass:$imm8), 
             opcodestr, "$imm8", []>{
                 let Inst{7-0} = imm8;
             }
@@ -193,8 +209,8 @@ def BYTE3 : SDNodeXForm<imm, [{
             }
     
     // Instructions with dependency: Acc -> (imm)
-    class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr>
-        : LerosImmInst<opcode, (outs), (ins simm8:$imm8),
+    class INSTR_AccImm<LerosImmRegOpcode opcode, string opcodestr, Operand immClass>
+        : LerosImmInst<opcode, (outs), (ins immClass:$imm8),
             opcodestr, "$imm8", []>{
                 let Inst{7-0} = imm8;
             }
@@ -235,7 +251,7 @@ multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnod
     def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
 
     // Instruction definitions
-    def _AI  : INSTR_AccAccImm<opcode, opcodestr>;
+    def _AI  : INSTR_AccAccImm<opcode, opcodestr, immClass>;
     def _AR  : INSTR_AccAccReg<opcode, opcodestr>; 
 }
 
@@ -266,10 +282,10 @@ defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor,    uimm7>;
 def LDADDR : INSTR_AccAccReg<OPC_LDADDR, "ldaddr">;
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-def LDIND : INSTR_AccAccImm<OPC_LDIND, "ldind">;
+def LDIND : INSTR_AccAccImm<OPC_LDIND, "ldind", simm8>;
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
-def STIND : INSTR_AccAccImm<OPC_STIND, "stind">;
+def STIND : INSTR_AccAccImm<OPC_STIND, "stind", simm8>;
 
 // Shifts are all pseudo instructions since they require custom emmission. 
 // shr has an actual leros instruction, whereas shl and sra are emissions of small algorithms
@@ -290,12 +306,12 @@ let usesCustomInserter = 1 in {
 
 // Register->accumulator Loads
 def LOAD_R : INSTR_AccReg<OPC_LOAD, "load">;
-def LOAD_I : INSTR_AccImm<OPC_LOAD, "load">;
+def LOAD_I : INSTR_AccImm<OPC_LOAD, "load", simm8_symbolref>;
 def LOAD_RI_PSEUDO : PSEUDO_RegImm;
 
-defm LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH,  simm8>;
-defm LOADH2   : INSTR_ImmReg<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8>;
-defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8>;
+defm LOADH    : INSTR_ImmReg<OPC_LOADH    ,  "loadh",   LOADH,  simm8_symbolref>;
+defm LOADH2   : INSTR_ImmReg<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8_symbolref>;
+defm LOADH3   : INSTR_ImmReg<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
 
 // Accumulator->register store
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;

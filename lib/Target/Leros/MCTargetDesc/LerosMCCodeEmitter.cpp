@@ -171,7 +171,31 @@ unsigned LerosMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
   } else if (Kind == MCExpr::SymbolRef &&
              cast<MCSymbolRefExpr>(Expr)->getKind() ==
                  MCSymbolRefExpr::VK_None) {
-    FixupKind = Leros::fixup_leros_branch;
+    // We might get a symbol reference that has been parsed through assembly, so
+    // check for load instructions that use symbols
+    switch (MI.getOpcode()) {
+    case Leros::LOAD_I: {
+      FixupKind = Leros::fixup_leros_b0;
+      break;
+    }
+    case Leros::LOADH_AI: {
+      FixupKind = Leros::fixup_leros_b1;
+      break;
+    }
+    case Leros::LOADH2_AI: {
+      FixupKind = Leros::fixup_leros_b2;
+      break;
+    }
+    case Leros::LOADH3_AI: {
+      FixupKind = Leros::fixup_leros_b3;
+      break;
+    }
+    default: {
+      // Default to a branch fixup
+      FixupKind = Leros::fixup_leros_branch;
+      break;
+    }
+    }
   }
 
   assert(FixupKind != Leros::fixup_leros_invalid && "Unhandled expression!");
