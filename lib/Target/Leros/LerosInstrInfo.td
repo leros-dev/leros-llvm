@@ -105,8 +105,9 @@ def uimm7 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<7>(Imm);}]> {
   let DecoderMethod = "decodeUImmOperand<7>";
 }
 
-def bb_simm12 : Operand<OtherVT> {
-  let ParserMatchClass = SImmAsmOperand<12>;
+// A 12 bit signed immediate where the lsb is zero 
+def simm12_lsb0 : Operand<OtherVT> {
+  let ParserMatchClass = SImmAsmOperand<12, "Lsb0">;
   let EncoderMethod = "getImmOpValueAsr1";
   let DecoderMethod = "decodeSImmOperandAndLsl1<12>";
   let MCOperandPredicate = [{
@@ -199,13 +200,13 @@ def BYTE3 : SDNodeXForm<imm, [{
             }
 
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
-        : LerosBranchInst<opcode, (outs), (ins bb_simm12:$imm11), opcodestr, "$imm11", []>{
+        : LerosBranchInst<opcode, (outs), (ins simm12_lsb0:$imm11), opcodestr, "$imm11", []>{
                 let Inst{10-0} = imm11;
             }
 
 // ------------- Pseudo ISA wrapper classes -------------
 // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
-class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, bb_simm12:$imm11), F_BRCC, []> {
+class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, simm12_lsb0:$imm11), F_BRCC, []> {
     let isBranch = 1;
     let isTerminator = 1;
 }
@@ -330,13 +331,13 @@ def  NOP_IMPL   : LerosInst<(outs), (ins simm8:$imm), "nop", "", []>{
 
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
-def : Pat<(br bb:$imm11), (BR_IMPL bb_simm12:$imm11)>;
+def : Pat<(br bb:$imm11), (BR_IMPL simm12_lsb0:$imm11)>;
 let isBarrier = 1, isBranch = 1, isTerminator = 1 in
-def PseudoBR : LerosPseudo<(outs), (ins bb_simm12:$imm11), F_BR, [(br bb:$imm11)]>,
-               PseudoInstExpansion<(BR_IMPL bb_simm12:$imm11)>;
+def PseudoBR : LerosPseudo<(outs), (ins simm12_lsb0:$imm11), F_BR, [(br bb:$imm11)]>,
+               PseudoInstExpansion<(BR_IMPL simm12_lsb0:$imm11)>;
 
 // Branch instruction where branch condition ($rc) has been precalculated
-class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, bb_simm12:$imm11), F_NA, []> {
+class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, simm12_lsb0:$imm11), F_NA, []> {
     let isBranch = 1;
     let isTerminator = 1;
 }
@@ -448,7 +449,7 @@ def : Pat<(setule GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs2, GPR:$rs1)>;
 
 class BccPat<PatFrag CondOp, Pseudo_Branch Inst>
     : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm11),
-          (Inst GPR:$rs1, GPR:$rs2, bb_simm12:$imm11)>;
+          (Inst GPR:$rs1, GPR:$rs2, simm12_lsb0:$imm11)>;
 
 def : BccPat<seteq, BRZ_PSEUDO>;
 def : BccPat<setne, BRNZ_PSEUDO>;
