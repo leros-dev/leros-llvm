@@ -103,12 +103,6 @@ def uimm7 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<7>(Imm);}]> {
   let ParserMatchClass = UImmAsmOperand<7>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeUImmOperand<7>";
-  let MCOperandPredicate = [{
-    int64_t Imm;
-    if (MCOp.evaluateAsConstantImm(Imm))
-      return isUInt<7>(Imm);
-    return MCOp.isBareSymbolRef();
-  }];
 }
 
 def bb_simm12 : Operand<OtherVT> {
