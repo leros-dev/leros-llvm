@@ -224,14 +224,23 @@ public:
     return IsConstantImm && isInt<8>(Imm) && VK == LerosMCExpr::VK_Leros_None;
   }
 
-  bool isSImm12() const {
+  // True if operand is a symbol with no modifiers, or a constant with no
+  // modifiers and isShiftedInt<N-1, 1>(Op).
+  template <int N> bool isBareSimmNLsb0() const {
     int64_t Imm;
     LerosMCExpr::VariantKind VK;
     if (!isImm())
       return false;
     bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
-    return IsConstantImm && isInt<12>(Imm) && VK == LerosMCExpr::VK_Leros_None;
+    bool IsValid;
+    if (!IsConstantImm)
+      IsValid = LerosAsmParser::classifySymbolRef(getImm(), VK, Imm);
+    else
+      IsValid = isShiftedInt<N - 1, 1>(Imm);
+    return IsValid && VK == LerosMCExpr::VK_Leros_None;
   }
+
+  bool isSImm12Lsb0() const { return isBareSimmNLsb0<12>(); }
 
   bool isImmXLen() const {
     int64_t Imm;
