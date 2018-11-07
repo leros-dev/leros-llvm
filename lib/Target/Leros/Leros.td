@@ -56,6 +56,12 @@ def : ProcessorModel<"generic-leros64", NoSchedModel, [Feature64Bit]>;
 
 def LerosInstrInfo : InstrInfo;
 
+def LerosAsmParser : AsmParser {
+  let ShouldEmitMatchRegisterAltName = 1;
+  let AllowDuplicateRegisterNames = 1;
+}
+
+
 class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
@@ -63,4 +69,5 @@ def : Proc<"generic", []>;
 
 def Leros : Target {
   let InstructionSet = LerosInstrInfo;
+  let AssemblyParsers = [LerosAsmParser];
 }
