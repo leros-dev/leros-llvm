@@ -22,3 +22,7 @@ fi
 
 # Build
 cmake --build .
+
+# Download crt0.leros.o from leros-lib
+cd bin
+wget "https://github.com/leros-dev/leros-lib/blob/master/runtime/crt0.leros.o"
