@@ -344,6 +344,11 @@ def  NOP_IMPL   : LerosInst<(outs), (ins simm8:$imm), "nop", "", []>{
         let Inst{7-0} = 0;
     }
 
+// Simulator-only scall (simulator call) instruction
+def SCALL : LerosInst<(outs), (ins), "scall", "", []>{
+    let Inst{7-0} = 0;
+    let Inst{15-8} = 0b11111111;
+}
 
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
