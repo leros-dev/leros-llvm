@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BUILD_DIRECTORY=build-leros-llvm-Clang-Release
+BUILD_DIRECTORY=leros-llvm
 
 # Make sure current working directory is the directory of the build script
 cd "${0%/*}"
