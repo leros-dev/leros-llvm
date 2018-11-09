@@ -248,7 +248,7 @@ public:
     if (!isImm())
       return false;
     bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
-    bool IsValid;
+    bool IsValid = true;
     if (!IsConstantImm)
       IsValid = LerosAsmParser::classifySymbolRef(getImm(), VK, Imm);
     return IsValid && VK == LerosMCExpr::VK_Leros_None;
