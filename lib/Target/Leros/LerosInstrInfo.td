@@ -333,7 +333,7 @@ let usesCustomInserter=1 in {
 }
 // Unsigned 8- and 16 bit loads just sets topmost bits to 0 (LerosInstrInfo::expandLS)
 def LOAD_U8_M_PSEUDO    : PSEUDO_Load_M<F_U8L>;
-def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U8L>;
+def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U16L>;
 
 // NOP instruction. Pseudo NOP can be used without any arguments, later expanded to NOP_IMPL.
 // NOP_IMPL contains a register argument because llvm complains about instructions with no in/out nodes
@@ -537,7 +537,7 @@ defm : LdPat<extloadi8, LOAD_S8_M_PSEUDO>;
 defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO>;
 defm : LdPat<extloadi16, LOAD_S16_M_PSEUDO>;
 defm : LdPat<zextloadi8, LOAD_U8_M_PSEUDO>;
-defm : LdPat<zextloadi16, LOAD_U8_M_PSEUDO>;
+defm : LdPat<zextloadi16, LOAD_U16_M_PSEUDO>;
 
 // Stores
 multiclass StPat<PatFrag StoreOp> {
