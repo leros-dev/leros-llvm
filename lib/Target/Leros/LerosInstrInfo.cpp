@@ -397,8 +397,6 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
       // GPRPseudoExpandRegClass since we are post reg allocation
       auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
       movImm32(MBB, MI, MI.getDebugLoc(), scratchReg, 0xFF);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOADH_AI))
-          .addImm(0x0); // ensure that the topmost bits are 0
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
           .addReg(scratchReg);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
@@ -412,8 +410,6 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
       // GPRPseudoExpandRegClass since we are post reg allocation
       auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
       movImm32(MBB, MI, MI.getDebugLoc(), scratchReg, 0xFFFF);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOADH2_AI))
-          .addImm(0x0); // ensure that the topmost bits are 0
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
           .addReg(scratchReg);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
