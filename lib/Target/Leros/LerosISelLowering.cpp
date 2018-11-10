@@ -166,7 +166,7 @@ SDValue LerosTargetLowering::lowerGlobalAddress(SDValue Op,
   SDValue MNB1 = SDValue(
       DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB0, GAB1), 0);
   SDValue MNB2 = SDValue(
-      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB1, GAB2), 0);
+      DAG.getMachineNode(Leros::LOADH2_RI_PSEUDO, DL, Ty, MNB1, GAB2), 0);
   SDValue MNB3 = SDValue(
       DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB2, GAB3), 0);
 
@@ -203,7 +203,7 @@ SDValue LerosTargetLowering::lowerBlockAddress(SDValue Op,
   SDValue MNB1 = SDValue(
       DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB0, BAB1), 0);
   SDValue MNB2 = SDValue(
-      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB1, BAB2), 0);
+      DAG.getMachineNode(Leros::LOADH2_RI_PSEUDO, DL, Ty, MNB1, BAB2), 0);
   SDValue MNB3 = SDValue(
       DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB2, BAB3), 0);
 
@@ -1220,9 +1220,9 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
 #undef NODE
 }
 
-//===----------------------------------------------------------------------===//
-//                      Calling Convention Implementation
-//===----------------------------------------------------------------------===//
+  //===----------------------------------------------------------------------===//
+  //                      Calling Convention Implementation
+  //===----------------------------------------------------------------------===//
 
 #include "LerosGenCallingConv.inc"
 
