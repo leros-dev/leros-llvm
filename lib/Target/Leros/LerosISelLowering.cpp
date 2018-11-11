@@ -705,8 +705,10 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *negMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *posMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *buildSEConstantMBB = F->CreateMachineBasicBlock(LLVM_BB);
 
   // Insertion order matters, to properly handle BB fallthrough
+  F->insert(I, buildSEConstantMBB);
   F->insert(I, negMBB);
   F->insert(I, posMBB);
   F->insert(I, TailMBB);
@@ -719,8 +721,10 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
 
   // Set successors for remaining MBBs
-  HeadMBB->addSuccessor(negMBB);
+  HeadMBB->addSuccessor(buildSEConstantMBB);
   HeadMBB->addSuccessor(posMBB);
+
+  buildSEConstantMBB->addSuccessor(TailMBB);
 
   negMBB->addSuccessor(TailMBB);
   negMBB->addSuccessor(negMBB);
@@ -738,10 +742,12 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
       .addReg(rs1)
       .addMBB(posMBB);
 
+  // -------- buildSEConstantMBB ------
   // From here, we know that it is a negative number - build sign extension
   // register
   const unsigned SER = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII.movUImm32(*HeadMBB, HeadMBB->end(), DL, SER, 0x80000000);
+  TII.movUImm32(*buildSEConstantMBB, buildSEConstantMBB->end(), DL, SER,
+                0x80000000);
 
   // fallthrough to NegMBB
 
@@ -752,7 +758,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   const unsigned NSEShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*negMBB, negMBB->begin(), DL, TII.get(Leros::PHI), NRegToShift)
       .addReg(rs1)
-      .addMBB(HeadMBB)
+      .addMBB(buildSEConstantMBB)
       .addReg(NSEShiftRes)
       .addMBB(negMBB);
 
@@ -768,7 +774,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   unsigned IterRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*negMBB, negMBB->begin(), DL, TII.get(Leros::PHI), RegToIter)
       .addReg(ScratchReg)
-      .addMBB(HeadMBB)
+      .addMBB(buildSEConstantMBB)
       .addReg(IterRes)
       .addMBB(negMBB);
 
@@ -804,13 +810,12 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
       .addReg(PIterRes)
       .addMBB(posMBB);
 
-  const unsigned PSubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(posMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), IterRes)
-      .addReg(RegToIter)
+  BuildMI(posMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), PIterRes)
+      .addReg(PRegToIter)
       .addImm(1);
 
   BuildMI(posMBB, DL, TII.get(Leros::PseudoBRNZ))
-      .addReg(PSubRes)
+      .addReg(PIterRes)
       .addMBB(posMBB);
 
   // Fallthrough to tail
