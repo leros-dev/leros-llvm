@@ -17,18 +17,8 @@ class LerosReg<bits<8> Enc, string n, list<string> alt = []> : Register<n> {
     let HWEncoding{7-0} = Enc;
     let AltNames = alt;
 }
-
-def ABIRegAltName : RegAltNameIndex;
-
-// Declare the 256 GPR registers
-let RegAltNameIndices = [ABIRegAltName] in {
-    def RA : LerosReg<0, "r0", ["ra"]>, DwarfRegNum<[0]>;
-    def SP : LerosReg<1, "r1", ["sp"]>, DwarfRegNum<[1]>;
-    def GP : LerosReg<2, "r2", ["gp"]>, DwarfRegNum<[2]>;
-    def FP : LerosReg<3, "r3", ["fp"]>, DwarfRegNum<[3]>;
-}
 let RegAltNameIndices = [NoRegAltName] in {
-    foreach Index = 4-255 in {
+    foreach Index = 0-255 in {
         def R#Index# : LerosReg<Index, "r"#Index>, DwarfRegNum<[Index]>;
     }
 }
@@ -40,8 +30,7 @@ def XLenVT : ValueTypeByHwMode<[Leros32, Leros64, DefaultMode],
 
 // General purpose registers
 def GPR : RegisterClass<"Leros", [XLenVT], 32, (add
-    RA, SP, GP, FP,
-    (sequence "R%u", 4, 250)
+    (sequence "R%u", 0, 250)
   )> {
     let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;

@@ -41,7 +41,7 @@ static MCInstrInfo *createLerosMCInstrInfo() {
 
 static MCRegisterInfo *createLerosMCRegisterInfo(const Triple &TT) {
   auto *X = new MCRegisterInfo();
-  InitLerosMCRegisterInfo(X, Leros::SP);
+  InitLerosMCRegisterInfo(X, Leros::R1);
   return X;
 }
 
@@ -76,4 +76,4 @@ extern "C" void LLVMInitializeLerosTargetMC() {
     TargetRegistry::RegisterMCCodeEmitter(*T, createLerosMCCodeEmitter);
   }
 }
-}
+} // namespace llvm

@@ -51,7 +51,7 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
   MVT XLenVT = Subtarget.getXLenVT();
   addRegisterClass(XLenVT, &Leros::GPRRegClass);
 
-  setStackPointerRegisterToSaveRestore(Leros::SP);
+  setStackPointerRegisterToSaveRestore(Leros::R1);
 
   // Compute derived properties from the register classes
   computeRegisterProperties(Subtarget.getRegisterInfo());
@@ -619,8 +619,11 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   }
   }
 
-  const unsigned &dstReg = MI.getOperand(0).getReg(),
-                 &rs1 = MI.getOperand(1).getReg();
+  auto op0 = MI.getOperand(0);
+  auto op2 = MI.getOperand(2);
+
+  const unsigned &dstReg = MI.getOperand(0).getReg();
+  auto op1 = MI.getOperand(1);
   const auto &imm = MI.getOperand(2).getImm();
 
   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
@@ -646,10 +649,19 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // -------- HeadMBB --------------
   // Load memory
   const unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
-          ScratchReg)
-      .addReg(rs1)
-      .addImm(imm);
+  if (op1.isReg()) {
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
+            ScratchReg)
+        .addReg(op1.getReg())
+        .addImm(imm);
+  } else if (op1.isFI()) {
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
+            ScratchReg)
+        .addFrameIndex(op1.getIndex())
+        .addImm(imm);
+  } else {
+    llvm_unreachable("Unknown operand type for SEXT emission!");
+  }
 
   // Check sign
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBRP))
@@ -1225,9 +1237,9 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
 #undef NODE
 }
 
-  //===----------------------------------------------------------------------===//
-  //                      Calling Convention Implementation
-  //===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+//                      Calling Convention Implementation
+//===----------------------------------------------------------------------===//
 
 #include "LerosGenCallingConv.inc"
 
@@ -1564,7 +1576,7 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
       // Work out the address of the stack slot.
       if (!StackPtr.getNode())
-        StackPtr = DAG.getCopyFromReg(Chain, DL, Leros::SP, PtrVT);
+        StackPtr = DAG.getCopyFromReg(Chain, DL, Leros::R1, PtrVT);
       SDValue Address =
           DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
                       DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));

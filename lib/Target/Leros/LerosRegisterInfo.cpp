@@ -30,7 +30,7 @@
 namespace llvm {
 
 LerosRegisterInfo::LerosRegisterInfo(unsigned HwMode)
-    : LerosGenRegisterInfo(Leros::SP, /*DwarfFlavour*/ 0, /*EHFlavor*/ 0,
+    : LerosGenRegisterInfo(Leros::R1, /*DwarfFlavour*/ 0, /*EHFlavor*/ 0,
                            /*PC*/ 0, HwMode) {}
 
 const MCPhysReg *
@@ -42,10 +42,10 @@ BitVector LerosRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
   // Use markSuperRegs to ensure any register aliases are also reserved
-  markSuperRegs(Reserved, Leros::RA); // ra
-  markSuperRegs(Reserved, Leros::SP); // sp
-  markSuperRegs(Reserved, Leros::GP); // gp
-  markSuperRegs(Reserved, Leros::FP); // fp
+  markSuperRegs(Reserved, Leros::R0); // ra
+  markSuperRegs(Reserved, Leros::R1); // sp
+  markSuperRegs(Reserved, Leros::R2); // gp
+  markSuperRegs(Reserved, Leros::R3); // fp
   assert(checkAllSuperRegsMarked(Reserved));
   return Reserved;
 }
@@ -96,7 +96,7 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
 unsigned LerosRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
   const TargetFrameLowering *TFI = getFrameLowering(MF);
-  return TFI->hasFP(MF) ? Leros::FP : Leros::SP;
+  return TFI->hasFP(MF) ? Leros::R3 : Leros::R1;
 }
 
 const uint32_t *LerosRegisterInfo::getNoPreservedMask() const {

@@ -379,7 +379,7 @@ def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BR, [(brind GPR:$rd)]>;
 
 
 // Instructions where format is specific to the instruction 
-    let isCall = 1, Defs=[RA] in
+    let isCall = 1, Defs=[R0] in
     def JAL_call     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
         bits<8> r;
         let Inst{7-0} = r;
@@ -388,7 +388,7 @@ def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BR, [(brind GPR:$rd)]>;
         
     }
 
-    let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA], isCodeGenOnly=1 in
+    let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0], isCodeGenOnly=1 in
     def JAL_ret     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
         bits<8> r;
         let Inst{7-0} = r;
@@ -401,11 +401,11 @@ def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BR, [(brind GPR:$rd)]>;
 //===----------------------------------------------------------------------===//
 
 // Function return using jal
-let isReturn=1, isTerminator=1, isBarrier=1, Uses=[RA] in
+let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in
 def RET : LerosPseudo<(outs), (ins), F_NA, [(LerosRet)]>;
 
 // Will later be expanded to a sequence of immediate loads and a jal instruction
-let isCall = 1, Defs = [RA], isCodeGenOnly = 0 in
+let isCall = 1, Defs = [R0], isCodeGenOnly = 0 in
 def PseudoCALL : LerosPseudo<(outs), (ins bare_symbol:$func), F_NA,
                         [(Call tglobaladdr:$func)]> {
     let AsmString = "call\t$func";
@@ -568,7 +568,7 @@ defm : StPat<truncstorei16>;
 
 
 // Stack pointer adjustments
-let Defs = [SP], Uses = [SP] in {
+let Defs = [R1], Uses = [R1] in {
 def ADJCALLSTACKDOWN : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,
                                   [(Callseq_start timm:$amt1, timm:$amt2)]>;
 def ADJCALLSTACKUP   : LerosPseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2), F_NA,

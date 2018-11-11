@@ -27,9 +27,7 @@ namespace llvm {
 #include "LerosGenAsmWriter.inc"
 
 void LerosInstPrinter::printRegName(raw_ostream &OS, unsigned RegNo) const {
-  const auto regName = getRegisterName(
-      RegNo, RegNo < Leros::R4 ? Leros::ABIRegAltName : Leros::NoRegAltName);
-  OS << regName;
+  OS << getRegisterName(RegNo);
 }
 
 void LerosInstPrinter::printInst(const MCInst *MI, raw_ostream &O,
@@ -149,4 +147,4 @@ void LerosInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   assert(Op.isExpr() && "unknown operand kind in printOperand");
   Op.getExpr()->print(O, &MAI);
 }
-}
+} // namespace llvm

@@ -56,7 +56,7 @@ extern "C" void LLVMInitializeLerosDisassembler() {
 }
 
 static const unsigned GPRDecoderTable[] = {
-    Leros::RA,   Leros::SP,   Leros::GP,   Leros::FP,   Leros::R4,
+    Leros::R0,   Leros::R1,   Leros::R2,   Leros::R3,   Leros::R4,
     Leros::R5,   Leros::R6,   Leros::R7,   Leros::R8,   Leros::R9,
     Leros::R10,  Leros::R11,  Leros::R12,  Leros::R13,  Leros::R14,
     Leros::R15,  Leros::R16,  Leros::R17,  Leros::R18,  Leros::R19,

@@ -42,10 +42,10 @@ bool LerosFrameLowering::hasFP(const MachineFunction &MF) const {
 }
 
 // Returns the register used to hold the frame pointer.
-static unsigned getFPReg(const LerosSubtarget &STI) { return Leros::FP; }
+static unsigned getFPReg(const LerosSubtarget &STI) { return Leros::R3; }
 
 // Returns the register used to hold the stack pointer.
-static unsigned getSPReg(const LerosSubtarget &STI) { return Leros::SP; }
+static unsigned getSPReg(const LerosSubtarget &STI) { return Leros::R1; }
 
 // Determines the size of the frame and maximum call frame size.
 void LerosFrameLowering::determineFrameLayout(MachineFunction &MF) const {
@@ -89,7 +89,7 @@ int LerosFrameLowering::getFrameIndexReference(const MachineFunction &MF,
   }
 
   if (FI >= MinCSFI && FI <= MaxCSFI) {
-    FrameReg = Leros::SP;
+    FrameReg = Leros::R1;
     Offset += MF.getFrameInfo().getStackSize();
   } else {
     FrameReg = RI->getFrameRegister(MF);
@@ -215,7 +215,7 @@ void LerosFrameLowering::emitEpilogue(MachineFunction &MF,
 MachineBasicBlock::iterator LerosFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator MI) const {
-  unsigned SPReg = Leros::SP;
+  unsigned SPReg = Leros::R1;
   DebugLoc DL = MI->getDebugLoc();
 
   if (!hasReservedCallFrame(MF)) {
