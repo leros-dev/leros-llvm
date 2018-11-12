@@ -1189,6 +1189,74 @@ LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
 }
 
 MachineBasicBlock *
+LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
+                                        MachineBasicBlock *BB) const {
+  const LerosInstrInfo &TII =
+      *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineFunction::iterator I = ++BB->getIterator();
+  MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
+
+  MachineBasicBlock *HeadMBB = BB;
+  MachineFunction *F = BB->getParent();
+
+  auto rstore = MI.getOperand(0).getReg();
+  auto rmem = MI.getOperand(1);
+  auto imm = MI.getOperand(2).getImm();
+
+  // Load the memory at the location
+  const unsigned MemReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  if (rmem.isReg()) {
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO), MemReg)
+        .addReg(rmem.getReg())
+        .addImm(imm);
+  } else if (rmem.isFI()) {
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO), MemReg)
+        .addFrameIndex(rmem.getIndex())
+        .addImm(imm);
+  } else {
+    llvm_unreachable("Unknown operand type for SEXT emission!");
+  }
+
+  // Mask the upper bits
+  int64_t bitmask = MI.getOpcode() == Leros::STORE_8_M_PSEUDO
+                        ? -256    // will expand to 0xFFFFFF00
+                        : -65536; // will expand to 0xFFFF0000
+  const unsigned MaskReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg, bitmask);
+  const unsigned MaskedMem = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
+          MaskedMem)
+      .addReg(MemReg)
+      .addReg(MaskReg);
+
+  // Mask the lower bits of the store register
+  bitmask = MI.getOpcode() == Leros::STORE_8_M_PSEUDO ? 0xFF : 0xFFFF;
+  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg, bitmask);
+  const unsigned MaskedStore = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
+          MaskedStore)
+      .addReg(rstore)
+      .addReg(MaskReg);
+
+  // OR the two registers
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO))
+      .addReg(MaskedStore)
+      .addReg(MaskedStore)
+      .addReg(MaskedMem);
+
+  // Store the memory
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_M_PSEUDO),
+          MaskedStore)
+      .addReg(rmem.getReg())
+      .addImm(imm);
+
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return HeadMBB;
+}
+
+MachineBasicBlock *
 LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
   switch (MI.getOpcode()) {
@@ -1213,6 +1281,9 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case Leros::LOAD_S8_M_PSEUDO:
   case Leros::LOAD_S16_M_PSEUDO:
     return EmitSEXTLOAD(MI, BB);
+  case Leros::STORE_8_M_PSEUDO:
+  case Leros::STORE_16_M_PSEUDO:
+    return EmitTruncatedStore(MI, BB);
   }
 }
 

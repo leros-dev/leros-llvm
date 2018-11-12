@@ -85,6 +85,8 @@ private:
                          bool IsRet, CallLoweringInfo *CLI) const;
 
   MachineBasicBlock *EmitSHL(MachineInstr &MI, MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitTruncatedStore(MachineInstr &MI,
+                                        MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSRAI(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSEXTLOAD(MachineInstr &MI,
                                   MachineBasicBlock *BB) const;
