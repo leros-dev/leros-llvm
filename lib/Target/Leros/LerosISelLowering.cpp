@@ -619,18 +619,17 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   }
   }
 
-  auto op0 = MI.getOperand(0);
-  auto op2 = MI.getOperand(2);
-
   const unsigned &dstReg = MI.getOperand(0).getReg();
   auto op1 = MI.getOperand(1);
   const auto &imm = MI.getOperand(2).getImm();
 
   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *posMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *negMBB = F->CreateMachineBasicBlock(LLVM_BB);
 
   // Insertion order matters, to properly handle BB fallthrough
   F->insert(I, posMBB);
+  F->insert(I, negMBB);
   F->insert(I, TailMBB);
 
   // Move all remaining instructions to TailMBB.
@@ -642,8 +641,9 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
 
   // Set successors for remaining MBBs
   HeadMBB->addSuccessor(posMBB);
-  HeadMBB->addSuccessor(TailMBB);
+  HeadMBB->addSuccessor(negMBB);
 
+  negMBB->addSuccessor(TailMBB);
   posMBB->addSuccessor(TailMBB);
 
   // -------- HeadMBB --------------
@@ -668,15 +668,14 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
       .addReg(ScratchReg)
       .addMBB(posMBB);
 
-  // From here, we know that loaded operand is negative - loaded operand is
-  // still in accumulator
+  // From here, we know that loaded operand is negative. Sign extend from either
+  // the 8th or 16th bit
   const unsigned SEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(opcode), SEXTRes)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(opcode), SEXTRes)
       .addReg(ScratchReg, RegState::Kill)
       .addImm(0xFF);
 
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBR))
-      .addMBB(TailMBB);
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
 
   // -------- posMBB --------------
   // From here we know that the loaded operand is positive - bitmask lower bits
@@ -691,7 +690,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // Get result through a phi node
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
       .addReg(SEXTRes)
-      .addMBB(HeadMBB)
+      .addMBB(negMBB)
       .addReg(ZEXTRes)
       .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
