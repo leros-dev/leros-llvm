@@ -379,8 +379,8 @@ def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BR, [(brind GPR:$rd)]>;
 
 
 // Instructions where format is specific to the instruction 
-    let isCall = 1, Defs=[R0] in
-    def JAL_call     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
+    let isCall = 1, Uses=[R0] in
+    def JAL_call     : LerosInst<(outs), (ins GPR:$r), "jal", "$r", []>{
         bits<8> r;
         let Inst{7-0} = r;
         let Inst{15-11} = OPC_JAL.Value;

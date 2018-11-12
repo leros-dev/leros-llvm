@@ -234,21 +234,33 @@ void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
                                 MachineInstr &MI) const {
   // For now, do not expand call - this should be done in some MCCodeEmitter by
   // the linker
+  const auto DL = MI.getDebugLoc();
 
-  /*
-unsigned Ra = Leros::R0;
-unsigned opcode = MI.getDesc().getOpcode();
+  auto operand = MI.getOperand(0);
 
-MCOperand &Func = MI.getOperand(0);
-const MCExpr *Expr = Func.getExpr();
+  if (operand.getType() == MachineOperand::MO_GlobalAddress) {
+    auto op = operand.getGlobal();
+    BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
+        .addGlobalAddress(op, 0, LEROSTF::MO_B0);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH_AI))
+        .addGlobalAddress(op, 0, LEROSTF::MO_B1);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI))
+        .addGlobalAddress(op, 0, LEROSTF::MO_B2);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI))
+        .addGlobalAddress(op, 0, LEROSTF::MO_B3);
+  } else if (operand.getType() == MachineOperand::MO_BlockAddress) {
+    auto op = operand.getBlockAddress();
+    BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
+        .addBlockAddress(op, 0, LEROSTF::MO_B0);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH_AI))
+        .addBlockAddress(op, 0, LEROSTF::MO_B1);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI))
+        .addBlockAddress(op, 0, LEROSTF::MO_B2);
+    BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI))
+        .addBlockAddress(op, 0, LEROSTF::MO_B3);
+  }
 
-// Load function address
-movImm32(MBB, MI, MI.getDebugLoc(), Ra, Expr);
-
-// Create function call expression CallExpr for JAL.
-BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL))
-    .addReg(Ra, RegState::Define);
-    */
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(Leros::R0);
 }
 
 // Inserts a branch into the end of the specific MachineBasicBlock, returning
@@ -491,8 +503,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   }
   }
 
-  if (MI.getDesc().getOpcode() != Leros::PseudoCALL)
-    MBB.erase(MI);
+  MBB.erase(MI);
   return true;
 }
 // The contents of values added to Cond are not examined outside of
