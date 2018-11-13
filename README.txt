@@ -18,4 +18,4 @@ suggestions.
 
 Leros LLVM
 ================================
-Port of the LLVM Compiler Infrastructure for the Leros ISA - https://github.com/schoeberl/leros.
+Port of the LLVM Compiler Infrastructure for the Leros ISA - https://leros-dev.github.io/.
