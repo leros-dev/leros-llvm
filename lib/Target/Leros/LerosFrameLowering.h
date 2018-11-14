@@ -39,6 +39,8 @@ public:
 
   bool hasFP(const MachineFunction &MF) const override;
 
+  bool hasReservedCallFrame(const MachineFunction &MF) const override;
+
   MachineBasicBlock::iterator
   eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                                 MachineBasicBlock::iterator MI) const override;

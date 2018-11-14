@@ -211,6 +211,13 @@ void LerosFrameLowering::emitEpilogue(MachineFunction &MF,
   adjustReg(MBB, MBBI, DL, SPReg, SPReg, StackSize, MachineInstr::FrameDestroy);
 }
 
+// Not preserve stack space within prologue for outgoing variables when the
+// function contains variable size objects and let eliminateCallFramePseudoInstr
+// preserve stack space for it.
+bool LerosFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
+  return !MF.getFrameInfo().hasVarSizedObjects();
+}
+
 // Eliminate ADJCALLSTACKDOWN, ADJCALLSTACKUP pseudo instructions.
 MachineBasicBlock::iterator LerosFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
