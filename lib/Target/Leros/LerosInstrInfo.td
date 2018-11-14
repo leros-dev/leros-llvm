@@ -367,7 +367,6 @@ def SCALL : LerosInst<(outs), (ins), "scall", "", []>{
 
 // Unconditional branch is defined as a separate instruction - needed for
 // small jumps
-def : Pat<(br bb:$imm11), (BR_IMPL simm12_lsb0:$imm11)>;
 let isBarrier = 1, isBranch = 1, isTerminator = 1 in
 def PseudoBR : LerosPseudo<(outs), (ins simm12_lsb0:$imm11), F_BR, [(br bb:$imm11)]>,
                PseudoInstExpansion<(BR_IMPL simm12_lsb0:$imm11)>;
@@ -382,6 +381,7 @@ def PseudoBRZ : Pseudo_BranchCC;
 def PseudoBRP : Pseudo_BranchCC;
 def PseudoBRN : Pseudo_BranchCC;
 
+let isBranch = 1, isTerminator = 1, isBarrier=1 in
 def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BR, [(brind GPR:$rd)]>;
 
 
