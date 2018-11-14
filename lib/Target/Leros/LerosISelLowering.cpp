@@ -1195,8 +1195,28 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
       *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
   DebugLoc DL = MI.getDebugLoc();
   MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
+  MachineFunction::iterator I = ++BB->getIterator();
 
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
   MachineBasicBlock *HeadMBB = BB;
+  MachineFunction *F = BB->getParent();
+  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+  // We dont explicitely need a new basic block here, but to keep the solution
+  // clean and error free, we insert a new one (tailMBB), move all successors to
+  // this, and add all of our new instructions onto the HeadMBB end iterator
+
+  F->insert(I, TailMBB);
+  // Move all remaining instructions to TailMBB.
+  TailMBB->splice(TailMBB->begin(), HeadMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
+
+  // Update machine-CFG edges by transferring all successors of the current
+  // block to the new block which will contain the Phi node for the select.
+  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+
+  // HeadMBB falls through to TailMBB
+  HeadMBB->addSuccessor(TailMBB);
 
   auto rstore = MI.getOperand(0).getReg();
   auto rmem = MI.getOperand(1);
@@ -1260,7 +1280,7 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
   }
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
-  return HeadMBB;
+  return TailMBB;
 }
 
 MachineBasicBlock *
