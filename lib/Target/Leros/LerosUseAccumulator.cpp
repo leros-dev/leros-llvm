@@ -127,7 +127,13 @@ bool LerosUseAccumulator::removeRedundantLDADDR(MachineBasicBlock &MBB) {
   MachineBasicBlock::iterator MBBI = MBB.begin(), E = MBB.end();
   while (MBBI != E) {
     bool eraseMBBI = false;
-    if (MBBI->getOpcode() == Leros::LDADDR) {
+    if (MBBI->getOpcode() == Leros::JAL_call) {
+      // We can have CALL's in the middle of basic blocks. Since the notion of
+      // the accumulator and adress register are not presented as actual
+      // registers to LLVM, these have not been marked as callee saved/restored
+      // so we manually have to guard for this here
+      modifiedRegInAdressReg = true;
+    } else if (MBBI->getOpcode() == Leros::LDADDR) {
       const int &reg = static_cast<int>(MBBI->getOperand(0).getReg());
       if (reg == currentAddressReg && !modifiedRegInAdressReg) {
         // We are loading the same register as is already present in the address
