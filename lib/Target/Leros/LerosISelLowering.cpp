@@ -605,16 +605,19 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   MachineFunction *F = BB->getParent();
 
   unsigned opcode;
+  uint32_t signImm;
 
   switch (MI.getOpcode()) {
   default:
     llvm_unreachable("Unknown SEXT opcode");
   case Leros::LOAD_S8_M_PSEUDO: {
     opcode = Leros::LOADH_RI_PSEUDO;
+    signImm = 0x80;
     break;
   }
   case Leros::LOAD_S16_M_PSEUDO: {
     opcode = Leros::LOADH2_RI_PSEUDO;
+    signImm = 0x8000;
     break;
   }
   }
@@ -663,19 +666,19 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
     llvm_unreachable("Unknown operand type for SEXT emission!");
   }
 
-  // Check sign
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBRP))
+  // Mask sign of loaded operand
+  const unsigned mask = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  TII.movUImm32(*HeadMBB, HeadMBB->end(), DL, mask, signImm);
+  const unsigned maskedLoad = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
+          maskedLoad)
       .addReg(ScratchReg)
-      .addMBB(posMBB);
+      .addReg(mask);
 
-  // From here, we know that loaded operand is negative. Sign extend from either
-  // the 8th or 16th bit
-  const unsigned SEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(opcode), SEXTRes)
-      .addReg(ScratchReg, RegState::Kill)
-      .addImm(0xFF);
-
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
+  // result != 0 => negative number
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
+      .addReg(maskedLoad)
+      .addMBB(negMBB);
 
   // -------- posMBB --------------
   // From here we know that the loaded operand is positive - bitmask lower bits
@@ -684,6 +687,14 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
       .addReg(ScratchReg, RegState::Kill)
       .addImm(0x0);
 
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
+
+  // From here, we know that loaded operand is negative. Sign extend from either
+  // the 8th or 16th bit (depending on $opcode)
+  const unsigned SEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(opcode), SEXTRes)
+      .addReg(ScratchReg, RegState::Kill)
+      .addImm(0xFF);
   // Fallthrough to tail
 
   // -------- tailMBB --------------
