@@ -560,9 +560,9 @@ multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
 defm : LdPat<load, LOAD_M_PSEUDO>;
 defm : LdPat<load, LOAD_M_PSEUDO>;
 defm : LdPat<sextloadi8, LOAD_S8_M_PSEUDO>;
-defm : LdPat<extloadi8, LOAD_S8_M_PSEUDO>;
+defm : LdPat<extloadi8, LOAD_U8_M_PSEUDO>;
 defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO>;
-defm : LdPat<extloadi16, LOAD_S16_M_PSEUDO>;
+defm : LdPat<extloadi16, LOAD_U16_M_PSEUDO>;
 defm : LdPat<zextloadi8, LOAD_U8_M_PSEUDO>;
 defm : LdPat<zextloadi16, LOAD_U16_M_PSEUDO>;
 
