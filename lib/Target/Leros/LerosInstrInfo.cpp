@@ -389,7 +389,18 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STIND)).addImm(imm);
     break;
   }
-  case Leros::LOAD_U8_M_PSEUDO:
+  case Leros::STORE_8_M_PSEUDO: {
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STINDB)).addImm(imm);
+    break;
+  }
+  case Leros::LOAD_U8_M_PSEUDO: {
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDINDBU)).addImm(imm);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+    break;
+  }
   case Leros::LOAD_U16_M_PSEUDO:
   case Leros::LOAD_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
@@ -401,19 +412,6 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
     switch (MI.getDesc().TSFlags) {
     default: {
       // Full word load, we exit here
-      break;
-    }
-    case LEROSIF::Unsigned8BitLoad: {
-      // Mask the lower byte
-      // Build the operand which we have to OR with. We use a register from
-      // GPRPseudoExpandRegClass since we are post reg allocation
-      auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
-      movImm32(MBB, MI, MI.getDebugLoc(), scratchReg, 0xFF);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
-          .addReg(scratchReg);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AR)).addReg(scratchReg);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
       break;
     }
     case LEROSIF::Unsigned16BitLoad: {

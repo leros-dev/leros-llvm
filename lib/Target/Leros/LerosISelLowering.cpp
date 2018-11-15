@@ -605,17 +605,20 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   MachineFunction *F = BB->getParent();
 
   unsigned opcode;
+  unsigned memLoadOpcode;
   uint32_t signImm;
 
   switch (MI.getOpcode()) {
   default:
     llvm_unreachable("Unknown SEXT opcode");
   case Leros::LOAD_S8_M_PSEUDO: {
+    memLoadOpcode = Leros::LOAD_U8_M_PSEUDO;
     opcode = Leros::LOADH_RI_PSEUDO;
     signImm = 0x80;
     break;
   }
   case Leros::LOAD_S16_M_PSEUDO: {
+    memLoadOpcode = Leros::LOAD_M_PSEUDO;
     opcode = Leros::LOADH2_RI_PSEUDO;
     signImm = 0x8000;
     break;
@@ -653,13 +656,11 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // Load memory
   const unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
   if (op1.isReg()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
-            ScratchReg)
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(memLoadOpcode), ScratchReg)
         .addReg(op1.getReg())
         .addImm(imm);
   } else if (op1.isFI()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
-            ScratchReg)
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(memLoadOpcode), ScratchReg)
         .addFrameIndex(op1.getIndex())
         .addImm(imm);
   } else {
@@ -1233,61 +1234,73 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
   auto rmem = MI.getOperand(1);
   auto imm = MI.getOperand(2).getImm();
 
-  // Load the memory at the location
-  const unsigned MemReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  if (rmem.isReg()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO), MemReg)
+  if (MI.getOpcode() == Leros::STORE_8_M_PSEUDO) {
+    // Utilize the byte-store of leros
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_8_M_PSEUDO),
+            rstore)
         .addReg(rmem.getReg())
         .addImm(imm);
-  } else if (rmem.isFI()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO), MemReg)
-        .addFrameIndex(rmem.getIndex())
-        .addImm(imm);
   } else {
-    llvm_unreachable("Unknown operand type for SEXT emission!");
-  }
+    // 16-bit store. Load the memory at the location, mask upper half-word and
+    // OR it with the value which is to-be stored
 
-  // Mask the upper bits
-  int64_t bitmask = MI.getOpcode() == Leros::STORE_8_M_PSEUDO
-                        ? -256    // will expand to 0xFFFFFF00
-                        : -65536; // will expand to 0xFFFF0000
-  const unsigned MaskReg1 = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg1, bitmask);
-  const unsigned MaskedMem = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
-          MaskedMem)
-      .addReg(MemReg)
-      .addReg(MaskReg1);
+    // Load the memory at the location
+    const unsigned MemReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    if (rmem.isReg()) {
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
+              MemReg)
+          .addReg(rmem.getReg())
+          .addImm(imm);
+    } else if (rmem.isFI()) {
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
+              MemReg)
+          .addFrameIndex(rmem.getIndex())
+          .addImm(imm);
+    } else {
+      llvm_unreachable("Unknown operand type for SEXT emission!");
+    }
 
-  // Mask the lower bits of the store register
-  const unsigned MaskReg2 = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  bitmask = MI.getOpcode() == Leros::STORE_8_M_PSEUDO ? 0xFF : 0xFFFF;
-  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg2, bitmask);
-  const unsigned MaskedStore = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
-          MaskedStore)
-      .addReg(rstore)
-      .addReg(MaskReg2);
+    // Mask the upper bits
+    int64_t bitmask = -65536; // will expand to 0xFFFF0000
+    const unsigned MaskReg1 = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg1, bitmask);
+    const unsigned MaskedMem = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
+            MaskedMem)
+        .addReg(MemReg)
+        .addReg(MaskReg1);
 
-  // OR the two registers
-  const unsigned MaskedRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::OR_RR_PSEUDO), MaskedRes)
-      .addReg(MaskedStore)
-      .addReg(MaskedMem);
+    // Mask the lower bits of the store register
+    const unsigned MaskReg2 = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    bitmask = 0xFFFF;
+    TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg2, bitmask);
+    const unsigned MaskedStore = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
+            MaskedStore)
+        .addReg(rstore)
+        .addReg(MaskReg2);
 
-  // Store the memory
-  if (rmem.isReg()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_M_PSEUDO))
-        .addReg(MaskedRes)
-        .addReg(rmem.getReg())
-        .addImm(imm);
-  } else if (rmem.isFI()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_M_PSEUDO))
-        .addReg(MaskedRes)
-        .addFrameIndex(rmem.getIndex())
-        .addImm(imm);
-  } else {
-    llvm_unreachable("Unknown operand type for SEXT emission!");
+    // OR the two registers
+    const unsigned MaskedRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::OR_RR_PSEUDO),
+            MaskedRes)
+        .addReg(MaskedStore)
+        .addReg(MaskedMem);
+
+    // Store the memory
+    if (rmem.isReg()) {
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_M_PSEUDO))
+          .addReg(MaskedRes)
+          .addReg(rmem.getReg())
+          .addImm(imm);
+    } else if (rmem.isFI()) {
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_M_PSEUDO))
+          .addReg(MaskedRes)
+          .addFrameIndex(rmem.getIndex())
+          .addImm(imm);
+    } else {
+      llvm_unreachable("Unknown operand type for SEXT emission!");
+    }
   }
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.

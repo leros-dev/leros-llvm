@@ -51,7 +51,8 @@ enum {
   Signed8BitLoad,
   Signed16BitLoad,
   Unsigned8BitLoad,
-  Unsigned16BitLoad
+  Unsigned16BitLoad,
+  ByteStore
 };
 } // namespace LEROSIF
 

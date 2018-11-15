@@ -194,6 +194,13 @@ def BYTE3 : SDNodeXForm<imm, [{
                 let Inst{7-0} = imm8;
             }
 
+    // Instructions with dependency: Acc -> (Acc, Imm), where opcode is 8-bit long
+    class INSTR_AccAccImm_LS<LerosLSOpcode opcode, string opcodestr, Operand immClass>
+        : LerosImmInst_LS<opcode, (outs), (ins immClass:$imm8),
+            opcodestr, "$imm8", []>{
+                let Inst{7-0} = imm8;
+            }
+
     // Instructions with dependency: Reg -> (Acc)
     class INSTR_RegAcc<LerosImmRegOpcode opcode, string opcodestr>
         : LerosRegInst<opcode, (outs GPR:$r), (ins),
@@ -289,12 +296,15 @@ defm XOR  : INSTR_ImmReg<OPC_XOR     ,    "xor",    xor,    uimm7>;
 
 def LDADDR : INSTR_AccAccReg<OPC_LDADDR, "ldaddr">;
 
-let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-def LDIND : INSTR_AccAccImm<OPC_LDIND, "ldind", simm8>;
+let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in{
+    def LDIND : INSTR_AccAccImm_LS<OPC_LDIND, "ldind", simm8>;
+    def LDINDBU : INSTR_AccAccImm_LS<OPC_LDINDBU, "ldindbu", simm8>;
+}
 
-let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
-def STIND : INSTR_AccAccImm<OPC_STIND, "stind", simm8>;
-
+let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in {
+    def STIND : INSTR_AccAccImm_LS<OPC_STIND, "stind", simm8>;
+    def STINDB : INSTR_AccAccImm_LS<OPC_STINDB, "stindb", simm8>;
+}
 // Shifts are all pseudo instructions since they require custom emmission. 
 // shr has an actual leros instruction, whereas shl and sra are emissions of small algorithms
 def SHRByOne_Pseudo: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
@@ -333,9 +343,11 @@ defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn"     >;
 
 // Memory access pseudoinstruction definitions
 def STORE_M_PSEUDO      : PSEUDO_Store_M;
-// Truncated stores uses a custom inserter
+
+def STORE_8_M_PSEUDO    : PSEUDO_Store_M;
+
+// Truncated 16-bit stores uses a custom inserter
 let usesCustomInserter=1 in {
-    def STORE_8_M_PSEUDO    : PSEUDO_Store_M;
     def STORE_16_M_PSEUDO   : PSEUDO_Store_M;
 }
 
