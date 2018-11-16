@@ -30,6 +30,11 @@ using namespace llvm;
 
 #define LEROS_USE_ACCUMULATOR_NAME "Leros accumulator usage pass"
 
+static cl::opt<bool>
+    NoAccumulatorOpts("no-accumulator-opt", cl::Hidden,
+                      cl::desc("Disable the accumulator optimizations"),
+                      cl::init(false));
+
 namespace {
 
 class LerosUseAccumulator : public MachineFunctionPass {
@@ -58,14 +63,18 @@ private:
 char LerosUseAccumulator::ID = 0;
 
 bool LerosUseAccumulator::runOnMachineFunction(MachineFunction &MF) {
-  TII = static_cast<const LerosInstrInfo *>(MF.getSubtarget().getInstrInfo());
-  bool Modified = false;
-  for (auto &MBB : MF) {
-    Modified |= removeRedundantLoadMBB(MBB);
-    Modified |= removeRedundantStoreMBB(MBB);
-    Modified |= removeRedundantLDADDR(MBB);
+  if (!NoAccumulatorOpts) {
+    TII = static_cast<const LerosInstrInfo *>(MF.getSubtarget().getInstrInfo());
+    bool Modified = false;
+    for (auto &MBB : MF) {
+      Modified |= removeRedundantLoadMBB(MBB);
+      Modified |= removeRedundantStoreMBB(MBB);
+      Modified |= removeRedundantLDADDR(MBB);
+    }
+    return Modified;
+  } else {
+    return false;
   }
-  return Modified;
 }
 
 bool LerosUseAccumulator::removeRedundantStoreMBB(MachineBasicBlock &MBB) {
