@@ -30,7 +30,7 @@
 namespace llvm {
 
 LerosRegisterInfo::LerosRegisterInfo(unsigned HwMode)
-    : LerosGenRegisterInfo(Leros::R1, /*DwarfFlavour*/ 0, /*EHFlavor*/ 0,
+    : LerosGenRegisterInfo(Leros::R0, /*DwarfFlavour*/ 0, /*EHFlavor*/ 0,
                            /*PC*/ 0, HwMode) {}
 
 const MCPhysReg *
