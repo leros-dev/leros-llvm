@@ -87,6 +87,12 @@ bool LerosUseAccumulator::removeRedundantStoreMBB(MachineBasicBlock &MBB) {
   MachineBasicBlock::reverse_iterator MBBI = MBB.rbegin(), E = MBB.rend();
   while (MBBI != E) {
     bool eraseMBBI = false;
+    if (MBBI->getOpcode() == Leros::JAL_call) {
+      // A CALL in a basic block renders all stored register states invalid,
+      // resets the optimization
+      lastStores.clear();
+      lastUsages.clear();
+    }
     if (MBBI->getOpcode() == Leros::STORE_R) {
       const unsigned &reg = MBBI->getOperand(0).getReg();
       if (lastStores.find(reg) == lastStores.end()) {
