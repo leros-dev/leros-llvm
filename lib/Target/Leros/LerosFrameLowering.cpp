@@ -136,6 +136,18 @@ void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
   }
 }
 
+void LerosFrameLowering::determineCalleeSaves(MachineFunction &MF,
+                                              BitVector &SavedRegs,
+                                              RegScavenger *RS) const {
+  TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
+  // Unconditionally spill RA and FP only if the function uses a frame
+  // pointer.
+  if (hasFP(MF)) {
+    SavedRegs.set(Leros::R0);
+    SavedRegs.set(Leros::R3);
+  }
+}
+
 void LerosFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
   assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");

@@ -37,6 +37,9 @@ public:
   int getFrameIndexReference(const MachineFunction &MF, int FI,
                              unsigned &FrameReg) const override;
 
+  void determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
+                            RegScavenger *RS) const override;
+
   bool hasFP(const MachineFunction &MF) const override;
 
   bool hasReservedCallFrame(const MachineFunction &MF) const override;
