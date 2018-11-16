@@ -232,8 +232,6 @@ void LerosInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
 void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
                                 MachineInstr &MI) const {
-  // For now, do not expand call - this should be done in some MCCodeEmitter by
-  // the linker
   const auto DL = MI.getDebugLoc();
 
   auto operand = MI.getOperand(0);
