@@ -83,19 +83,19 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::UMUL_LOHI, XLenVT, Promote);
   setOperationAction(ISD::SMUL_LOHI, XLenVT, Promote);
-  setOperationAction(ISD::MUL, XLenVT, LibCall);
-  setOperationAction(ISD::MULHS, XLenVT, LibCall);
-  setOperationAction(ISD::MULHU, XLenVT, LibCall);
-  setOperationAction(ISD::SDIV, XLenVT, LibCall);
-  setOperationAction(ISD::UDIV, XLenVT, LibCall);
-  setOperationAction(ISD::SREM, XLenVT, LibCall);
-  setOperationAction(ISD::UREM, XLenVT, LibCall);
+  setOperationAction(ISD::MUL, XLenVT, Expand);
+  setOperationAction(ISD::MULHS, XLenVT, Expand);
+  setOperationAction(ISD::MULHU, XLenVT, Expand);
+  setOperationAction(ISD::SDIV, XLenVT, Expand);
+  setOperationAction(ISD::UDIV, XLenVT, Expand);
+  setOperationAction(ISD::SREM, XLenVT, Expand);
+  setOperationAction(ISD::UREM, XLenVT, Expand);
 
-  setOperationAction(ISD::SDIVREM, XLenVT, LibCall);
-  setOperationAction(ISD::UDIVREM, XLenVT, LibCall);
+  setOperationAction(ISD::SDIVREM, XLenVT, Expand);
+  setOperationAction(ISD::UDIVREM, XLenVT, Expand);
 
-  setOperationAction(ISD::SHL_PARTS, XLenVT, LibCall);
-  setOperationAction(ISD::SRL_PARTS, XLenVT, Legal);
+  setOperationAction(ISD::SHL_PARTS, XLenVT, Expand);
+  setOperationAction(ISD::SRL_PARTS, XLenVT, Expand);
   setOperationAction(ISD::SRA_PARTS, XLenVT, Expand);
 
   setOperationAction(ISD::ROTL, XLenVT, Expand);
@@ -110,22 +110,22 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
       ISD::SETUGT, ISD::SETUGE, ISD::SETULT, ISD::SETULE, ISD::SETUNE,
       ISD::SETGT,  ISD::SETGE,  ISD::SETNE};
 
-  setOperationAction(ISD::FMINNUM, MVT::f32, LibCall);
-  setOperationAction(ISD::FMAXNUM, MVT::f32, LibCall);
+  setOperationAction(ISD::FMINNUM, MVT::f32, Expand);
+  setOperationAction(ISD::FMAXNUM, MVT::f32, Expand);
   for (auto CC : FPCCToExtend)
     setCondCodeAction(CC, MVT::f32, Expand);
-  setOperationAction(ISD::SELECT_CC, MVT::f32, LibCall);
-  setOperationAction(ISD::SELECT, MVT::f32, LibCall);
-  setOperationAction(ISD::BR_CC, MVT::f32, LibCall);
+  setOperationAction(ISD::SELECT_CC, MVT::f32, Expand);
+  setOperationAction(ISD::SELECT, MVT::f32, Expand);
+  setOperationAction(ISD::BR_CC, MVT::f32, Expand);
 
-  setOperationAction(ISD::FMINNUM, MVT::f64, LibCall);
-  setOperationAction(ISD::FMAXNUM, MVT::f64, LibCall);
+  setOperationAction(ISD::FMINNUM, MVT::f64, Expand);
+  setOperationAction(ISD::FMAXNUM, MVT::f64, Expand);
   for (auto CC : FPCCToExtend)
-    setCondCodeAction(CC, MVT::f64, LibCall);
-  setOperationAction(ISD::SELECT_CC, MVT::f64, LibCall);
-  setOperationAction(ISD::SELECT, MVT::f64, LibCall);
-  setOperationAction(ISD::BR_CC, MVT::f64, LibCall);
-  setLoadExtAction(ISD::EXTLOAD, MVT::f64, MVT::f32, LibCall);
+    setCondCodeAction(CC, MVT::f64, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::f64, Expand);
+  setOperationAction(ISD::SELECT, MVT::f64, Expand);
+  setOperationAction(ISD::BR_CC, MVT::f64, Expand);
+  setLoadExtAction(ISD::EXTLOAD, MVT::f64, MVT::f32, Expand);
   setTruncStoreAction(MVT::f64, MVT::f32, Expand);
 
   setOperationAction(ISD::GlobalAddress, XLenVT, Custom);
