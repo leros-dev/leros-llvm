@@ -19,10 +19,10 @@ def CSR_NoRegs : CalleeSavedRegs<(add)>;
 //===----------------------------------------------------------------------===//
 // Leros Return Value Calling Convention
 //===----------------------------------------------------------------------===//
-/*
+
 def RetCC_Leros : CallingConv
 <[
-  // i32 are returned in registers R4-R60
+  // i32 are returned in registers R4-R7
   CCIfType<[i32], CCAssignToReg<[R4, R5, R6, R7]>>,
 
   // Integer values get stored in stack slots that are 4 bytes in
@@ -44,4 +44,4 @@ def CC_Leros : CallingConv<[
   // size and 4-byte aligned.
   CCIfType<[i32], CCAssignToStack<4, 4>>
 ]>;
-*/
+

@@ -25,9 +25,9 @@ def SDT_LerosSelectCC     : SDTypeProfile<1, 3,  [SDTCisSameAs<0, 1>,
                                                  SDTCisSameAs<1, 2>]>;
 
 def Callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_LerosCallSeqStart,
-                           [SDNPHasChain, SDNPSideEffect, SDNPOutGlue]>;
+                           [SDNPHasChain, SDNPOutGlue]>;
 def Callseq_end   : SDNode<"ISD::CALLSEQ_END", SDT_LerosCallSeqEnd,
-                           [SDNPHasChain, SDNPSideEffect,
+                           [SDNPHasChain,
                             SDNPOptInGlue, SDNPOutGlue]>;
 def Call         : SDNode<"LEROSISD::Call", SDT_lerosCall,
                           [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,

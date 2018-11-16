@@ -59,6 +59,12 @@ private:
   SDValue LowerCall(TargetLowering::CallLoweringInfo &CLI,
                     SmallVectorImpl<SDValue> &InVals) const override;
 
+  SDValue LowerCallResult(SDValue Chain, SDValue InFlag,
+                          CallingConv::ID CallConv, bool isVarArg,
+                          const SmallVectorImpl<ISD::InputArg> &Ins,
+                          const SDLoc &dl, SelectionDAG &DAG,
+                          SmallVectorImpl<SDValue> &InVals) const;
+
   SDValue LowerReturn(SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       const SmallVectorImpl<SDValue> &OutVals, const SDLoc &DL,
@@ -76,13 +82,6 @@ private:
                       bool IsVarArg,
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       LLVMContext &Context) const override;
-
-  void analyzeInputArgs(MachineFunction &MF, CCState &CCInfo,
-                        const SmallVectorImpl<ISD::InputArg> &Ins,
-                        bool IsRet) const;
-  void analyzeOutputArgs(MachineFunction &MF, CCState &CCInfo,
-                         const SmallVectorImpl<ISD::OutputArg> &Outs,
-                         bool IsRet, CallLoweringInfo *CLI) const;
 
   MachineBasicBlock *EmitSHL(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitTruncatedStore(MachineInstr &MI,
