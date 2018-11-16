@@ -236,26 +236,29 @@ void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
 
   auto operand = MI.getOperand(0);
 
+#define ADD_SYMBOL(GET_SYM, ADD_SYM)                                           \
+  auto op = operand.GET_SYM();                                                 \
+  BuildMI(MBB, MI, DL, get(Leros::LOAD_I)).ADD_SYM(op, 0, LEROSTF::MO_B0);     \
+  BuildMI(MBB, MI, DL, get(Leros::LOADH_AI)).ADD_SYM(op, 0, LEROSTF::MO_B1);   \
+  BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI)).ADD_SYM(op, 0, LEROSTF::MO_B2);  \
+  BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI)).ADD_SYM(op, 0, LEROSTF::MO_B3);
+
   if (operand.getType() == MachineOperand::MO_GlobalAddress) {
-    auto op = operand.getGlobal();
-    BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
-        .addGlobalAddress(op, 0, LEROSTF::MO_B0);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH_AI))
-        .addGlobalAddress(op, 0, LEROSTF::MO_B1);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI))
-        .addGlobalAddress(op, 0, LEROSTF::MO_B2);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI))
-        .addGlobalAddress(op, 0, LEROSTF::MO_B3);
+    ADD_SYMBOL(getGlobal, addGlobalAddress)
   } else if (operand.getType() == MachineOperand::MO_BlockAddress) {
-    auto op = operand.getBlockAddress();
+    ADD_SYMBOL(getBlockAddress, addBlockAddress)
+  } else if (operand.getType() == MachineOperand::MO_ExternalSymbol) {
+    auto op = operand.getSymbolName();
     BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
-        .addBlockAddress(op, 0, LEROSTF::MO_B0);
+        .addExternalSymbol(op, LEROSTF::MO_B0);
     BuildMI(MBB, MI, DL, get(Leros::LOADH_AI))
-        .addBlockAddress(op, 0, LEROSTF::MO_B1);
+        .addExternalSymbol(op, LEROSTF::MO_B1);
     BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI))
-        .addBlockAddress(op, 0, LEROSTF::MO_B2);
+        .addExternalSymbol(op, LEROSTF::MO_B2);
     BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI))
-        .addBlockAddress(op, 0, LEROSTF::MO_B3);
+        .addExternalSymbol(op, LEROSTF::MO_B3);
+  } else {
+    llvm_unreachable("Unknown operand type for PseudoCALL");
   }
 
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(Leros::R0);
