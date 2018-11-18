@@ -152,9 +152,6 @@ SDValue LerosTargetLowering::lowerGlobalAddress(SDValue Op,
   int64_t Offset = N->getOffset();
   MVT XLenVT = Subtarget.getXLenVT();
 
-  if (isPositionIndependent())
-    report_fatal_error("Unable to lowerGlobalAddress");
-
   // Create the machine node
   SDValue GAB0 = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_B0);
   SDValue GAB1 = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_B1);
