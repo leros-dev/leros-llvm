@@ -685,7 +685,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // From here we know that the loaded operand is positive - bitmask lower bits
   const unsigned ZEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*posMBB, posMBB->end(), DL, TII.get(opcode), ZEXTRes)
-      .addReg(ScratchReg, RegState::Kill)
+      .addReg(ScratchReg)
       .addImm(0x0);
 
   BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
@@ -694,7 +694,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // the 8th or 16th bit (depending on $opcode)
   const unsigned SEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*negMBB, negMBB->end(), DL, TII.get(opcode), SEXTRes)
-      .addReg(ScratchReg, RegState::Kill)
+      .addReg(ScratchReg)
       .addImm(0xFF);
   // Fallthrough to tail
 
@@ -747,7 +747,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   HeadMBB->addSuccessor(buildSEConstantMBB);
   HeadMBB->addSuccessor(posMBB);
 
-  buildSEConstantMBB->addSuccessor(TailMBB);
+  buildSEConstantMBB->addSuccessor(negMBB);
 
   negMBB->addSuccessor(TailMBB);
   negMBB->addSuccessor(negMBB);
@@ -779,65 +779,67 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   unsigned NRegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
   unsigned NShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   const unsigned NSEShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*negMBB, negMBB->begin(), DL, TII.get(Leros::PHI), NRegToShift)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PHI), NRegToShift)
       .addReg(rs1)
       .addMBB(buildSEConstantMBB)
       .addReg(NSEShiftRes)
       .addMBB(negMBB);
 
-  BuildMI(negMBB, DL, TII.get(Leros::SHRByOne_Pseudo), NShiftRes)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::SHRByOne_Pseudo),
+          NShiftRes)
       .addReg(NRegToShift);
 
   // Sign extend
-  BuildMI(negMBB, DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
       .addReg(NShiftRes)
       .addReg(SER);
 
   unsigned RegToIter = MRI.createVirtualRegister(&Leros::GPRRegClass);
   unsigned IterRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*negMBB, negMBB->begin(), DL, TII.get(Leros::PHI), RegToIter)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PHI), RegToIter)
       .addReg(ScratchReg)
       .addMBB(buildSEConstantMBB)
       .addReg(IterRes)
       .addMBB(negMBB);
 
-  BuildMI(negMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), IterRes)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO), IterRes)
       .addReg(RegToIter, RegState::Kill)
       .addImm(1);
 
-  BuildMI(negMBB, DL, TII.get(Leros::PseudoBRNZ))
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
       .addReg(IterRes, RegState::Kill)
       .addMBB(negMBB);
 
   // Finished sign-extended shift - unconditional branch to tail
-  BuildMI(negMBB, DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
 
   // -------- PosMBB --------------
 
   unsigned PRegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
   unsigned PShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*posMBB, posMBB->begin(), DL, TII.get(Leros::PHI), PRegToShift)
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::PHI), PRegToShift)
       .addReg(rs1)
       .addMBB(HeadMBB)
       .addReg(PShiftRes)
       .addMBB(posMBB);
 
-  BuildMI(posMBB, DL, TII.get(Leros::SHRByOne_Pseudo), PShiftRes)
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::SHRByOne_Pseudo),
+          PShiftRes)
       .addReg(PRegToShift);
 
   unsigned PRegToIter = MRI.createVirtualRegister(&Leros::GPRRegClass);
   unsigned PIterRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*posMBB, posMBB->begin(), DL, TII.get(Leros::PHI), PRegToIter)
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::PHI), PRegToIter)
       .addReg(ScratchReg)
       .addMBB(HeadMBB)
       .addReg(PIterRes)
       .addMBB(posMBB);
 
-  BuildMI(posMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), PIterRes)
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO), PIterRes)
       .addReg(PRegToIter)
       .addImm(1);
 
-  BuildMI(posMBB, DL, TII.get(Leros::PseudoBRNZ))
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
       .addReg(PIterRes)
       .addMBB(posMBB);
 
