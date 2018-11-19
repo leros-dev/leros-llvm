@@ -485,7 +485,19 @@ def : Pat<(simm32:$imm),
 // Codegen patterns
 //===----------------------------------------------------------------------===//   
 
-// Branch comparison patterns
+// Branch register-0 comparison patterns
+class BrCmp0Pat<PatFrag CondOp, Pseudo_BrRs Inst>
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, 0)), bb:$imm11),
+          (Inst GPR:$rs1, simm12_lsb0:$imm11)>;
+
+def : BrCmp0Pat<seteq, BRZ_PSEUDO>;
+def : BrCmp0Pat<setne, BRNZ_PSEUDO>;
+def : BrCmp0Pat<setge, BRP_PSEUDO>;
+def : BrCmp0Pat<setlt, BRN_PSEUDO>;
+def : BrCmp0Pat<setuge, BRP_PSEUDO>;
+def : BrCmp0Pat<setult, BRN_PSEUDO>;
+
+// Branch register-register comparison patterns
 class BrCmpPat<PatFrag CondOp, Pseudo_BrCmpRs1Rs2 Inst>
     : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm11),
           (Inst GPR:$rs1, GPR:$rs2, simm12_lsb0:$imm11)>;
