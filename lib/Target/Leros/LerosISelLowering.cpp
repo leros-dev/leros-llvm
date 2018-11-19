@@ -297,25 +297,6 @@ SDValue LerosTargetLowering::LowerOperation(SDValue Op,
   }
 }
 
-static unsigned getBranchOpcodeForIntCondCode(ISD::CondCode CC) {
-  switch (CC) {
-  default:
-    llvm_unreachable("Unsupported CondCode");
-  case ISD::SETEQ:
-    return Leros::BRZ_PSEUDO;
-  case ISD::SETNE:
-    return Leros::BRNZ_PSEUDO;
-  case ISD::SETLT:
-    return Leros::BRN_PSEUDO;
-  case ISD::SETGE:
-    return Leros::BRP_PSEUDO;
-  case ISD::SETULT:
-    return Leros::BRN_PSEUDO;
-  case ISD::SETUGE:
-    return Leros::BRP_PSEUDO;
-  }
-}
-
 MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
                                                 MachineBasicBlock *BB) const {
 

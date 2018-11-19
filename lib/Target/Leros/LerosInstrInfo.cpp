@@ -505,19 +505,6 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   MBB.erase(MI);
   return true;
 }
-// The contents of values added to Cond are not examined outside of
-// LerosInstrInfo, giving us flexibility in what to push to it. For Leros, we
-// push BranchOpcode, Reg1, Reg2.
-static void parseCondBranch(MachineInstr &LastInst, MachineBasicBlock *&Target,
-                            SmallVectorImpl<MachineOperand> &Cond) {
-  // Block ends with fall-through condbranch.
-  assert(LastInst.getDesc().isConditionalBranch() &&
-         "Unknown conditional branch");
-  Target = LastInst.getOperand(2).getMBB();
-  Cond.push_back(MachineOperand::CreateImm(LastInst.getOpcode()));
-  Cond.push_back(LastInst.getOperand(0));
-  Cond.push_back(LastInst.getOperand(1));
-}
 
 unsigned LerosInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                       int *BytesRemoved) const {
