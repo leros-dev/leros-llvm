@@ -229,10 +229,25 @@ def BYTE3 : SDNodeXForm<imm, [{
 
 // ------------- Pseudo ISA wrapper classes -------------
 // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
-class Pseudo_Branch : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, simm12_lsb0:$imm11), F_BRCC, []> {
+// Ie. breq rs1 rs2 bb => leros sub & leros brz
+class Pseudo_BrCmpRs1Rs2 : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, simm12_lsb0:$imm11), F_BRCmp, []> {
     let isBranch = 1;
     let isTerminator = 1;
 }
+
+// Ie. brgtz rs1 bb => leros brp
+class Pseudo_BrRs : LerosPseudo<(outs), (ins GPR:$r1, simm12_lsb0:$imm11), F_BRRs, []> {
+    let isBranch = 1;
+    let isTerminator = 1;
+}
+
+// Multiclass for definition of single register branch pseudoinstructions and their
+// Leros instruction counterpart
+multiclass Implement_BrRs<LerosBOpcode opcode, string opcodestr>{
+    def _PSEUDO :   Pseudo_BrRs;
+    def _IMPL   :   INSTR_BranchCond<opcode, opcodestr>;
+}
+
 
 // Pseudo instruction wrapper for an Acc -> (Acc, Reg) instruction
 class PSEUDO_AccAccImm<SDNode opnode, Operand ImmClass> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
@@ -274,13 +289,6 @@ multiclass INSTR_Pseudo<LerosImmRegOpcode opcode, SDNode opnode, Operand immClas
     let usesCustomInserter = 1 in {
         def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode, immClass>; // Register-immediate instruction
         def _RR_PSEUDO  : PSEUDO_AccAccReg<opnode>; // Register-register instruction
-    }
-}
-
-multiclass INSTR_BrImpl<LerosBOpcode opcode, string opcodestr>{
-    let isTerminator=1 in {
-    def _PSEUDO : Pseudo_Branch;
-    def  _IMPL     : INSTR_BranchCond<opcode, opcodestr>;
     }
 }
 
@@ -334,13 +342,6 @@ defm LOADH3   : INSTR_Imm<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
 // Accumulator->register store
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
 
-let isBarrier = 1, isBranch = 1, isTerminator = 1 in
-def  BR_IMPL : INSTR_BranchCond<OPC_BR,  "br"       >; // unconditional branch, pseudo version is handled by PseudoBR
-defm BRZ     : INSTR_BrImpl<OPC_BRZ,     "brz"      >;
-defm BRNZ    : INSTR_BrImpl<OPC_BRNZ,    "brnz"     >;
-defm BRP     : INSTR_BrImpl<OPC_BRP,     "brp"      >;
-defm BRN     : INSTR_BrImpl<OPC_BRN,     "brn"     >;
-
 // Memory access pseudoinstruction definitions
 def STORE_M_PSEUDO      : PSEUDO_Store_M;
 
@@ -372,52 +373,57 @@ def  NOP_IMPL   : LerosInst<(outs), (ins simm8:$imm), "nop", "", []>{
     }
 
 // Simulator-only scall (simulator call) instruction
-def SCALL : LerosInst<(outs), (ins), "scall", "", []>{
-    let Inst{7-0} = 0;
+def SCALL : LerosInst<(outs), (ins uimm8:$imm), "scall", "$imm", []>{
+    bits<8> imm;
+    let Inst{7-0} = imm;
     let Inst{15-8} = 0b11111111;
 }
 
-// Unconditional branch is defined as a separate instruction - needed for
-// small jumps
+// =================== BRANCHES ===================
+// Unconditional branch
 let isBarrier = 1, isBranch = 1, isTerminator = 1 in
-def PseudoBR : LerosPseudo<(outs), (ins simm12_lsb0:$imm11), F_BR, [(br bb:$imm11)]>,
-               PseudoInstExpansion<(BR_IMPL simm12_lsb0:$imm11)>;
-
-// Branch instruction where branch condition ($rc) has been precalculated
-class Pseudo_BranchCC : LerosPseudo<(outs), (ins GPR:$rc, simm12_lsb0:$imm11), F_NA, []> {
-    let isBranch = 1;
-    let isTerminator = 1;
+def BR_IMPL  : LerosBranchInst<OPC_BR, (outs), (ins simm12_lsb0:$imm11), "br", "$imm11", [(br bb:$imm11)]>{
+                let Inst{10-0} = imm11;
 }
-def PseudoBRNZ : Pseudo_BranchCC;
-def PseudoBRZ : Pseudo_BranchCC;
-def PseudoBRP : Pseudo_BranchCC;
-def PseudoBRN : Pseudo_BranchCC;
 
-let isBranch = 1, isTerminator = 1, isBarrier=1 in
-def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BR, [(brind GPR:$rd)]>;
+// Leros branch instructions - Defined as Implement_BrRs for:
+//  - 2 operand pseudo-instruction (Register and basic block)
+//  - 1 operand machine instructcion (basic block)
+defm BRNZ            : Implement_BrRs<OPC_BRNZ,    "brnz">;
+defm BRZ             : Implement_BrRs<OPC_BRZ,     "brz"     >;
+defm BRP             : Implement_BrRs<OPC_BRP,     "brp"      >;
+defm BRN             : Implement_BrRs<OPC_BRN,     "brn"     >;
+
+// Dual register (comparison) branch Pseudo instructions
+def BRGTE_PSEUDO       : Pseudo_BrCmpRs1Rs2;
+def BRLT_PSEUDO        : Pseudo_BrCmpRs1Rs2;
+def BREQ_PSEUDO        : Pseudo_BrCmpRs1Rs2;
+def BRNEQ_PSEUDO       : Pseudo_BrCmpRs1Rs2;
+
+// Indirect branch (expands to jal in LerosInstrInfo::expandBRIND)
+let isBranch = 1, isTerminator = 1, isIndirectBranch = 1, isBarrier=1 in
+def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BRIND, [(brind GPR:$rd)]>;
+
+// ================================================
 
 
 // Instructions where format is specific to the instruction 
-    let isCall = 1, Uses=[R0] in
-    def JAL_call     : LerosInst<(outs), (ins GPR:$r), "jal", "$r", []>{
-        bits<8> r;
-        let Inst{7-0} = r;
-        let Inst{15-11} = OPC_JAL.Value;
-        let Inst{10-8} = 0;
-        
-    }
+let isCall = 1, Uses=[R0] in
+def JAL_call     : LerosInst<(outs), (ins GPR:$r), "jal", "$r", []>{
+    bits<8> r;
+    let Inst{7-0} = r;
+    let Inst{15-11} = OPC_JAL.Value;
+    let Inst{10-8} = 0;
+    
+}
 
-    let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0], isCodeGenOnly=1 in
-    def JAL_ret     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
-        bits<8> r;
-        let Inst{7-0} = r;
-        let Inst{15-11} = OPC_JAL.Value;
-        let Inst{10-8} = 0;
-    }
-
-//===----------------------------------------------------------------------===//
-// Pseudo Instructions
-//===----------------------------------------------------------------------===//
+let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0], isCodeGenOnly=1 in
+def JAL_ret     : LerosInst<(outs GPR:$r), (ins), "jal", "$r", []>{
+    bits<8> r;
+    let Inst{7-0} = r;
+    let Inst{15-11} = OPC_JAL.Value;
+    let Inst{10-8} = 0;
+}
 
 // Function return using jal
 let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in
@@ -478,11 +484,35 @@ def : Pat<(simm32:$imm),
 //===----------------------------------------------------------------------===//
 // Codegen patterns
 //===----------------------------------------------------------------------===//   
- 
-//Todo: Implement these using a future set instruction, or expand into a phi node
-// using branch logic for the set results
 
+// Branch comparison patterns
+class BrCmpPat<PatFrag CondOp, Pseudo_BrCmpRs1Rs2 Inst>
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm11),
+          (Inst GPR:$rs1, GPR:$rs2, simm12_lsb0:$imm11)>;
 
+def : BrCmpPat<seteq, BREQ_PSEUDO>;
+def : BrCmpPat<setne, BRNEQ_PSEUDO>;
+def : BrCmpPat<setge, BRGTE_PSEUDO>;
+def : BrCmpPat<setlt, BRLT_PSEUDO>;
+def : BrCmpPat<setuge, BRGTE_PSEUDO>;
+def : BrCmpPat<setult, BRLT_PSEUDO>;
+
+class BccSwapPat<PatFrag CondOp, Pseudo_BrCmpRs1Rs2 Inst>
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm8),
+          (Inst GPR:$rs2, GPR:$rs1, bb:$imm8)>;
+
+// Condition codes that don't have matching RISC-V branch instructions, but
+// are trivially supported by swapping the two input operands
+def : BccSwapPat<setgt, BRLT_PSEUDO>;
+def : BccSwapPat<setle, BRGTE_PSEUDO>;
+def : BccSwapPat<setugt, BRLT_PSEUDO>;
+def : BccSwapPat<setule, BRGTE_PSEUDO>;
+
+// An extra pattern is needed for a brcond without a setcc (i.e. where the
+// condition was calculated elsewhere).
+def : Pat<(brcond GPR:$cond, bb:$imm8), (BRNZ_PSEUDO GPR:$cond, bb:$imm8)>;
+
+// Set patterns, where CC is calculated at a position not near the branch instruction
 def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SETEQ_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setne GPR:$rs1, GPR:$rs2), (XOR_RI_PSEUDO (SETEQ_PSEUDO GPR:$rs1, GPR:$rs2), 1)>;
 def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs2, GPR:$rs1)>;
@@ -493,33 +523,6 @@ def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs2, GPR:$rs1)>;
 def : Pat<(setuge GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setult GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setule GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs2, GPR:$rs1)>;
-
-
-class BccPat<PatFrag CondOp, Pseudo_Branch Inst>
-    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm11),
-          (Inst GPR:$rs1, GPR:$rs2, simm12_lsb0:$imm11)>;
-
-def : BccPat<seteq, BRZ_PSEUDO>;
-def : BccPat<setne, BRNZ_PSEUDO>;
-def : BccPat<setge, BRP_PSEUDO>;
-def : BccPat<setlt, BRN_PSEUDO>;
-def : BccPat<setuge, BRP_PSEUDO>;
-def : BccPat<setult, BRN_PSEUDO>;
-
-class BccSwapPat<PatFrag CondOp, Pseudo_Branch Inst>
-    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm8),
-          (Inst GPR:$rs2, GPR:$rs1, bb:$imm8)>;
-
-// Condition codes that don't have matching RISC-V branch instructions, but
-// are trivially supported by swapping the two input operands
-def : BccSwapPat<setgt, BRN_PSEUDO>;
-def : BccSwapPat<setle, BRP_PSEUDO>;
-def : BccSwapPat<setugt, BRN_PSEUDO>;
-def : BccSwapPat<setule, BRP_PSEUDO>;
-
-// An extra pattern is needed for a brcond without a setcc (i.e. where the
-// condition was calculated elsewhere).
-def : Pat<(brcond GPR:$cond, bb:$imm8), (PseudoBRNZ GPR:$cond, bb:$imm8)>;
 
 // Addressing modes.
 // Necessary because a frameindex can't be matched directly in a pattern.

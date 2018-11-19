@@ -400,7 +400,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addReg(RegToIter)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
-    BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
+    BuildMI(shiftMBB, DL, TII.get(Leros::BRNZ_PSEUDO))
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
@@ -425,7 +425,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     // Set the successors for HeadMBB.
 
     // Zero check
-    BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRZ)).addReg(rs2).addMBB(TailMBB);
+    BuildMI(HeadMBB, DL, TII.get(Leros::BRZ_PSEUDO))
+        .addReg(rs2)
+        .addMBB(TailMBB);
 
     // Determine reg to shift from whether we are starting the loop or iterating
     unsigned RegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
@@ -455,7 +457,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addReg(RegWithIter)
         .addImm(1);
 
-    BuildMI(shiftMBB, DL, TII.get(Leros::PseudoBRNZ))
+    BuildMI(shiftMBB, DL, TII.get(Leros::BRNZ_PSEUDO))
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
@@ -488,15 +490,15 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   default:
     llvm_unreachable("Unknown SET opcode");
   case Leros::SETEQ_PSEUDO: {
-    opcode = Leros::PseudoBRZ;
+    opcode = Leros::BRZ_PSEUDO;
     break;
   }
   case Leros::SETGE_PSEUDO: {
-    opcode = Leros::PseudoBRP;
+    opcode = Leros::BRP_PSEUDO;
     break;
   }
   case Leros::SETLT_PSEUDO: {
-    opcode = Leros::PseudoBRN;
+    opcode = Leros::BRN_PSEUDO;
     break;
   }
   }
@@ -529,15 +531,10 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   falseMBB->addSuccessor(TailMBB);
 
   // -------- HeadMBB --------------
-  const unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::SUB_RR_PSEUDO),
-          ScratchReg)
-      .addReg(rs1)
-      .addReg(rs2);
 
-  // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(opcode))
-      .addReg(ScratchReg)
+      .addReg(rs1)
+      .addReg(rs2)
       .addMBB(trueMBB);
 
   // fallthrough to falseMBB
@@ -549,7 +546,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   const unsigned falseRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   TII.movImm32(*falseMBB, falseMBB->end(), DL, falseRes, 0);
 
-  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::PseudoBR))
+  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::BR_IMPL))
       .addMBB(TailMBB);
 
   // -------- trueMBB --------------
@@ -655,7 +652,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
       .addReg(mask);
 
   // result != 0 => negative number
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
       .addReg(maskedLoad)
       .addMBB(negMBB);
 
@@ -666,7 +663,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
       .addReg(ScratchReg)
       .addImm(0x0);
 
-  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::BR_IMPL)).addMBB(TailMBB);
 
   // From here, we know that loaded operand is negative. Sign extend from either
   // the 8th or 16th bit (depending on $opcode)
@@ -739,7 +736,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   TII.movImm32(*HeadMBB, HeadMBB->end(), DL, ScratchReg, imm);
 
   // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBRP))
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRP_PSEUDO))
       .addReg(rs1)
       .addMBB(posMBB);
 
@@ -785,12 +782,12 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
       .addReg(RegToIter)
       .addImm(1);
 
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
       .addReg(IterRes)
       .addMBB(negMBB);
 
   // Finished sign-extended shift - unconditional branch to tail
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::BR_IMPL)).addMBB(TailMBB);
 
   // -------- PosMBB --------------
 
@@ -818,7 +815,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
       .addReg(PRegToIter)
       .addImm(1);
 
-  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
       .addReg(PIterRes)
       .addMBB(posMBB);
 
@@ -888,12 +885,12 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
 
   // -------- HeadMBB --------------
   // Zero check
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBRZ))
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRZ_PSEUDO))
       .addReg(rs2)
       .addMBB(TailMBB);
 
   // Check if positive
-  BuildMI(*PosCheck, PosCheck->end(), DL, TII.get(Leros::PseudoBRP))
+  BuildMI(*PosCheck, PosCheck->end(), DL, TII.get(Leros::BRP_PSEUDO))
       .addReg(rs1)
       .addMBB(posMBB);
 
@@ -935,12 +932,12 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addReg(NRegToIter)
       .addImm(1);
 
-  BuildMI(negMBB, DL, TII.get(Leros::PseudoBRNZ))
+  BuildMI(negMBB, DL, TII.get(Leros::BRNZ_PSEUDO))
       .addReg(NIterRes)
       .addMBB(negMBB);
 
   // Finished sign-extended shift - unconditional branch to tail
-  BuildMI(negMBB, DL, TII.get(Leros::PseudoBR)).addMBB(TailMBB);
+  BuildMI(negMBB, DL, TII.get(Leros::BR_IMPL)).addMBB(TailMBB);
 
   // -------- PosMBB --------------
   unsigned PRegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
@@ -966,7 +963,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addReg(PRegToIter)
       .addImm(1);
 
-  BuildMI(posMBB, DL, TII.get(Leros::PseudoBRNZ))
+  BuildMI(posMBB, DL, TII.get(Leros::BRNZ_PSEUDO))
       .addReg(PIterRes)
       .addMBB(posMBB);
 
@@ -1077,7 +1074,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
         .addReg(RegToIter)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
@@ -1097,14 +1094,14 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
     //       |
     //     TailMBB
 
-    // Set the successors for HeadMBB.
+    // Set an additional successor for HeadMBB as since we can fall through to
+    // TailMBB after the zero check
     HeadMBB->addSuccessor(TailMBB);
 
     // Zero check
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::PseudoBRZ))
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRZ_IMPL))
         .addReg(rs2)
         .addMBB(TailMBB);
-    HeadMBB->addSuccessor(shiftMBB);
 
     // shift by register operand
     unsigned RegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
@@ -1131,7 +1128,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
             SubRes)
         .addReg(RegToIter)
         .addImm(1);
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::PseudoBRNZ))
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
@@ -1170,17 +1167,22 @@ LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
   // Update machine-CFG edges by transferring all successors of the current
   // block to the new block which will contain the Phi node for the select.
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+
   // Set the successors for HeadMBB.
   HeadMBB->addSuccessor(IfTrueMBB);
   HeadMBB->addSuccessor(TailMBB);
 
+  IfTrueMBB->addSuccessor(TailMBB);
+
   // Insert appropriate branch. If CC is 0, we branch to TailMBB and the select
   // the 2nd register
   unsigned CCReg = MI.getOperand(1).getReg();
-  BuildMI(HeadMBB, DL, TII.get(Leros::PseudoBRZ)).addReg(CCReg).addMBB(TailMBB);
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRZ_PSEUDO))
+      .addReg(CCReg)
+      .addMBB(TailMBB);
 
-  // IfTrueMBB just falls through to TailMBB. We select the 1st register here
-  IfTrueMBB->addSuccessor(TailMBB);
+  // IfTrueMBB - nothing here, falls through to TailMBB
+  BuildMI(*IfTrueMBB, IfTrueMBB->begin(), DL, TII.get(Leros::NOP));
 
   // %Result = phi [ %TrueValue, IfTrueMBB ], [ %FalseValue, HeadMBB ]
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI),

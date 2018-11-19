@@ -279,7 +279,7 @@ unsigned LerosInstrInfo::insertBranch(
 
   // Unconditional branch.
   if (Cond.empty()) {
-    MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::PseudoBR)).addMBB(TBB);
+    MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::BR_IMPL)).addMBB(TBB);
     if (BytesAdded)
       *BytesAdded += getInstSizeInBytes(MI);
     return 1;
@@ -297,14 +297,14 @@ unsigned LerosInstrInfo::insertBranch(
     return 1;
 
   // Two-way conditional branch.
-  MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::PseudoBR)).addMBB(FBB);
+  MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::BR_IMPL)).addMBB(FBB);
   if (BytesAdded)
     *BytesAdded += getInstSizeInBytes(MI);
   return 2;
 }
 
-void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
-                                bool hasPrecalcCC) const {
+void LerosInstrInfo::expandBRCMP(MachineBasicBlock &MBB,
+                                 MachineInstr &MI) const {
 #define OPCASE(instr)                                                          \
   case instr##_PSEUDO:                                                         \
     opcode = instr##_IMPL;                                                     \
@@ -314,50 +314,45 @@ void LerosInstrInfo::expandBRCC(MachineBasicBlock &MBB, MachineInstr &MI,
   switch (opcode) {
   default:
     llvm_unreachable("Unhandled opcode");
-    break;
     OPCASE(Leros::BRZ)
     OPCASE(Leros::BRNZ)
     OPCASE(Leros::BRP)
     OPCASE(Leros::BRN)
-  case Leros::PseudoBRNZ: {
-    opcode = Leros::BRNZ_IMPL;
-    break;
-  }
-  case Leros::PseudoBRZ: {
-    opcode = Leros::BRZ_IMPL;
-    break;
-  }
-  case Leros::PseudoBRP: {
-    opcode = Leros::BRP_IMPL;
-    break;
-  }
-  case Leros::PseudoBRN: {
-    opcode = Leros::BRN_IMPL;
-    break;
-  }
   }
 #undef OPCASE
 
   MachineBasicBlock *bb;
-  if (opcode != Leros::BR_IMPL) {
-    bb = MI.getOperand(hasPrecalcCC ? 1 : 2).getMBB();
-    const unsigned &rs1 = MI.getOperand(0).getReg();
-
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
-    if (!hasPrecalcCC) {
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR))
-          .addReg(MI.getOperand(1).getReg());
-    }
-  } else {
-    bb = MI.getOperand(0).getMBB();
-  }
-
+  bb = MI.getOperand(2).getMBB();
+  const unsigned &rs1 = MI.getOperand(0).getReg();
+  const unsigned &rs2 = MI.getOperand(1).getReg();
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR)).addReg(rs2);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);
 }
 
-void LerosInstrInfo::expandBR(MachineBasicBlock &MBB, MachineInstr &MI) const {
-  const auto &bb = MI.getOperand(0).getMBB();
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::BR_IMPL)).addMBB(bb);
+void LerosInstrInfo::expandBRRS(MachineBasicBlock &MBB,
+                                MachineInstr &MI) const {
+#define OPCASE(instr)                                                          \
+  case instr##_PSEUDO:                                                         \
+    opcode = instr##_IMPL;                                                     \
+    break;
+
+  unsigned opcode = MI.getDesc().getOpcode();
+  switch (opcode) {
+  default:
+    llvm_unreachable("Unhandled opcode");
+    OPCASE(Leros::BRZ)
+    OPCASE(Leros::BRNZ)
+    OPCASE(Leros::BRP)
+    OPCASE(Leros::BRN)
+  }
+#undef OPCASE
+
+  MachineBasicBlock *bb;
+  bb = MI.getOperand(1).getMBB();
+  const unsigned &rs1 = MI.getOperand(0).getReg();
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);
 }
 
 void LerosInstrInfo::expandBRIND(MachineBasicBlock &MBB,
@@ -440,7 +435,6 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   switch (MI.getDesc().TSFlags) {
   default:
     llvm_unreachable("All pseudo-instructions must be expandable");
-    break;
   case LEROSIF::RRR: {
     expandRRR(MBB, MI);
     break;
@@ -453,12 +447,16 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     expandRI(MBB, MI);
     break;
   }
-  case LEROSIF::BranchCC: {
-    expandBRCC(MBB, MI, false);
+  case LEROSIF::BranchCmp: {
+    expandBRCMP(MBB, MI);
     break;
   }
-  case LEROSIF::Branch: {
-    expandBR(MBB, MI);
+  case LEROSIF::BranchRs: {
+    expandBRRS(MBB, MI);
+    break;
+  }
+  case LEROSIF::BranchIndirect: {
+    expandBRIND(MBB, MI);
     break;
   }
   case LEROSIF::Signed8BitLoad:
@@ -473,7 +471,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     const auto opc = MI.getDesc().getOpcode();
     switch (opc) {
     default:
-      return false;
+      llvm_unreachable("Unknown pseudo-instruction");
     case Leros::SHRByOne_Pseudo:
       expandSHR(MBB, MI);
       break;
@@ -488,15 +486,6 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       break;
     case Leros::RET:
       expandRET(MBB, MI);
-      break;
-    case Leros::PseudoBRZ:
-    case Leros::PseudoBRNZ:
-    case Leros::PseudoBRP:
-    case Leros::PseudoBRN:
-      expandBRCC(MBB, MI, true);
-      break;
-    case Leros::PseudoBRIND:
-      expandBRIND(MBB, MI);
       break;
     }
   }

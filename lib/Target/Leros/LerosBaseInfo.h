@@ -44,15 +44,16 @@ enum {
   NoFormat,
   RRR,
   RRI,
-  BranchCC,
+  BranchCmp,
   RI,
-  Branch,
+  BranchIndirect,
   LoadStore,
   Signed8BitLoad,
   Signed16BitLoad,
   Unsigned8BitLoad,
   Unsigned16BitLoad,
-  ByteStore
+  ByteStore,
+  BranchRs
 };
 } // namespace LEROSIF
 
