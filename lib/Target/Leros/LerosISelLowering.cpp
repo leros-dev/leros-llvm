@@ -490,15 +490,15 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   default:
     llvm_unreachable("Unknown SET opcode");
   case Leros::SETEQ_PSEUDO: {
-    opcode = Leros::BRZ_PSEUDO;
+    opcode = Leros::BREQ_PSEUDO;
     break;
   }
   case Leros::SETGE_PSEUDO: {
-    opcode = Leros::BRP_PSEUDO;
+    opcode = Leros::BRGTE_PSEUDO;
     break;
   }
   case Leros::SETLT_PSEUDO: {
-    opcode = Leros::BRN_PSEUDO;
+    opcode = Leros::BRLT_PSEUDO;
     break;
   }
   }
@@ -1099,7 +1099,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
     HeadMBB->addSuccessor(TailMBB);
 
     // Zero check
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRZ_IMPL))
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRZ_PSEUDO))
         .addReg(rs2)
         .addMBB(TailMBB);
 
