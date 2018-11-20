@@ -506,19 +506,15 @@ def : BrCmpPat<seteq, BREQ_PSEUDO>;
 def : BrCmpPat<setne, BRNEQ_PSEUDO>;
 def : BrCmpPat<setge, BRGTE_PSEUDO>;
 def : BrCmpPat<setlt, BRLT_PSEUDO>;
-def : BrCmpPat<setuge, BRGTE_PSEUDO>;
-def : BrCmpPat<setult, BRLT_PSEUDO>;
 
 class BccSwapPat<PatFrag CondOp, Pseudo_BrCmpRs1Rs2 Inst>
     : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm8),
           (Inst GPR:$rs2, GPR:$rs1, bb:$imm8)>;
 
-// Condition codes that don't have matching RISC-V branch instructions, but
+// Condition codes that don't have matching Leros branch instructions, but
 // are trivially supported by swapping the two input operands
 def : BccSwapPat<setgt, BRLT_PSEUDO>;
 def : BccSwapPat<setle, BRGTE_PSEUDO>;
-def : BccSwapPat<setugt, BRLT_PSEUDO>;
-def : BccSwapPat<setule, BRGTE_PSEUDO>;
 
 // An extra pattern is needed for a brcond without a setcc (i.e. where the
 // condition was calculated elsewhere).
