@@ -378,7 +378,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     // Determine reg to shift from whether we are starting the loop or iterating
     unsigned RegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
     unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegToShift)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::PHI), RegToShift)
         .addReg(rs1)
         .addMBB(HeadMBB)
         .addReg(ShiftRes)
@@ -386,28 +386,28 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
 
     unsigned RegToIter = MRI.createVirtualRegister(&Leros::GPRRegClass);
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegToIter)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::PHI), RegToIter)
         .addReg(ScratchReg)
         .addMBB(HeadMBB)
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
-    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::ADD_RR_PSEUDO),
+            ShiftRes)
         .addReg(RegToShift)
         .addReg(RegToShift);
 
-    BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO),
+            SubRes)
         .addReg(RegToIter)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
-    BuildMI(shiftMBB, DL, TII.get(Leros::BRNZ_PSEUDO))
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
     BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::MOV), dstReg)
         .addReg(ShiftRes);
-    MI.eraseFromParent(); // The pseudo instruction is gone now.
-    return TailMBB;
   } else {
     HeadMBB->addSuccessor(TailMBB);
     // We here do the following control flow
@@ -425,14 +425,14 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     // Set the successors for HeadMBB.
 
     // Zero check
-    BuildMI(HeadMBB, DL, TII.get(Leros::BRZ_PSEUDO))
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRZ_PSEUDO))
         .addReg(rs2)
         .addMBB(TailMBB);
 
     // Determine reg to shift from whether we are starting the loop or iterating
     unsigned RegToShift = MRI.createVirtualRegister(&Leros::GPRRegClass);
     unsigned ShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegToShift)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::PHI), RegToShift)
         .addReg(rs1)
         .addMBB(HeadMBB)
         .addReg(ShiftRes)
@@ -442,7 +442,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
     // iterating
     unsigned RegWithIter = MRI.createVirtualRegister(&Leros::GPRRegClass);
     unsigned SubRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*shiftMBB, shiftMBB->begin(), DL, TII.get(Leros::PHI), RegWithIter)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::PHI), RegWithIter)
         .addReg(rs2)
         .addMBB(HeadMBB)
         .addReg(SubRes)
@@ -467,9 +467,9 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addMBB(HeadMBB)
         .addReg(ShiftRes)
         .addMBB(shiftMBB);
-    MI.eraseFromParent(); // The pseudo instruction is gone now.
-    return TailMBB;
   }
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return TailMBB;
 }
 
 MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
