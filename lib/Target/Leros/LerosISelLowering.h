@@ -92,6 +92,7 @@ private:
   MachineBasicBlock *EmitSRAR(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSRL(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSET(MachineInstr &MI, MachineBasicBlock *BB) const;
+  MachineBasicBlock *EmitUSET(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const;
 };
 } // namespace llvm

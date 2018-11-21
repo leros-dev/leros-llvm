@@ -472,6 +472,208 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
   }
 }
 
+MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
+                                                 MachineBasicBlock *BB) const {
+  const LerosInstrInfo &TII =
+      *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  DebugLoc DL = MI.getDebugLoc();
+  MachineFunction::iterator I = ++BB->getIterator();
+  MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
+
+  MachineBasicBlock *HeadMBB = BB;
+  MachineFunction *F = BB->getParent();
+
+  unsigned opcode;
+
+  unsigned unsignedCMPOpcode;
+
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unknown USET opcode");
+  case Leros::SETUGE_PSEUDO: {
+    opcode = Leros::BRGTE_PSEUDO;
+    unsignedCMPOpcode = Leros::BRN_PSEUDO;
+    break;
+  }
+  case Leros::SETULT_PSEUDO: {
+    opcode = Leros::BRLT_PSEUDO;
+    unsignedCMPOpcode = Leros::BRP_PSEUDO;
+    break;
+  }
+  }
+
+  const unsigned &dstReg = MI.getOperand(0).getReg(),
+                 &rs1 = MI.getOperand(1).getReg(),
+                 &rs2 = MI.getOperand(2).getReg();
+
+  MachineBasicBlock *SignedComparisonMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *UnsignedComparisonMBB =
+      F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *UnsignedRS1Negative = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *UnsignedRS2Negative = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *UnsignedTailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+  MachineBasicBlock *falseMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *trueMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *SignedTailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+
+  // Insertion order matters, to properly handle BB fallthrough
+  F->insert(I, UnsignedComparisonMBB);
+  F->insert(I, UnsignedRS2Negative);
+  F->insert(I, UnsignedRS1Negative);
+  F->insert(I, UnsignedTailMBB);
+
+  F->insert(I, SignedComparisonMBB);
+  F->insert(I, falseMBB);
+  F->insert(I, trueMBB);
+  F->insert(I, SignedTailMBB);
+
+  F->insert(I, TailMBB);
+
+  // Move all remaining instructions to TailMBB.
+  TailMBB->splice(TailMBB->begin(), HeadMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
+
+  // Update machine-CFG edges by transferring all successors of the current
+  // block to the new block which will contain the Phi node for the select.
+  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+
+  HeadMBB->addSuccessor(SignedComparisonMBB);
+  HeadMBB->addSuccessor(UnsignedComparisonMBB);
+
+  UnsignedComparisonMBB->addSuccessor(UnsignedRS1Negative);
+  UnsignedComparisonMBB->addSuccessor(UnsignedRS2Negative);
+
+  UnsignedRS1Negative->addSuccessor(UnsignedTailMBB);
+  UnsignedRS2Negative->addSuccessor(UnsignedTailMBB);
+
+  UnsignedTailMBB->addSuccessor(TailMBB);
+
+  // Set successors for signed comparison basic blocks
+  SignedComparisonMBB->addSuccessor(falseMBB);
+  SignedComparisonMBB->addSuccessor(trueMBB);
+
+  trueMBB->addSuccessor(SignedTailMBB);
+  falseMBB->addSuccessor(SignedTailMBB);
+
+  SignedTailMBB->addSuccessor(TailMBB);
+
+  // Generate sign mask
+  unsigned SignMask = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  TII.movUImm32(*HeadMBB, HeadMBB->end(), DL, SignMask, 0x80000000);
+
+  // Generate the true- and false value registers
+  unsigned TrueReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  unsigned FalseReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, TrueReg, 1);
+  TII.movImm32(*HeadMBB, HeadMBB->end(), DL, FalseReg, 0);
+
+  // Mask input operands
+  unsigned rs1_s = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  unsigned rs2_s = MRI.createVirtualRegister(&Leros::GPRRegClass);
+
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO), rs1_s)
+      .addReg(rs1)
+      .addReg(SignMask);
+
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO), rs2_s)
+      .addReg(rs2)
+      .addReg(SignMask);
+
+  // XOR the two sign registers
+  unsigned xor_res = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::XOR_RR_PSEUDO), xor_res)
+      .addReg(rs1_s)
+      .addReg(rs2_s);
+
+  // xor_res != 0 =>
+  // Discrepancy in sign bit
+  // Negative operand will always be the larger of the two in an unsigned
+  // comparison.
+  // Depending on if it is greater than or less than,
+  // Detect which operand was negative or positive and return accordingly.
+  // Branch to regular signed operation if we do not detect a discrepancy
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRZ_PSEUDO))
+      .addReg(xor_res)
+      .addMBB(SignedComparisonMBB);
+
+  // ----- fallthrough from head - discrepancy in sign bit.  -----
+  // Unsigned comparison is required
+  unsigned UnsignedResReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+
+  BuildMI(*UnsignedComparisonMBB, UnsignedComparisonMBB->end(), DL,
+          TII.get(unsignedCMPOpcode))
+      .addReg(rs1_s)
+      .addMBB(UnsignedRS1Negative);
+
+  // ---- UnsignedRS2Negative rs2 is negative ----
+  BuildMI(*UnsignedRS2Negative, UnsignedRS2Negative->end(), DL,
+          TII.get(Leros::BR_IMPL))
+      .addMBB(UnsignedTailMBB);
+
+  // ---- UnsignedRS1Negative: rs1 is negative ----
+  // This is a fallthrough , we handle the actual result in the phi node
+
+  // Unsigned res PHI -
+  BuildMI(*UnsignedTailMBB, UnsignedTailMBB->end(), DL, TII.get(Leros::PHI),
+          UnsignedResReg)
+      .addReg(TrueReg)
+      .addMBB(UnsignedRS1Negative)
+      .addReg(FalseReg)
+      .addMBB(UnsignedRS2Negative);
+
+  // Branch to tail, which now knows to grab the result from the unsigned
+  // comparison
+
+  BuildMI(*UnsignedTailMBB, UnsignedTailMBB->end(), DL, TII.get(Leros::BR_IMPL))
+      .addMBB(TailMBB);
+
+  // -------- SignedComparisonMBB --------------
+  // This is pretty much equivalent as for the usual signed EmitSET
+  const unsigned SignedResReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
+  BuildMI(*SignedComparisonMBB, SignedComparisonMBB->end(), DL, TII.get(opcode))
+      .addReg(rs1)
+      .addReg(rs2)
+      .addMBB(trueMBB);
+
+  // fallthrough to falseMBB
+
+  // ------- FalseMBB --------
+
+  // From here, we know that comparison was false
+  // register
+  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::BR_IMPL))
+      .addMBB(SignedTailMBB);
+
+  // -------- trueMBB --------------
+  // Fallthrough to tail
+
+  // -------- SignedTailMBB --------------
+  // Get result through a phi node
+  BuildMI(*SignedTailMBB, SignedTailMBB->end(), DL, TII.get(Leros::PHI),
+          SignedResReg)
+      .addReg(FalseReg)
+      .addMBB(falseMBB)
+      .addReg(TrueReg)
+      .addMBB(trueMBB);
+  // Fallthrough to tail
+
+  // -------- TailMBB --------------
+  // Get result through a phi node, depending on whether we did signed or
+  // unsigned comparison
+  BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
+      .addReg(SignedResReg)
+      .addMBB(SignedTailMBB)
+      .addReg(UnsignedResReg)
+      .addMBB(UnsignedTailMBB);
+
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return TailMBB;
+}
+
 MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
                                                 MachineBasicBlock *BB) const {
   const LerosInstrInfo &TII =
@@ -1325,6 +1527,9 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case Leros::SETGE_PSEUDO:
   case Leros::SETLT_PSEUDO:
     return EmitSET(MI, BB);
+  case Leros::SETUGE_PSEUDO:
+  case Leros::SETULT_PSEUDO:
+    return EmitUSET(MI, BB);
   case Leros::LOAD_S8_M_PSEUDO:
   case Leros::LOAD_S16_M_PSEUDO:
     return EmitSEXTLOAD(MI, BB);

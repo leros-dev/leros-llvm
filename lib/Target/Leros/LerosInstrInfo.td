@@ -328,6 +328,10 @@ let usesCustomInserter = 1 in {
     def SETEQ_PSEUDO    : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
     def SETGE_PSEUDO   : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
     def SETLT_PSEUDO    : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
+
+
+    def SETUGE_PSEUDO   : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
+    def SETULT_PSEUDO    : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2), F_NA, []>;
 }
 
 // Register->accumulator Loads
@@ -494,8 +498,7 @@ def : BrCmp0Pat<seteq, BRZ_PSEUDO>;
 def : BrCmp0Pat<setne, BRNZ_PSEUDO>;
 def : BrCmp0Pat<setge, BRP_PSEUDO>;
 def : BrCmp0Pat<setlt, BRN_PSEUDO>;
-def : BrCmp0Pat<setuge, BRP_PSEUDO>;
-def : BrCmp0Pat<setult, BRN_PSEUDO>;
+
 
 // Branch register-register comparison patterns
 class BrCmpPat<PatFrag CondOp, Pseudo_BrCmpRs1Rs2 Inst>
@@ -520,17 +523,21 @@ def : BccSwapPat<setle, BRGTE_PSEUDO>;
 // condition was calculated elsewhere).
 def : Pat<(brcond GPR:$cond, bb:$imm8), (BRNZ_PSEUDO GPR:$cond, bb:$imm8)>;
 
-// Set patterns, where CC is calculated at a position not near the branch instruction
+// Set patterns for CC calculation
 def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SETEQ_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setueq GPR:$rs1, GPR:$rs2), (SETEQ_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setne GPR:$rs1, GPR:$rs2), (XOR_RI_PSEUDO (SETEQ_PSEUDO GPR:$rs1, GPR:$rs2), 1)>;
 def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs2, GPR:$rs1)>;
 def : Pat<(setge GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setlt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs1, GPR:$rs2)>;
 def : Pat<(setle GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs2, GPR:$rs1)>;
-def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs2, GPR:$rs1)>;
-def : Pat<(setuge GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setult GPR:$rs1, GPR:$rs2), (SETLT_PSEUDO GPR:$rs1, GPR:$rs2)>;
-def : Pat<(setule GPR:$rs1, GPR:$rs2), (SETGE_PSEUDO GPR:$rs2, GPR:$rs1)>;
+
+// We do not have patterns where we catch the CC for unsigned comparison for branches
+//(as with BccPat), but we can do unsigned compare and set
+def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SETULT_PSEUDO GPR:$rs2, GPR:$rs1)>;
+def : Pat<(setuge GPR:$rs1, GPR:$rs2), (SETUGE_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setult GPR:$rs1, GPR:$rs2), (SETULT_PSEUDO GPR:$rs1, GPR:$rs2)>;
+def : Pat<(setule GPR:$rs1, GPR:$rs2), (SETUGE_PSEUDO GPR:$rs2, GPR:$rs1)>;
 
 // Addressing modes.
 // Necessary because a frameindex can't be matched directly in a pattern.
