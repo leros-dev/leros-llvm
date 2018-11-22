@@ -225,6 +225,8 @@ def BYTE3 : SDNodeXForm<imm, [{
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
         : LerosBranchInst<opcode, (outs), (ins simm12_lsb0:$imm11), opcodestr, "$imm11", []>{
                 let Inst{10-0} = imm11;
+                let isBranch = 1;
+                let isTerminator = 1;
             }
 
 // ------------- Pseudo ISA wrapper classes -------------
