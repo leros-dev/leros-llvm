@@ -127,7 +127,7 @@ void LerosInstrInfo::expandSHR(MachineBasicBlock &MBB, MachineInstr &I) const {
   auto DL = I.getDebugLoc();
   BuildMI(MBB, I, DL, get(Leros::LOAD_R)).addReg(src);
   // Reg and immediate does nothing, but required for the signature of SHR
-  BuildMI(MBB, I, DL, get(Leros::SHR_IMPL)).addImm(0);
+  BuildMI(MBB, I, DL, get(Leros::SHR_IMPL));
   BuildMI(MBB, I, DL, get(Leros::STORE_R)).addReg(dst);
 }
 

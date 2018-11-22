@@ -318,8 +318,7 @@ let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in {
 // Shifts are all pseudo instructions since they require custom emmission. 
 // shr has an actual leros instruction, whereas shl and sra are emissions of small algorithms
 def SHRByOne_Pseudo: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
-def SHR_IMPL  : LerosImmInst<OPC_SHR, (outs), (ins simm8:$imm8), 
-            "shr", "", []>;
+def SHR_IMPL  : LerosAccInst<OPC_SHR, "shr", []>;
 
 defm SRL  : INSTR_Pseudo<OPC_SHR     , srl,  simm8>; // This instruction will get expanded by EmitSRL
 defm SHL  : INSTR_Pseudo<OPC_NOP     , shl,  simm8>; // This instruction will get expanded by EmitSHL

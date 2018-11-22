@@ -133,6 +133,14 @@ class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodest
     let Inst{15-9} = opcode.Value;
 }
 
+// Instruction with no operands, that work exclusively on the accumulator, such as shr
+class LerosAccInst<LerosImmRegOpcode opcode, string opcodestr, list<dag> pattern>
+    : LerosInst<(outs), (ins), opcodestr, "", pattern>{
+    let Inst{8-0} = 0;
+    let Inst{15-9} = opcode.Value;
+}
+
+
 class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
     list<dag> pattern>
     : LerosImmRegInst<outs, ins, opcodestr, argstr, pattern>{

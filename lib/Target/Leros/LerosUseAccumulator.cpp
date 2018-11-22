@@ -113,7 +113,7 @@ bool LerosUseAccumulator::removeRedundantStoreMBB(MachineBasicBlock &MBB) {
         }
       }
     } else {
-      if (MBBI->getOperand(0).isReg()) {
+      if (MBBI->getNumOperands() > 0 && MBBI->getOperand(0).isReg()) {
         // Update last usage of reg
         const unsigned &reg = MBBI->getOperand(0).getReg();
         lastUsages[reg] = std::make_pair(index, &*MBBI);
