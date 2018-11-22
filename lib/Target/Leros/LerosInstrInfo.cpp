@@ -475,18 +475,15 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   case LEROSIF::NoFormat: {
     const auto opc = MI.getDesc().getOpcode();
     switch (opc) {
-    default: {
-      if (opc == TargetOpcode::SUBREG_TO_REG || opc == TargetOpcode::COPY ||
-          opc == TargetOpcode::DBG_VALUE) {
-        // Standard pseudos will be expanded after this call to
-        // expandPostRAPseudo
-        return false;
-      } else {
+    default:
+      if (opc > TargetOpcode::GENERIC_OP_END) {
+        // Control reaches this point if we could not handle a user-provided
+        // pseudoinstruction
         std::string err{"Unknown pseudo-instruction with opcode"};
         err += std::to_string(MI.getOpcode());
         llvm_unreachable(err.c_str());
       }
-    }
+      return false;
     case Leros::SHRByOne_Pseudo:
       expandSHR(MBB, MI);
       break;
