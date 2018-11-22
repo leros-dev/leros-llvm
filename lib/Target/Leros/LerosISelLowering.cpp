@@ -348,14 +348,6 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
   shiftMBB->addSuccessor(TailMBB);
   shiftMBB->addSuccessor(shiftMBB);
 
-  /** @warning: We do NOT set shiftMBB as a successor of itself, even though
-   * this would probably be the correct thing to do. When this is done, because
-   * of the virtual registers used in the function, these are hoisted out of the
-   * loop, and thus invalidated. Insted, we desire to force printing of the loop
-   * label by triggering LerosAsmPrinter::isBlockOnlyReachableByFallthrough,
-   * which analyzes whether any terminators of the loop is self referencing
-   */
-
   if (MI.getOpcode() == Leros::SHL_RI_PSEUDO) {
     // shift by immediate operand
     // We here do the following control flow
