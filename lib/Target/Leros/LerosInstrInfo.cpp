@@ -370,6 +370,13 @@ void LerosInstrInfo::expandBRIND(MachineBasicBlock &MBB,
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(scratchReg);
 }
 
+void LerosInstrInfo::expandCALLIND(MachineBasicBlock &MBB,
+                                   MachineInstr &MI) const {
+  const auto &reg = MI.getOperand(0).getReg();
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(reg);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(Leros::R0);
+}
+
 void LerosInstrInfo::expandNOP(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::NOP_IMPL)).addImm(0);
 }
@@ -492,6 +499,9 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       break;
     case Leros::PseudoCALL:
       expandCALL(MBB, MI);
+      break;
+    case Leros::PseudoCALLIndirect:
+      expandCALLIND(MBB, MI);
       break;
     case Leros::MOV:
       expandMOV(MBB, MI, true);

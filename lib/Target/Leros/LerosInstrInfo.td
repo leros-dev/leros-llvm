@@ -443,6 +443,11 @@ def PseudoCALL : LerosPseudo<(outs), (ins bare_symbol:$func), F_NA,
 
 def : Pat<(Call texternalsym:$func), (PseudoCALL texternalsym:$func)>;
 
+// Will expand to the same instruction sequence as branch indirect, but marked as a separate
+// pseudoinstructio n sice wee need to add the decorators of isCall and Defs
+let isCall = 1, Defs = [R0] in
+def PseudoCALLIndirect : LerosPseudo<(outs), (ins GPR:$rs1), F_NA, [(Call GPR:$rs1)]>;
+
 // Register copy instruction
 def MOV : LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA,
     [(set GPR:$rd, (LerosMov GPR:$rs))]>; 
