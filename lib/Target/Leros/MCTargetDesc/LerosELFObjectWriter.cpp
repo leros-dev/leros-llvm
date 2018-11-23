@@ -51,6 +51,10 @@ unsigned LerosELFObjectWriter::getRelocType(MCContext &Ctx,
   switch ((unsigned)Fixup.getKind()) {
   default:
     llvm_unreachable("invalid fixup kind!");
+  case FK_Data_4:
+    return ELF::R_LEROS_32;
+  case FK_Data_8:
+    return ELF::R_LEROS_64;
   case Leros::fixup_leros_branch:
     return ELF::R_LEROS_BRANCH;
   case Leros::fixup_leros_b0:
