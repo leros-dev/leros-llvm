@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-def CSR : CalleeSavedRegs<(add R0, R1, R2, R3, (sequence "R%u", 61, 117))>;
+def CSR : CalleeSavedRegs<(add R0, R1, R2, R3, (sequence "R%u", 12, 20))>;
 
 // Needed for implementation of LerosRegisterInfo::getNoPreservedMask()
 def CSR_NoRegs : CalleeSavedRegs<(add)>;
@@ -22,8 +22,8 @@ def CSR_NoRegs : CalleeSavedRegs<(add)>;
 
 def RetCC_Leros : CallingConv
 <[
-  // i32 are returned in registers R4-R7
-  CCIfType<[i32], CCAssignToReg<[R4, R5, R6, R7]>>,
+  // i32 are returned in registers R4-R11
+  CCIfType<[i32], CCAssignToReg<[R4, R5, R6, R7, R8, R9, R10, R11]>>,
 
   // Integer values get stored in stack slots that are 4 bytes in
   // size and 4-byte aligned.
@@ -38,7 +38,7 @@ def CC_Leros : CallingConv<[
   CCIfType<[i8, i16], CCPromoteToType<i32>>,
 
   // The first 4 integer arguments are passed in arg/return registers.
-  CCIfType<[i32], CCAssignToReg<[R4, R5, R6, R7]>>,
+  CCIfType<[i32], CCAssignToReg<[R4, R5, R6, R7, R8, R9, R10, R11]>>,
 
   // Integer values get stored in stack slots that are 4 bytes in
   // size and 4-byte aligned.
