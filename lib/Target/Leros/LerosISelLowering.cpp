@@ -73,7 +73,8 @@ LerosTargetLowering::LerosTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::STACKSAVE, MVT::Other, Expand);
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
 
-  setOperationAction(ISD::VASTART, MVT::Other, Expand);
+  // Variable argument support
+  setOperationAction(ISD::VASTART, MVT::Other, Custom);
   setOperationAction(ISD::VAARG, MVT::Other, Expand);
   setOperationAction(ISD::VACOPY, MVT::Other, Expand);
   setOperationAction(ISD::VAEND, MVT::Other, Expand);
@@ -276,6 +277,21 @@ SDValue LerosTargetLowering::lowerRETURNADDR(SDValue Op,
   return DAG.getCopyFromReg(DAG.getEntryNode(), DL, Reg, XLenVT);
 }
 
+SDValue LerosTargetLowering::lowerVASTART(SDValue Op, SelectionDAG &DAG) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  LerosMachineFunctionInfo *FuncInfo = MF.getInfo<LerosMachineFunctionInfo>();
+  auto PtrVT = getPointerTy(DAG.getDataLayout());
+
+  // Frame index of first vararg argument
+  SDValue FrameIndex =
+      DAG.getFrameIndex(FuncInfo->getVarArgsFrameIndex(), PtrVT);
+  const Value *SV = cast<SrcValueSDNode>(Op.getOperand(2))->getValue();
+
+  // Create a store of the frame index to the location operand
+  return DAG.getStore(Op.getOperand(0), SDLoc(Op), FrameIndex, Op.getOperand(1),
+                      MachinePointerInfo(SV));
+}
+
 SDValue LerosTargetLowering::LowerOperation(SDValue Op,
                                             SelectionDAG &DAG) const {
 
@@ -290,6 +306,8 @@ SDValue LerosTargetLowering::LowerOperation(SDValue Op,
     return lowerBlockAddress(Op, DAG);
   case ISD::SELECT:
     return lowerSELECT(Op, DAG);
+  case ISD::VASTART:
+    return lowerVASTART(Op, DAG);
   case ISD::FRAMEADDR:
     return lowerFRAMEADDR(Op, DAG);
   case ISD::RETURNADDR:
@@ -1579,10 +1597,6 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   // Leros target does not yet support tail call optimization.
   CLI.IsTailCall = false;
 
-  if (isVarArg) {
-    llvm_unreachable("Unimplemented");
-  }
-
   // Analyze operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
@@ -1713,8 +1727,6 @@ SDValue LerosTargetLowering::LowerCallResult(
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &dl,
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
 
-  assert(!isVarArg && "Unsupported");
-
   // Assign locations to each value returned by this call.
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), RVLocs,
@@ -1745,8 +1757,8 @@ SDValue LerosTargetLowering::LowerFormalArguments(
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
   MachineFunction &MF = DAG.getMachineFunction();
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
-
-  assert(!isVarArg && "VarArg not supported");
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  LerosMachineFunctionInfo *FuncInfo = MF.getInfo<LerosMachineFunctionInfo>();
 
   // Assign locations to all of the incoming arguments.
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -1754,6 +1766,12 @@ SDValue LerosTargetLowering::LowerFormalArguments(
                  *DAG.getContext());
 
   CCInfo.AnalyzeFormalArguments(Ins, CC_Leros);
+
+  // Create frame index for the start of the first vararg value
+  if (isVarArg) {
+    unsigned Offset = CCInfo.getNextStackOffset();
+    FuncInfo->setVarArgsFrameIndex(MFI.CreateFixedObject(1, Offset, true));
+  }
 
   for (auto &VA : ArgLocs) {
     if (VA.isRegLoc()) {
@@ -1806,13 +1824,7 @@ bool LerosTargetLowering::CanLowerReturn(
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
-  if (!CCInfo.CheckReturn(Outs, RetCC_Leros)) {
-    return false;
-  }
-  if (CCInfo.getNextStackOffset() != 0 && isVarArg) {
-    return false;
-  }
-  return true;
+  return CCInfo.CheckReturn(Outs, RetCC_Leros);
 }
 
 SDValue
@@ -1821,9 +1833,6 @@ LerosTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                  const SmallVectorImpl<ISD::OutputArg> &Outs,
                                  const SmallVectorImpl<SDValue> &OutVals,
                                  const SDLoc &dl, SelectionDAG &DAG) const {
-  if (isVarArg) {
-    report_fatal_error("VarArg not supported");
-  }
 
   // CCValAssign - represent the assignment of
   // the return value to a location

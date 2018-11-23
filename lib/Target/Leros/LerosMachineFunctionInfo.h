@@ -22,6 +22,8 @@ namespace llvm {
 /// LerosMachineFunctionInfo - This class is derived from MachineFunctionInfo
 /// and contains private Leros-specific information for each MachineFunction.
 class LerosMachineFunctionInfo : public MachineFunctionInfo {
+  virtual void anchor();
+
 private:
   MachineFunction &MF;
   /// FrameIndex for start of varargs area
@@ -33,14 +35,12 @@ private:
   int MoveF64FrameIndex = -1;
 
 public:
-  //  LerosMachineFunctionInfo() = default;
-
   LerosMachineFunctionInfo(MachineFunction &MF) : MF(MF) {}
 
   int getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
   void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
 
-  unsigned getVarArgsSaveSize() const { return VarArgsSaveSize; }
+  int getVarArgsSaveSize() const { return VarArgsSaveSize; }
   void setVarArgsSaveSize(int Size) { VarArgsSaveSize = Size; }
 
   int getMoveF64FrameIndex() {

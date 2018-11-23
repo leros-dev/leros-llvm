@@ -24,6 +24,7 @@ add_llvm_target(LerosCodeGen
  LerosTargetObjectFile.cpp
  LerosISelLowering.cpp
  LerosUseAccumulator.cpp
+ LerosMachineFunctionInfo.cpp
 )
 
 add_subdirectory(AsmParser)
