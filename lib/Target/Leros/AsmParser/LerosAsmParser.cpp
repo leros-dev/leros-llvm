@@ -254,7 +254,7 @@ public:
     return IsValid && VK == LerosMCExpr::VK_Leros_None;
   }
 
-  bool isSImm12Lsb0() const { return isBareSimmNLsb0<12>(); }
+  bool isSImm13Lsb0() const { return isBareSimmNLsb0<13>(); }
 
   // Operand parser for signed 8-bit immediates which are either constants
   // or symbol references (used for load operations)

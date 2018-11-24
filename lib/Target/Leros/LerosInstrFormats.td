@@ -17,8 +17,8 @@ class LerosLSOpcode<bits<8> val> {
 }
 
 // Opcode class for branch instructions
-class LerosBOpcode<bits<5> val> {
-    bits<5>Value = val;
+class LerosBOpcode<bits<4> val> {
+    bits<4>Value = val;
 }
 
 class LerosJalOpcode<bits<5> val>{
@@ -45,11 +45,11 @@ def OPC_IN      : LerosImmRegOpcode<0b0000010>;
 
 
 // Branch opcodes
-def OPC_BR      : LerosBOpcode<0b10000>;
-def OPC_BRZ     : LerosBOpcode<0b10001>;
-def OPC_BRNZ    : LerosBOpcode<0b10010>;
-def OPC_BRP     : LerosBOpcode<0b10011>;
-def OPC_BRN     : LerosBOpcode<0b10100>;
+def OPC_BR      : LerosBOpcode<0b1000>;
+def OPC_BRZ     : LerosBOpcode<0b1001>;
+def OPC_BRNZ    : LerosBOpcode<0b1010>;
+def OPC_BRP     : LerosBOpcode<0b1011>;
+def OPC_BRN     : LerosBOpcode<0b1100>;
 
 // Load/Store opcodes
 def OPC_LDADDR  : LerosImmRegOpcode<0b0101000>;
@@ -162,8 +162,8 @@ class LerosImmInst_LS<LerosLSOpcode opcode, dag outs, dag ins, string opcodestr,
 class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
     list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
-    bits<11> imm11;
-    let Inst{10-0} = imm11;
-    let Inst{15-11} = opcode.Value;
+    bits<12> imm12;
+    let Inst{11-0} = imm12;
+    let Inst{15-12} = opcode.Value;
     let isBranch = 1;
 } 

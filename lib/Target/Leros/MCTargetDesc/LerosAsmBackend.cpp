@@ -103,14 +103,12 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   case FK_Data_8:
     return Value;
   case Leros::fixup_leros_branch:
-    if (!isInt<12>(Value))
-      Ctx.reportError(
-          Fixup.getLoc(),
-          "fixup value out of range - branch range must fit in 12 bits");
+    if (!isInt<13>(Value))
+      Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
     if (Value & 0x1)
       Ctx.reportError(Fixup.getLoc(),
                       "branch fixup value must be 2-byte aligned");
-    Value = (Value >> 1) & 0x7ff;
+    Value = (Value >> 1) & 0xfff;
     return Value;
   case Leros::fixup_leros_b0:
     return Value & 0xff;

@@ -121,15 +121,15 @@ def uimm7 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<7>(Imm);}]> {
   let DecoderMethod = "decodeUImmOperand<7>";
 }
 
-// A 12 bit signed immediate where the lsb is zero 
-def simm12_lsb0 : Operand<OtherVT> {
-  let ParserMatchClass = SImmAsmOperand<12, "Lsb0">;
+// A 13 bit signed immediate where the lsb is zero
+def simm13_lsb0 : Operand<OtherVT> {
+  let ParserMatchClass = SImmAsmOperand<13, "Lsb0">;
   let EncoderMethod = "getImmOpValueAsr1";
-  let DecoderMethod = "decodeSImmOperandAndLsl1<12>";
+  let DecoderMethod = "decodeSImmOperandAndLsl1<13>";
   let MCOperandPredicate = [{
     int64_t Imm;
     if (MCOp.evaluateAsConstantImm(Imm))
-      return isShiftedInt<11, 1>(Imm);
+      return isShiftedInt<12, 1>(Imm);
     return MCOp.isBareSymbolRef();
   }];
 }
@@ -223,8 +223,8 @@ def BYTE3 : SDNodeXForm<imm, [{
             }
 
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
-        : LerosBranchInst<opcode, (outs), (ins simm12_lsb0:$imm11), opcodestr, "$imm11", []>{
-                let Inst{10-0} = imm11;
+        : LerosBranchInst<opcode, (outs), (ins simm13_lsb0:$imm12), opcodestr, "$imm12", []>{
+                let Inst{11-0} = imm12;
                 let isBranch = 1;
                 let isTerminator = 1;
             }
@@ -232,13 +232,13 @@ def BYTE3 : SDNodeXForm<imm, [{
 // ------------- Pseudo ISA wrapper classes -------------
 // Pseudo instruction wrapper for instruction format: brcond rs1 rs2 imm
 // Ie. breq rs1 rs2 bb => leros sub & leros brz
-class Pseudo_BrCmpRs1Rs2 : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, simm12_lsb0:$imm11), F_BRCmp, []> {
+class Pseudo_BrCmpRs1Rs2 : LerosPseudo<(outs), (ins GPR:$r1, GPR:$r2, simm13_lsb0:$imm12), F_BRCmp, []> {
     let isBranch = 1;
     let isTerminator = 1;
 }
 
 // Ie. brgtz rs1 bb => leros brp
-class Pseudo_BrRs : LerosPseudo<(outs), (ins GPR:$r1, simm12_lsb0:$imm11), F_BRRs, []> {
+class Pseudo_BrRs : LerosPseudo<(outs), (ins GPR:$r1, simm13_lsb0:$imm12), F_BRRs, []> {
     let isBranch = 1;
     let isTerminator = 1;
 }
@@ -387,8 +387,8 @@ def SCALL : LerosInst<(outs), (ins uimm8:$imm), "scall", "$imm", []>{
 // =================== BRANCHES ===================
 // Unconditional branch
 let isBarrier = 1, isBranch = 1, isTerminator = 1 in
-def BR_IMPL  : LerosBranchInst<OPC_BR, (outs), (ins simm12_lsb0:$imm11), "br", "$imm11", [(br bb:$imm11)]>{
-                let Inst{10-0} = imm11;
+def BR_IMPL  : LerosBranchInst<OPC_BR, (outs), (ins simm13_lsb0:$imm12), "br", "$imm12", [(br bb:$imm12)]>{
+                let Inst{11-0} = imm12;
 }
 
 // Leros branch instructions - Defined as Implement_BrRs for:
@@ -497,8 +497,8 @@ def : Pat<(simm32:$imm),
 
 // Branch register-0 comparison patterns
 class BrCmp0Pat<PatFrag CondOp, Pseudo_BrRs Inst>
-    : Pat<(brcond (i32 (CondOp GPR:$rs1, 0)), bb:$imm11),
-          (Inst GPR:$rs1, simm12_lsb0:$imm11)>;
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, 0)), bb:$imm12),
+          (Inst GPR:$rs1, simm13_lsb0:$imm12)>;
 
 def : BrCmp0Pat<seteq, BRZ_PSEUDO>;
 def : BrCmp0Pat<setne, BRNZ_PSEUDO>;
@@ -508,8 +508,8 @@ def : BrCmp0Pat<setlt, BRN_PSEUDO>;
 
 // Branch register-register comparison patterns
 class BrCmpPat<PatFrag CondOp, Pseudo_BrCmpRs1Rs2 Inst>
-    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm11),
-          (Inst GPR:$rs1, GPR:$rs2, simm12_lsb0:$imm11)>;
+    : Pat<(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm12),
+          (Inst GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12)>;
 
 def : BrCmpPat<seteq, BREQ_PSEUDO>;
 def : BrCmpPat<setne, BRNEQ_PSEUDO>;
