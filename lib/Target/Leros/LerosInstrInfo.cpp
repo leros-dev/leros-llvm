@@ -365,7 +365,7 @@ void LerosInstrInfo::expandBRIND(MachineBasicBlock &MBB,
   const auto &reg = MI.getOperand(0).getReg();
   // Since we do not want to link here, we use a scratch register to dump the
   // linked address into
-  auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
+  auto scratchReg = Leros::R3;
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(reg);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(scratchReg);
 }
@@ -426,7 +426,7 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
       // Mask the lower halfword
       // Build the operand which we have to OR with. We use a register from
       // GPRPseudoExpandRegClass since we are post reg allocation
-      auto scratchReg = Leros::GPRPseudoExpandRegClass.getRegister(0);
+      auto scratchReg = Leros::R3;
       movImm32(MBB, MI, MI.getDebugLoc(), scratchReg, 0xFFFF);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
           .addReg(scratchReg);

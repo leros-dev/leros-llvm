@@ -45,6 +45,7 @@ BitVector LerosRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   markSuperRegs(Reserved, Leros::R0); // ra
   markSuperRegs(Reserved, Leros::R1); // sp
   markSuperRegs(Reserved, Leros::R2); // fp
+  markSuperRegs(Reserved, Leros::R3); // Scratch/clobber register
   assert(checkAllSuperRegsMarked(Reserved));
   return Reserved;
 }
