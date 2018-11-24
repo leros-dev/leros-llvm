@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-def CSR : CalleeSavedRegs<(add R0, R1, R2, R3, (sequence "R%u", 12, 20))>;
+def CSR : CalleeSavedRegs<(add R0, R1, R2,  (sequence "R%u", 12, 20))>;
 
 // Needed for implementation of LerosRegisterInfo::getNoPreservedMask()
 def CSR_NoRegs : CalleeSavedRegs<(add)>;

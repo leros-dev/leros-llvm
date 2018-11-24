@@ -42,7 +42,7 @@ bool LerosFrameLowering::hasFP(const MachineFunction &MF) const {
 }
 
 // Returns the register used to hold the frame pointer.
-static unsigned getFPReg(const LerosSubtarget &STI) { return Leros::R3; }
+static unsigned getFPReg(const LerosSubtarget &STI) { return Leros::R2; }
 
 // Returns the register used to hold the stack pointer.
 static unsigned getSPReg(const LerosSubtarget &STI) { return Leros::R1; }
@@ -144,7 +144,7 @@ void LerosFrameLowering::determineCalleeSaves(MachineFunction &MF,
   // pointer.
   if (hasFP(MF)) {
     SavedRegs.set(Leros::R0);
-    SavedRegs.set(Leros::R3);
+    SavedRegs.set(Leros::R2);
   }
 }
 

@@ -44,8 +44,7 @@ BitVector LerosRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   // Use markSuperRegs to ensure any register aliases are also reserved
   markSuperRegs(Reserved, Leros::R0); // ra
   markSuperRegs(Reserved, Leros::R1); // sp
-  markSuperRegs(Reserved, Leros::R2); // gp
-  markSuperRegs(Reserved, Leros::R3); // fp
+  markSuperRegs(Reserved, Leros::R2); // fp
   assert(checkAllSuperRegsMarked(Reserved));
   return Reserved;
 }
@@ -96,7 +95,7 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
 unsigned LerosRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
   const TargetFrameLowering *TFI = getFrameLowering(MF);
-  return TFI->hasFP(MF) ? Leros::R3 : Leros::R1;
+  return TFI->hasFP(MF) ? Leros::R2 : Leros::R1;
 }
 
 const uint32_t *LerosRegisterInfo::getNoPreservedMask() const {
