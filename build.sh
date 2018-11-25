@@ -50,9 +50,9 @@ $BUILD_BIN_DIR/clang crt0.leros.c -c -ffreestanding -o crt0.leros.o
 mv crt0.leros.o "$BUILD_CLANG_LIB_DIR/crt0.leros.o"
 
 # Build the runtime library
-RUNTIME_LIBRARY_NAME="libclang_rt.builtins-leros32"
+RUNTIME_LIBRARY_NAME="libclang_rt.builtins-leros32.a"
 cd ..
-/bin/bash build_builtins.sh "$BUILD_BIN_DIR"
+/bin/bash build_runtime.sh "$BUILD_BIN_DIR"
 cd build-leros-compiler-rt-builtins
 cd lib
 cd linux
