@@ -1579,32 +1579,284 @@ const char *LerosTargetLowering::getTargetNodeName(unsigned Opcode) const {
 //                  Call Calling Convention Implementation
 //===----------------------------------------------------------------------===//
 
+static const MCPhysReg ArgGPRs[] = {
+    Leros::R4, Leros::R5, Leros::R6,  Leros::R7,
+    Leros::R8, Leros::R9, Leros::R10,
+};
+
+// Pass a 2*XLEN argument that has been split into two XLEN values through
+// registers or the stack as necessary.
+static bool CC_LerosAssign2XLen(unsigned XLen, CCState &State, CCValAssign VA1,
+                                ISD::ArgFlagsTy ArgFlags1, unsigned ValNo2,
+                                MVT ValVT2, MVT LocVT2,
+                                ISD::ArgFlagsTy ArgFlags2) {
+  unsigned XLenInBytes = XLen / 8;
+  if (unsigned Reg = State.AllocateReg(ArgGPRs)) {
+    // At least one half can be passed via register.
+    State.addLoc(CCValAssign::getReg(VA1.getValNo(), VA1.getValVT(), Reg,
+                                     VA1.getLocVT(), CCValAssign::Full));
+  } else {
+    // Both halves must be passed on the stack, with proper alignment.
+    unsigned StackAlign = std::max(XLenInBytes, ArgFlags1.getOrigAlign());
+    State.addLoc(
+        CCValAssign::getMem(VA1.getValNo(), VA1.getValVT(),
+                            State.AllocateStack(XLenInBytes, StackAlign),
+                            VA1.getLocVT(), CCValAssign::Full));
+    State.addLoc(CCValAssign::getMem(
+        ValNo2, ValVT2, State.AllocateStack(XLenInBytes, XLenInBytes), LocVT2,
+        CCValAssign::Full));
+    return false;
+  }
+
+  if (unsigned Reg = State.AllocateReg(ArgGPRs)) {
+    // The second half can also be passed via register.
+    State.addLoc(
+        CCValAssign::getReg(ValNo2, ValVT2, Reg, LocVT2, CCValAssign::Full));
+  } else {
+    // The second half is passed via the stack, without additional alignment.
+    State.addLoc(CCValAssign::getMem(
+        ValNo2, ValVT2, State.AllocateStack(XLenInBytes, XLenInBytes), LocVT2,
+        CCValAssign::Full));
+  }
+
+  return false;
+}
+
+// Implements the Leros calling convention. Returns true upon failure.
+static bool CC_Leros(const DataLayout &DL, unsigned ValNo, MVT ValVT, MVT LocVT,
+                     CCValAssign::LocInfo LocInfo, ISD::ArgFlagsTy ArgFlags,
+                     CCState &State, bool IsFixed, bool IsRet, Type *OrigTy) {
+  unsigned XLen = DL.getLargestLegalIntTypeSizeInBits();
+  assert(XLen == 32 || XLen == 64);
+  MVT XLenVT = XLen == 32 ? MVT::i32 : MVT::i64;
+  if (ValVT == MVT::f32) {
+    LocVT = MVT::i32;
+    LocInfo = CCValAssign::BCvt;
+  }
+
+  // Any return value split in to more than two values can't be returned
+  // directly.
+  if (IsRet && ValNo > 1)
+    return true;
+
+  // If this is a variadic argument, the Leros calling convention requires
+  // that it is assigned an 'even' or 'aligned' register if it has 8-byte
+  // alignment (leros32). An aligned register should
+  // be used regardless of whether the original argument was split during
+  // legalisation or not. The argument will not be passed by registers if the
+  // original type is larger than 2*XLEN, so the register alignment rule does
+  // not apply.
+  unsigned TwoXLenInBytes = (2 * XLen) / 8;
+  if (!IsFixed && ArgFlags.getOrigAlign() == TwoXLenInBytes &&
+      DL.getTypeAllocSize(OrigTy) == TwoXLenInBytes) {
+    unsigned RegIdx = State.getFirstUnallocated(ArgGPRs);
+    // Skip 'odd' register if necessary.
+    if (RegIdx != array_lengthof(ArgGPRs) && RegIdx % 2 == 1)
+      State.AllocateReg(ArgGPRs);
+  }
+
+  SmallVectorImpl<CCValAssign> &PendingLocs = State.getPendingLocs();
+  SmallVectorImpl<ISD::ArgFlagsTy> &PendingArgFlags =
+      State.getPendingArgFlags();
+
+  assert(PendingLocs.size() == PendingArgFlags.size() &&
+         "PendingLocs and PendingArgFlags out of sync");
+
+  // Handle passing f64 on RV32D with a soft float ABI.
+  if (XLen == 32 && ValVT == MVT::f64) {
+    assert(!ArgFlags.isSplit() && PendingLocs.empty() &&
+           "Can't lower f64 if it is split");
+    // Depending on available argument GPRS, f64 may be passed in a pair of
+    // GPRs, split between a GPR and the stack, or passed completely on the
+    // stack. LowerCall/LowerFormalArguments/LowerReturn must recognise these
+    // cases.
+    unsigned Reg = State.AllocateReg(ArgGPRs);
+    LocVT = MVT::i32;
+    if (!Reg) {
+      unsigned StackOffset = State.AllocateStack(8, 8);
+      State.addLoc(
+          CCValAssign::getMem(ValNo, ValVT, StackOffset, LocVT, LocInfo));
+      return false;
+    }
+    if (!State.AllocateReg(ArgGPRs))
+      State.AllocateStack(4, 4);
+    State.addLoc(CCValAssign::getReg(ValNo, ValVT, Reg, LocVT, LocInfo));
+    return false;
+  }
+
+  // Split arguments might be passed indirectly, so keep track of the pending
+  // values.
+  if (ArgFlags.isSplit() || !PendingLocs.empty()) {
+    LocVT = XLenVT;
+    LocInfo = CCValAssign::Indirect;
+    PendingLocs.push_back(
+        CCValAssign::getPending(ValNo, ValVT, LocVT, LocInfo));
+    PendingArgFlags.push_back(ArgFlags);
+    if (!ArgFlags.isSplitEnd()) {
+      return false;
+    }
+  }
+
+  // If the split argument only had two elements, it should be passed directly
+  // in registers or on the stack.
+  if (ArgFlags.isSplitEnd() && PendingLocs.size() <= 2) {
+    assert(PendingLocs.size() == 2 && "Unexpected PendingLocs.size()");
+    // Apply the normal calling convention rules to the first half of the
+    // split argument.
+    CCValAssign VA = PendingLocs[0];
+    ISD::ArgFlagsTy AF = PendingArgFlags[0];
+    PendingLocs.clear();
+    PendingArgFlags.clear();
+    return CC_LerosAssign2XLen(XLen, State, VA, AF, ValNo, ValVT, LocVT,
+                               ArgFlags);
+  }
+
+  // Allocate to a register if possible, or else a stack slot.
+  unsigned Reg = State.AllocateReg(ArgGPRs);
+  unsigned StackOffset = Reg ? 0 : State.AllocateStack(XLen / 8, XLen / 8);
+
+  // If we reach this point and PendingLocs is non-empty, we must be at the
+  // end of a split argument that must be passed indirectly.
+  if (!PendingLocs.empty()) {
+    assert(ArgFlags.isSplitEnd() && "Expected ArgFlags.isSplitEnd()");
+    assert(PendingLocs.size() > 2 && "Unexpected PendingLocs.size()");
+
+    for (auto &It : PendingLocs) {
+      if (Reg)
+        It.convertToReg(Reg);
+      else
+        It.convertToMem(StackOffset);
+      State.addLoc(It);
+    }
+    PendingLocs.clear();
+    PendingArgFlags.clear();
+    return false;
+  }
+
+  assert(LocVT == XLenVT && "Expected an XLenVT at this stage");
+
+  if (Reg) {
+    State.addLoc(CCValAssign::getReg(ValNo, ValVT, Reg, LocVT, LocInfo));
+    return false;
+  }
+
+  if (ValVT == MVT::f32) {
+    LocVT = MVT::f32;
+    LocInfo = CCValAssign::Full;
+  }
+  State.addLoc(CCValAssign::getMem(ValNo, ValVT, StackOffset, LocVT, LocInfo));
+  return false;
+}
+
+void LerosTargetLowering::analyzeInputArgs(
+    MachineFunction &MF, CCState &CCInfo,
+    const SmallVectorImpl<ISD::InputArg> &Ins, bool IsRet) const {
+  unsigned NumArgs = Ins.size();
+  FunctionType *FType = MF.getFunction().getFunctionType();
+
+  for (unsigned i = 0; i != NumArgs; ++i) {
+    MVT ArgVT = Ins[i].VT;
+    ISD::ArgFlagsTy ArgFlags = Ins[i].Flags;
+
+    Type *ArgTy = nullptr;
+    if (IsRet)
+      ArgTy = FType->getReturnType();
+    else if (Ins[i].isOrigArg())
+      ArgTy = FType->getParamType(Ins[i].getOrigArgIndex());
+
+    if (CC_Leros(MF.getDataLayout(), i, ArgVT, ArgVT, CCValAssign::Full,
+                 ArgFlags, CCInfo, /*IsRet=*/true, IsRet, ArgTy)) {
+      LLVM_DEBUG(dbgs() << "InputArg #" << i << " has unhandled type "
+                        << EVT(ArgVT).getEVTString() << '\n');
+      llvm_unreachable(nullptr);
+    }
+  }
+}
+
+void LerosTargetLowering::analyzeOutputArgs(
+    MachineFunction &MF, CCState &CCInfo,
+    const SmallVectorImpl<ISD::OutputArg> &Outs, bool IsRet,
+    CallLoweringInfo *CLI) const {
+  unsigned NumArgs = Outs.size();
+
+  for (unsigned i = 0; i != NumArgs; i++) {
+    MVT ArgVT = Outs[i].VT;
+    ISD::ArgFlagsTy ArgFlags = Outs[i].Flags;
+    Type *OrigTy = CLI ? CLI->getArgs()[Outs[i].OrigArgIndex].Ty : nullptr;
+
+    if (CC_Leros(MF.getDataLayout(), i, ArgVT, ArgVT, CCValAssign::Full,
+                 ArgFlags, CCInfo, Outs[i].IsFixed, IsRet, OrigTy)) {
+      LLVM_DEBUG(dbgs() << "OutputArg #" << i << " has unhandled type "
+                        << EVT(ArgVT).getEVTString() << "\n");
+      llvm_unreachable(nullptr);
+    }
+  }
+}
+
+static SDValue convertValVTToLocVT(SelectionDAG &DAG, SDValue Val,
+                                   const CCValAssign &VA, const SDLoc &DL) {
+  EVT LocVT = VA.getLocVT();
+
+  switch (VA.getLocInfo()) {
+  default:
+    llvm_unreachable("Unexpected CCValAssign::LocInfo");
+  case CCValAssign::Full:
+    break;
+  case CCValAssign::BCvt:
+    Val = DAG.getNode(ISD::BITCAST, DL, LocVT, Val);
+    break;
+  }
+  return Val;
+}
+
+// Convert Val to a ValVT. Should not be called for CCValAssign::Indirect
+// values.
+static SDValue convertLocVTToValVT(SelectionDAG &DAG, SDValue Val,
+                                   const CCValAssign &VA, const SDLoc &DL) {
+  switch (VA.getLocInfo()) {
+  default:
+    llvm_unreachable("Unexpected CCValAssign::LocInfo");
+  case CCValAssign::Full:
+    break;
+  case CCValAssign::BCvt:
+    Val = DAG.getNode(ISD::BITCAST, DL, VA.getValVT(), Val);
+    break;
+  }
+  return Val;
+}
+
 /// Leros call implementation
 SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                        SmallVectorImpl<SDValue> &InVals) const {
   SelectionDAG &DAG = CLI.DAG;
-  SDLoc &dl = CLI.DL;
+  SDLoc &DL = CLI.DL;
   SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
   SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
   SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
   SDValue Chain = CLI.Chain;
   SDValue Callee = CLI.Callee;
+  bool &IsTailCall = CLI.IsTailCall;
   CallingConv::ID CallConv = CLI.CallConv;
+  bool IsVarArg = CLI.IsVarArg;
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
-  bool isVarArg = CLI.IsVarArg;
+  MVT XLenVT = Subtarget.getXLenVT();
+
   MachineFunction &MF = DAG.getMachineFunction();
 
-  // Leros target does not yet support tail call optimization.
-  CLI.IsTailCall = false;
-
-  // Analyze operands of the call, assigning locations to each operand.
+  // Analyze the operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
-  CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
-                 *DAG.getContext());
-  CCInfo.AnalyzeCallOperands(Outs, CC_Leros);
+  CCState ArgCCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
+  analyzeOutputArgs(MF, ArgCCInfo, Outs, /*IsRet=*/false, &CLI);
 
-  // Get the size of the outgoing arguments stack space requirement.
-  const unsigned NumBytes = CCInfo.getNextStackOffset();
+  // Leros does not support tail calls
+  IsTailCall = false;
+
+  if (CLI.CS && CLI.CS.isMustTailCall())
+    report_fatal_error("failed to perform tail call elimination on a call "
+                       "site marked musttail");
+
+  // Get a count of how many bytes are to be pushed on the stack.
+  unsigned NumBytes = ArgCCInfo.getNextStackOffset();
 
   // Create local copies for byval args
   SmallVector<SDValue, 8> ByValArgs;
@@ -1619,104 +1871,153 @@ SDValue LerosTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
     int FI = MF.getFrameInfo().CreateStackObject(Size, Align, /*isSS=*/false);
     SDValue FIPtr = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
-    SDValue SizeNode = DAG.getConstant(Size, dl, Subtarget.getXLenVT());
+    SDValue SizeNode = DAG.getConstant(Size, DL, XLenVT);
 
-    Chain = DAG.getMemcpy(Chain, dl, FIPtr, Arg, SizeNode, Align,
+    Chain = DAG.getMemcpy(Chain, DL, FIPtr, Arg, SizeNode, Align,
                           /*IsVolatile=*/false,
-                          /*AlwaysInline=*/false, /*IsTailCall=*/false,
+                          /*AlwaysInline=*/false, IsTailCall,
                           MachinePointerInfo(), MachinePointerInfo());
     ByValArgs.push_back(FIPtr);
   }
 
-  Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, dl);
+  Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, CLI.DL);
 
+  // Copy argument values to their designated locations.
   SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;
   SmallVector<SDValue, 8> MemOpChains;
-
-  // Walk the register/memloc assignments, inserting copies/loads.
-  for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
+  SDValue StackPtr;
+  for (unsigned i = 0, j = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
-    SDValue Arg = OutVals[i];
+    SDValue ArgValue = OutVals[i];
+    ISD::ArgFlagsTy Flags = Outs[i].Flags;
 
-    // We only handle fully promoted arguments.
-    assert(VA.getLocInfo() == CCValAssign::Full && "Unhandled loc info");
-
-    if (VA.isRegLoc()) {
-      RegsToPass.push_back(std::make_pair(VA.getLocReg(), Arg));
-      continue;
+    // Promote the value if needed.
+    // For now, only handle fully promoted and indirect arguments.
+    if (VA.getLocInfo() == CCValAssign::Indirect) {
+      // Store the argument in a stack slot and pass its address.
+      SDValue SpillSlot = DAG.CreateStackTemporary(Outs[i].ArgVT);
+      int FI = cast<FrameIndexSDNode>(SpillSlot)->getIndex();
+      MemOpChains.push_back(
+          DAG.getStore(Chain, DL, ArgValue, SpillSlot,
+                       MachinePointerInfo::getFixedStack(MF, FI)));
+      // If the original argument was split (e.g. i128), we need
+      // to store all parts of it here (and pass just one address).
+      unsigned ArgIndex = Outs[i].OrigArgIndex;
+      assert(Outs[i].PartOffset == 0);
+      while (i + 1 != e && Outs[i + 1].OrigArgIndex == ArgIndex) {
+        SDValue PartValue = OutVals[i + 1];
+        unsigned PartOffset = Outs[i + 1].PartOffset;
+        SDValue Address = DAG.getNode(ISD::ADD, DL, PtrVT, SpillSlot,
+                                      DAG.getIntPtrConstant(PartOffset, DL));
+        MemOpChains.push_back(
+            DAG.getStore(Chain, DL, PartValue, Address,
+                         MachinePointerInfo::getFixedStack(MF, FI)));
+        ++i;
+      }
+      ArgValue = SpillSlot;
+    } else {
+      ArgValue = convertValVTToLocVT(DAG, ArgValue, VA, DL);
     }
 
-    assert(VA.isMemLoc() &&
-           "Only support passing arguments through registers or via the stack");
+    // Use local copy if it is a byval arg.
+    if (Flags.isByVal())
+      ArgValue = ByValArgs[j++];
 
-    SDValue StackPtr = DAG.getRegister(Leros::R1, MVT::i32);
-    SDValue PtrOff = DAG.getIntPtrConstant(VA.getLocMemOffset(), dl);
-    PtrOff = DAG.getNode(ISD::ADD, dl, MVT::i32, StackPtr, PtrOff);
-    MemOpChains.push_back(DAG.getStore(
-        Chain, dl, Arg, PtrOff,
-        MachinePointerInfo::getStack(MF, VA.getLocMemOffset()), 0));
+    if (VA.isRegLoc()) {
+      // Queue up the argument copies and emit them at the end.
+      RegsToPass.push_back(std::make_pair(VA.getLocReg(), ArgValue));
+    } else {
+      assert(VA.isMemLoc() && "Argument not register or memory");
+      assert(!IsTailCall && "Tail call not allowed if stack is used "
+                            "for passing parameters");
+
+      // Work out the address of the stack slot.
+      if (!StackPtr.getNode())
+        StackPtr = DAG.getCopyFromReg(Chain, DL, Leros::R1, PtrVT);
+      SDValue Address =
+          DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
+                      DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
+
+      // Emit the store.
+      MemOpChains.push_back(
+          DAG.getStore(Chain, DL, ArgValue, Address, MachinePointerInfo()));
+    }
   }
 
-  // Emit all stores, make sure they occur before the call.
-  if (!MemOpChains.empty()) {
-    Chain = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, MemOpChains);
-  }
+  // Join the stores, which are independent of one another.
+  if (!MemOpChains.empty())
+    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
 
-  // Build a sequence of copy-to-reg nodes chained together with token chain
-  // and flag operands which copy the outgoing args into the appropriate regs.
-  SDValue InFlag;
+  SDValue Glue;
+
+  // Build a sequence of copy-to-reg nodes, chained and glued together.
   for (auto &Reg : RegsToPass) {
-    Chain = DAG.getCopyToReg(Chain, dl, Reg.first, Reg.second, InFlag);
-    InFlag = Chain.getValue(1);
+    Chain = DAG.getCopyToReg(Chain, DL, Reg.first, Reg.second, Glue);
+    Glue = Chain.getValue(1);
   }
 
   // If the callee is a GlobalAddress/ExternalSymbol node, turn it into a
   // TargetGlobalAddress/TargetExternalSymbol node so that legalize won't
   // split it and then direct call can be matched by PseudoCALL.
   if (GlobalAddressSDNode *S = dyn_cast<GlobalAddressSDNode>(Callee)) {
-    Callee = DAG.getTargetGlobalAddress(S->getGlobal(), dl, PtrVT, 0, 0);
+    Callee = DAG.getTargetGlobalAddress(S->getGlobal(), DL, PtrVT, 0, 0);
   } else if (ExternalSymbolSDNode *S = dyn_cast<ExternalSymbolSDNode>(Callee)) {
     Callee = DAG.getTargetExternalSymbol(S->getSymbol(), PtrVT, 0);
   }
 
+  // The first call operand is the chain and the second is the target address.
   SmallVector<SDValue, 8> Ops;
   Ops.push_back(Chain);
   Ops.push_back(Callee);
 
-  // Add argument registers to the end of the list so that they are known live
-  // into the call.
-  for (auto &Reg : RegsToPass) {
+  // Add argument registers to the end of the list so that they are
+  // known live into the call.
+  for (auto &Reg : RegsToPass)
     Ops.push_back(DAG.getRegister(Reg.first, Reg.second.getValueType()));
+
+  if (!IsTailCall) {
+    // Add a register mask operand representing the call-preserved registers.
+    const TargetRegisterInfo *TRI = Subtarget.getRegisterInfo();
+    const uint32_t *Mask = TRI->getCallPreservedMask(MF, CallConv);
+    assert(Mask && "Missing call preserved mask for calling convention");
+    Ops.push_back(DAG.getRegisterMask(Mask));
   }
 
-  // Add a register mask operand representing the call-preserved registers.
-  const uint32_t *Mask;
-  const TargetRegisterInfo *TRI = DAG.getSubtarget().getRegisterInfo();
-  Mask = TRI->getCallPreservedMask(DAG.getMachineFunction(), CallConv);
+  // Glue the call to the argument copies, if any.
+  if (Glue.getNode())
+    Ops.push_back(Glue);
 
-  assert(Mask && "Missing call preserved mask for calling convention");
-  Ops.push_back(DAG.getRegisterMask(Mask));
-
-  if (InFlag.getNode()) {
-    Ops.push_back(InFlag);
-  }
-
+  // Emit the call.
   SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
-  // Returns a chain and a flag for retval copy to use.
-  Chain = DAG.getNode(LEROSISD::Call, dl, NodeTys, Ops);
-  InFlag = Chain.getValue(1);
+  Chain = DAG.getNode(LEROSISD::Call, DL, NodeTys, Ops);
+  Glue = Chain.getValue(1);
 
-  Chain = DAG.getCALLSEQ_END(Chain, DAG.getConstant(NumBytes, dl, PtrVT, true),
-                             DAG.getConstant(0, dl, PtrVT, true), InFlag, dl);
-  if (!Ins.empty()) {
-    InFlag = Chain.getValue(1);
+  // Mark the end of the call, which is glued to the call itself.
+  Chain = DAG.getCALLSEQ_END(Chain, DAG.getConstant(NumBytes, DL, PtrVT, true),
+                             DAG.getConstant(0, DL, PtrVT, true), Glue, DL);
+  Glue = Chain.getValue(1);
+
+  // Assign locations to each value returned by this call.
+  SmallVector<CCValAssign, 16> RVLocs;
+  CCState RetCCInfo(CallConv, IsVarArg, MF, RVLocs, *DAG.getContext());
+  analyzeInputArgs(MF, RetCCInfo, Ins, /*IsRet=*/true);
+
+  // Copy all of the result registers out of their specified physreg.
+  for (auto &VA : RVLocs) {
+    // Copy the value out
+    SDValue RetValue =
+        DAG.getCopyFromReg(Chain, DL, VA.getLocReg(), VA.getLocVT(), Glue);
+    // Glue the RetValue to the end of the call sequence
+    Chain = RetValue.getValue(1);
+    Glue = RetValue.getValue(2);
+
+    RetValue = convertLocVTToValVT(DAG, RetValue, VA, DL);
+
+    InVals.push_back(RetValue);
   }
 
-  // Handle result values, copying them out of physregs into vregs that we
-  // return.
-  return LowerCallResult(Chain, InFlag, CallConv, isVarArg, Ins, dl, DAG,
-                         InVals);
+  return Chain;
 }
 
 /// LowerCallResult - Lower the result values of a call into the
@@ -1750,58 +2051,185 @@ SDValue LerosTargetLowering::LowerCallResult(
 //             Formal Arguments Calling Convention Implementation
 //===----------------------------------------------------------------------===//
 
-/// Leros formal arguments implementation
-SDValue LerosTargetLowering::LowerFormalArguments(
-    SDValue Chain, CallingConv::ID CallConv, bool isVarArg,
-    const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &dl,
-    SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
+// The caller is responsible for loading the full value if the argument is
+// passed with CCValAssign::Indirect.
+static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
+                                const CCValAssign &VA, const SDLoc &DL) {
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  EVT LocVT = VA.getLocVT();
+  EVT ValVT = VA.getValVT();
+  EVT PtrVT = MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0));
+  int FI = MFI.CreateFixedObject(ValVT.getSizeInBits() / 8,
+                                 VA.getLocMemOffset(), /*Immutable=*/true);
+  SDValue FIN = DAG.getFrameIndex(FI, PtrVT);
+  SDValue Val;
+
+  ISD::LoadExtType ExtType;
+  switch (VA.getLocInfo()) {
+  default:
+    llvm_unreachable("Unexpected CCValAssign::LocInfo");
+  case CCValAssign::Full:
+  case CCValAssign::Indirect:
+    ExtType = ISD::NON_EXTLOAD;
+    break;
+  }
+  Val = DAG.getExtLoad(
+      ExtType, DL, LocVT, Chain, FIN,
+      MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI), ValVT);
+  return Val;
+}
+
+// The caller is responsible for loading the full value if the argument is
+// passed with CCValAssign::Indirect.
+static SDValue unpackFromRegLoc(SelectionDAG &DAG, SDValue Chain,
+                                const CCValAssign &VA, const SDLoc &DL) {
   MachineFunction &MF = DAG.getMachineFunction();
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
-  MachineFrameInfo &MFI = MF.getFrameInfo();
-  LerosMachineFunctionInfo *FuncInfo = MF.getInfo<LerosMachineFunctionInfo>();
+  EVT LocVT = VA.getLocVT();
+  SDValue Val;
+
+  unsigned VReg = RegInfo.createVirtualRegister(&Leros::GPRRegClass);
+  RegInfo.addLiveIn(VA.getLocReg(), VReg);
+  Val = DAG.getCopyFromReg(Chain, DL, VReg, LocVT);
+
+  if (VA.getLocInfo() == CCValAssign::Indirect)
+    return Val;
+
+  return convertLocVTToValVT(DAG, Val, VA, DL);
+}
+
+/// Leros formal arguments implementation
+SDValue LerosTargetLowering::LowerFormalArguments(
+    SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
+    const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
+    SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
+  switch (CallConv) {
+  default:
+    report_fatal_error("Unsupported calling convention");
+  case CallingConv::C:
+  case CallingConv::Fast:
+    break;
+  }
+
+  MachineFunction &MF = DAG.getMachineFunction();
+
+  const Function &Func = MF.getFunction();
+  if (Func.hasFnAttribute("interrupt")) {
+    if (!Func.arg_empty())
+      report_fatal_error(
+          "Functions with the interrupt attribute cannot have arguments!");
+
+    StringRef Kind =
+        MF.getFunction().getFnAttribute("interrupt").getValueAsString();
+
+    if (!(Kind == "user" || Kind == "supervisor" || Kind == "machine"))
+      report_fatal_error(
+          "Function interrupt attribute argument not supported!");
+  }
+
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+  MVT XLenVT = Subtarget.getXLenVT();
+  unsigned XLenInBytes = Subtarget.getXLen() / 8;
+  // Used with vargs to acumulate store chains.
+  std::vector<SDValue> OutChains;
 
   // Assign locations to all of the incoming arguments.
   SmallVector<CCValAssign, 16> ArgLocs;
-  CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
-                 *DAG.getContext());
-
+  CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
   CCInfo.AnalyzeFormalArguments(Ins, CC_Leros);
 
-  // Create frame index for the start of the first vararg value
-  if (isVarArg) {
-    unsigned Offset = CCInfo.getNextStackOffset();
-    FuncInfo->setVarArgsFrameIndex(MFI.CreateFixedObject(1, Offset, true));
-  }
+  for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
+    CCValAssign &VA = ArgLocs[i];
+    SDValue ArgValue;
+    if (VA.isRegLoc())
+      ArgValue = unpackFromRegLoc(DAG, Chain, VA, DL);
+    else
+      ArgValue = unpackFromMemLoc(DAG, Chain, VA, DL);
 
-  for (auto &VA : ArgLocs) {
-    if (VA.isRegLoc()) {
-      // Arguments passed in registers
-      EVT RegVT = VA.getLocVT();
-      assert(RegVT.getSimpleVT().SimpleTy == MVT::i32 &&
-             "Only support MVT::i32 register passing");
-      const unsigned VReg = RegInfo.createVirtualRegister(&Leros::GPRRegClass);
-      RegInfo.addLiveIn(VA.getLocReg(), VReg);
-      SDValue ArgIn = DAG.getCopyFromReg(Chain, dl, VReg, RegVT);
-
-      InVals.push_back(ArgIn);
+    if (VA.getLocInfo() == CCValAssign::Indirect) {
+      // If the original argument was split and passed by reference (e.g. i128
+      // on RV32), we need to load all parts of it here (using the same
+      // address).
+      InVals.push_back(DAG.getLoad(VA.getValVT(), DL, Chain, ArgValue,
+                                   MachinePointerInfo()));
+      unsigned ArgIndex = Ins[i].OrigArgIndex;
+      assert(Ins[i].PartOffset == 0);
+      while (i + 1 != e && Ins[i + 1].OrigArgIndex == ArgIndex) {
+        CCValAssign &PartVA = ArgLocs[i + 1];
+        unsigned PartOffset = Ins[i + 1].PartOffset;
+        SDValue Address = DAG.getNode(ISD::ADD, DL, PtrVT, ArgValue,
+                                      DAG.getIntPtrConstant(PartOffset, DL));
+        InVals.push_back(DAG.getLoad(PartVA.getValVT(), DL, Chain, Address,
+                                     MachinePointerInfo()));
+        ++i;
+      }
       continue;
     }
+    InVals.push_back(ArgValue);
+  }
 
-    assert(VA.isMemLoc() &&
-           "Can only pass arguments as either registers or via the stack");
+  if (IsVarArg) {
+    ArrayRef<MCPhysReg> ArgRegs = makeArrayRef(ArgGPRs);
+    unsigned Idx = CCInfo.getFirstUnallocated(ArgRegs);
+    const TargetRegisterClass *RC = &Leros::GPRRegClass;
+    MachineFrameInfo &MFI = MF.getFrameInfo();
+    MachineRegisterInfo &RegInfo = MF.getRegInfo();
+    LerosMachineFunctionInfo *LFI = MF.getInfo<LerosMachineFunctionInfo>();
 
-    const unsigned Offset = VA.getLocMemOffset();
+    // Offset of the first variable argument from stack pointer, and size of
+    // the vararg save area. For now, the varargs save area is either zero or
+    // large enough to hold r4-r10.
+    int VaArgOffset, VarArgsSaveSize;
 
-    const int FI = MF.getFrameInfo().CreateFixedObject(4, Offset, true);
-    EVT PtrTy = getPointerTy(DAG.getDataLayout());
-    SDValue FIPtr = DAG.getFrameIndex(FI, PtrTy);
+    // If all registers are allocated, then all varargs must be passed on the
+    // stack and we don't need to save any argregs.
+    if (ArgRegs.size() == Idx) {
+      VaArgOffset = CCInfo.getNextStackOffset();
+      VarArgsSaveSize = 0;
+    } else {
+      VarArgsSaveSize = XLenInBytes * (ArgRegs.size() - Idx);
+      VaArgOffset = -VarArgsSaveSize;
+    }
 
-    assert(VA.getValVT() == MVT::i32 &&
-           "Only support passing arguments as i32");
-    SDValue Load = DAG.getLoad(VA.getValVT(), dl, Chain, FIPtr,
-                               MachinePointerInfo::getFixedStack(MF, FI), 0);
+    // Record the frame index of the first variable argument
+    // which is a value necessary to VASTART.
+    int FI = MFI.CreateFixedObject(XLenInBytes, VaArgOffset, true);
+    LFI->setVarArgsFrameIndex(FI);
 
-    InVals.push_back(Load);
+    // If saving an odd number of registers then create an extra stack slot to
+    // ensure that the frame pointer is 2*XLEN-aligned, which in turn ensures
+    // offsets to even-numbered registered remain 2*XLEN-aligned.
+    if (Idx % 2) {
+      FI = MFI.CreateFixedObject(XLenInBytes, VaArgOffset - (int)XLenInBytes,
+                                 true);
+      VarArgsSaveSize += XLenInBytes;
+    }
+
+    // Copy the integer registers that may have been used for passing varargs
+    // to the vararg save area.
+    for (unsigned I = Idx; I < ArgRegs.size();
+         ++I, VaArgOffset += XLenInBytes) {
+      const unsigned Reg = RegInfo.createVirtualRegister(RC);
+      RegInfo.addLiveIn(ArgRegs[I], Reg);
+      SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, XLenVT);
+      FI = MFI.CreateFixedObject(XLenInBytes, VaArgOffset, true);
+      SDValue PtrOff = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
+      SDValue Store = DAG.getStore(Chain, DL, ArgValue, PtrOff,
+                                   MachinePointerInfo::getFixedStack(MF, FI));
+      cast<StoreSDNode>(Store.getNode())
+          ->getMemOperand()
+          ->setValue((Value *)nullptr);
+      OutChains.push_back(Store);
+    }
+    LFI->setVarArgsSaveSize(VarArgsSaveSize);
+  }
+
+  // All stores are grouped in one node to allow the matching between
+  // the size of Ins and InVals. This only happens for vararg functions.
+  if (!OutChains.empty()) {
+    OutChains.push_back(Chain);
+    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, OutChains);
   }
 
   return Chain;
@@ -1820,51 +2248,62 @@ bool LerosTargetLowering::isLegalAddImmediate(int64_t Imm) const {
 }
 
 bool LerosTargetLowering::CanLowerReturn(
-    CallingConv::ID CallConv, MachineFunction &MF, bool isVarArg,
+    CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
   SmallVector<CCValAssign, 16> RVLocs;
-  CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
-  return CCInfo.CheckReturn(Outs, RetCC_Leros);
+  CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
+  for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
+    MVT VT = Outs[i].VT;
+    ISD::ArgFlagsTy ArgFlags = Outs[i].Flags;
+    if (CC_Leros(MF.getDataLayout(), i, VT, VT, CCValAssign::Full, ArgFlags,
+                 CCInfo, /*IsFixed=*/true, /*IsRet=*/true, nullptr))
+      return false;
+  }
+  return true;
 }
 
 SDValue
 LerosTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
-                                 bool isVarArg,
+                                 bool IsVarArg,
                                  const SmallVectorImpl<ISD::OutputArg> &Outs,
                                  const SmallVectorImpl<SDValue> &OutVals,
-                                 const SDLoc &dl, SelectionDAG &DAG) const {
+                                 const SDLoc &DL, SelectionDAG &DAG) const {
 
-  // CCValAssign - represent the assignment of
-  // the return value to a location
+  // Stores the assignment of the return value to a location.
   SmallVector<CCValAssign, 16> RVLocs;
 
-  // CCState - Info about the registers and stack slot.
-  CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), RVLocs,
+  // Info about the registers and stack slot.
+  CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
                  *DAG.getContext());
 
-  CCInfo.AnalyzeReturn(Outs, RetCC_Leros);
+  analyzeOutputArgs(DAG.getMachineFunction(), CCInfo, Outs, /*IsRet=*/true,
+                    nullptr);
 
-  SDValue Flag;
+  SDValue Glue;
   SmallVector<SDValue, 4> RetOps(1, Chain);
 
   // Copy the result values into the output registers.
   for (unsigned i = 0, e = RVLocs.size(); i < e; ++i) {
+    SDValue Val = OutVals[i];
     CCValAssign &VA = RVLocs[i];
     assert(VA.isRegLoc() && "Can only return in registers!");
 
-    Chain = DAG.getCopyToReg(Chain, dl, VA.getLocReg(), OutVals[i], Flag);
+    // Handle a 'normal' return.
+    Val = convertValVTToLocVT(DAG, Val, VA, DL);
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Glue);
 
-    Flag = Chain.getValue(1);
+    // Guarantee that all emitted copies are stuck together.
+    Glue = Chain.getValue(1);
     RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
   }
 
   RetOps[0] = Chain; // Update chain.
 
-  // Add the flag if we have it.
-  if (Flag.getNode()) {
-    RetOps.push_back(Flag);
+  // Add the glue node if we have it.
+  if (Glue.getNode()) {
+    RetOps.push_back(Glue);
   }
 
-  return DAG.getNode(LEROSISD::Ret, dl, MVT::Other, RetOps);
+  return DAG.getNode(LEROSISD::Ret, DL, MVT::Other, RetOps);
 }
 } // namespace llvm
