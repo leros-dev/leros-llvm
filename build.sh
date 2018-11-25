@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BUILD_DIRECTORY=leros-llvm
+BUILD_DIRECTORY=build-leros-llvm
 
 # Make sure current working directory is the directory of the build script
 cd "${0%/*}"
@@ -14,6 +14,7 @@ BUILD_ROOT="$SOURCE_ROOT/../$BUILD_DIRECTORY"
 BUILD_BIN_DIR="$BUILD_ROOT/bin"
 BUILD_CLANG_LIB_DIR="$BUILD_ROOT/lib/clang/$CLANG_VERSION"
 
+# Create build folder next to source
 mkdir ../$BUILD_DIRECTORY
 cd ../$BUILD_DIRECTORY
 
