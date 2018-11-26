@@ -585,9 +585,9 @@ defm : LdPat<load, LOAD_M_PSEUDO>;
 defm : LdPat<load, LOAD_M_PSEUDO>;
 defm : LdPat<sextloadi8, LOAD_S8_M_PSEUDO>;
 defm : LdPat<extloadi8, LOAD_U8_M_PSEUDO>;
+defm : LdPat<zextloadi8, LOAD_U8_M_PSEUDO>;
 defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO>;
 defm : LdPat<extloadi16, LOAD_U16_M_PSEUDO>;
-defm : LdPat<zextloadi8, LOAD_U8_M_PSEUDO>;
 defm : LdPat<zextloadi16, LOAD_U16_M_PSEUDO>;
 
 // Stores
@@ -607,7 +607,7 @@ multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst> {
 
 defm : StPat<store, STORE_M_PSEUDO>;
 defm : StPat<truncstorei8, STORE_8_M_PSEUDO>;
-defm : StPat<truncstorei16, STORE_8_M_PSEUDO>;
+defm : StPat<truncstorei16, STORE_16_M_PSEUDO>;
 
 
 // Stack pointer adjustments
