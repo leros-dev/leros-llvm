@@ -36,9 +36,7 @@ def OPC_LOAD    : LerosImmRegOpcode<0b0010000>;
 def OPC_AND     : LerosImmRegOpcode<0b0010001>;
 def OPC_OR      : LerosImmRegOpcode<0b0010010>;
 def OPC_XOR     : LerosImmRegOpcode<0b0010011>;
-def OPC_LOADH   : LerosImmRegOpcode<0b0010100>;
-def OPC_LOADH2  : LerosImmRegOpcode<0b0010101>;
-def OPC_LOADH3  : LerosImmRegOpcode<0b0010110>;
+
 def OPC_STORE   : LerosImmRegOpcode<0b0011000>;
 def OPC_OUT     : LerosImmRegOpcode<0b0011100>;
 def OPC_IN      : LerosImmRegOpcode<0b0000010>;
@@ -57,6 +55,9 @@ def OPC_LDIND   : LerosLSOpcode<0b01100000>;
 def OPC_LDINDBU : LerosLSOpcode<0b01100001>;
 def OPC_STIND   : LerosLSOpcode<0b01110000>;
 def OPC_STINDB  : LerosLSOpcode<0b01110001>;
+def OPC_LOADH   : LerosLSOpcode<0b00101001>;
+def OPC_LOADH2  : LerosLSOpcode<0b00101010>;
+def OPC_LOADH3  : LerosLSOpcode<0b00101011>;
 
 // JAL
 def OPC_JAL     : LerosJalOpcode<0b01000>;

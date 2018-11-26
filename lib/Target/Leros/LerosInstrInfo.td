@@ -287,6 +287,14 @@ multiclass INSTR_ImmReg<LerosImmRegOpcode opcode, string opcodestr, SDNode opnod
     def _AR  : INSTR_AccAccReg<opcode, opcodestr>; 
 }
 
+multiclass INSTR_Imm_LS<LerosLSOpcode opcode, string opcodestr, SDNode opnode, Operand immClass>{
+    // Wrapper pseudo instruction definitions
+    def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode, immClass>; // Register-immediate instruction
+
+    // Instruction definitions
+    def _AI  : INSTR_AccAccImm_LS<opcode, !strconcat(opcodestr, "i"), immClass>;
+}
+
 multiclass INSTR_Pseudo<LerosImmRegOpcode opcode, SDNode opnode, Operand immClass>{
     let usesCustomInserter = 1 in {
         def _RI_PSEUDO  : PSEUDO_AccAccImm<opnode, immClass>; // Register-immediate instruction
@@ -340,9 +348,9 @@ def LOAD_R : INSTR_AccReg<OPC_LOAD, "load">;
 def LOAD_I : INSTR_AccImm<OPC_LOAD, "loadi", simm8_symbolref>;
 def LOAD_RI_PSEUDO : PSEUDO_RegImm;
 
-defm LOADH    : INSTR_Imm<OPC_LOADH    ,  "loadh",   LOADH,  simm8_symbolref>;
-defm LOADH2   : INSTR_Imm<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8_symbolref>;
-defm LOADH3   : INSTR_Imm<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
+defm LOADH    : INSTR_Imm_LS<OPC_LOADH    ,  "loadh",   LOADH,  simm8_symbolref>;
+defm LOADH2   : INSTR_Imm_LS<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8_symbolref>;
+defm LOADH3   : INSTR_Imm_LS<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
 
 // Accumulator->register store
 def STORE_R   : INSTR_RegAcc<OPC_STORE, "store">;
