@@ -44,7 +44,6 @@ add_llvm_tool_subdirectory(llvm-profdata)
 # specified.
 add_llvm_external_project(leros-clang)
 add_llvm_external_project(llgo)
-add_llvm_external_project(lld)
 add_llvm_external_project(leros-lld)
 add_llvm_external_project(lldb)
 

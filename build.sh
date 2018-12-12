@@ -14,12 +14,24 @@ BUILD_ROOT="$PARENT_DIR/$BUILD_DIRECTORY"
 BUILD_BIN_DIR="$BUILD_ROOT/bin"
 BUILD_CLANG_LIB_DIR="$BUILD_ROOT/lib/clang/$CLANG_VERSION"
 
+# Pull all submodules (clang and lld)
+git submodule update --init
+git submodule update --recursive --remote
+
 # Create build folder next to source
 mkdir $BUILD_ROOT
 cd $BUILD_ROOT
 
+# Set CMake arguments
+ARGS="-DLLVM_TOOL_LEROS_CLANG_BUILD=ON"
+ARGS="${ARGS} -DLLVM_TOOL_LEROS_LLD_BUILD=ON"
+ARGS="${ARGS} -DLLVM_TARGETS_TO_BUILD=''"     # Disable all upstream backends (x86, ARM, ...)
+ARGS="${ARGS} -DLLVM_DEFAULT_TARGET_TRIPLE='leros32-unknown-elf'" # Unless specified, clang and the other llvm tools should default to building leros 32 binaries
+ARGS="${ARGS} -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='Leros'" # Leros is listed as an experimental target, given that it is not upstream
+ARGS="${ARGS} -DCMAKE_BUILD_TYPE='Release'"
+
 # Run CMake configuration of leros-llvm inside build directory
-cmake -DLLVM_TOOL_CLANG_BUILD=OFF -DLLVM_TARGETS_TO_BUILD="" -DLLVM_DEFAULT_TARGET_TRIPLE="leros32-unknown-elf" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="Leros" -DCMAKE_BUILD_TYPE="Release" $SOURCE_ROOT
+cmake ${ARGS} $SOURCE_ROOT
 
 # Use all cores when building
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
