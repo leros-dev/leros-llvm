@@ -426,12 +426,9 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
       // Mask the lower halfword
       // Build the operand which we have to OR with. We use a register from
       // GPRPseudoExpandRegClass since we are post reg allocation
-      auto scratchReg = Leros::R3;
-      movImm32(MBB, MI, MI.getDebugLoc(), scratchReg, 0xFFFF);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R))
-          .addReg(scratchReg);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AR)).addReg(scratchReg);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AR))
+          .addReg(LEROSCREG::LHMASK);
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
       break;
     }

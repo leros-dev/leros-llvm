@@ -46,6 +46,12 @@ BitVector LerosRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   markSuperRegs(Reserved, Leros::R1); // sp
   markSuperRegs(Reserved, Leros::R2); // fp
   markSuperRegs(Reserved, Leros::R3); // Scratch/clobber register
+
+  // Constant registers are reserved
+  for (const auto &reg : LEROSCREG::values) {
+    markSuperRegs(Reserved, reg.second);
+  }
+
   assert(checkAllSuperRegsMarked(Reserved));
   return Reserved;
 }
@@ -92,6 +98,10 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   MI.getOperand(FIOperandNum)
       .ChangeToRegister(FrameReg, false, false, FrameRegIsKill);
   MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
+}
+
+bool LerosRegisterInfo::isConstantPhysReg(unsigned PhysReg) const {
+  return LEROSCREG::values.find(PhysReg) != LEROSCREG::values.end();
 }
 
 unsigned LerosRegisterInfo::getFrameRegister(const MachineFunction &MF) const {

@@ -571,11 +571,9 @@ MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
 
   SignedTailMBB->addSuccessor(TailMBB);
 
-  // Generate sign mask
-  unsigned SignMask = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII.movUImm32(*HeadMBB, HeadMBB->end(), DL, SignMask, 0x80000000);
-
-  // Generate the true- and false value registers
+  // Generate the true- and false value registers. Machine PHI nodes must have
+  // virtual registers as operands, which is why the constant registers are not
+  // used
   unsigned TrueReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
   unsigned FalseReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
   TII.movImm32(*HeadMBB, HeadMBB->end(), DL, TrueReg, 1);
@@ -587,11 +585,11 @@ MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
 
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO), rs1_s)
       .addReg(rs1)
-      .addReg(SignMask);
+      .addReg(LEROSCREG::B32SIGN);
 
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO), rs2_s)
       .addReg(rs2)
-      .addReg(SignMask);
+      .addReg(LEROSCREG::B32SIGN);
 
   // XOR the two sign registers
   unsigned xor_res = MRI.createVirtualRegister(&Leros::GPRRegClass);
@@ -793,7 +791,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
 
   unsigned opcode;
   unsigned memLoadOpcode;
-  uint32_t signImm;
+  unsigned signMaskReg;
 
   switch (MI.getOpcode()) {
   default:
@@ -801,13 +799,13 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   case Leros::LOAD_S8_M_PSEUDO: {
     memLoadOpcode = Leros::LOAD_U8_M_PSEUDO;
     opcode = Leros::LOADH_RI_PSEUDO;
-    signImm = 0x80;
+    signMaskReg = LEROSCREG::B8SIGN;
     break;
   }
   case Leros::LOAD_S16_M_PSEUDO: {
     memLoadOpcode = Leros::LOAD_M_PSEUDO;
     opcode = Leros::LOADH2_RI_PSEUDO;
-    signImm = 0x8000;
+    signMaskReg = LEROSCREG::B16SIGN;
     break;
   }
   }
@@ -855,13 +853,12 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   }
 
   // Mask sign of loaded operand
-  const unsigned mask = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII.movUImm32(*HeadMBB, HeadMBB->end(), DL, mask, signImm);
+
   const unsigned maskedLoad = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
           maskedLoad)
       .addReg(ScratchReg)
-      .addReg(mask);
+      .addReg(signMaskReg);
 
   // result != 0 => negative number
   BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
@@ -915,10 +912,8 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *negMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *posMBB = F->CreateMachineBasicBlock(LLVM_BB);
-  MachineBasicBlock *buildSEConstantMBB = F->CreateMachineBasicBlock(LLVM_BB);
 
   // Insertion order matters, to properly handle BB fallthrough
-  F->insert(I, buildSEConstantMBB);
   F->insert(I, negMBB);
   F->insert(I, posMBB);
   F->insert(I, TailMBB);
@@ -931,10 +926,8 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
 
   // Set successors for remaining MBBs
-  HeadMBB->addSuccessor(buildSEConstantMBB);
+  HeadMBB->addSuccessor(negMBB);
   HeadMBB->addSuccessor(posMBB);
-
-  buildSEConstantMBB->addSuccessor(negMBB);
 
   negMBB->addSuccessor(TailMBB);
   negMBB->addSuccessor(negMBB);
@@ -952,13 +945,6 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
       .addReg(rs1)
       .addMBB(posMBB);
 
-  // -------- buildSEConstantMBB ------
-  // From here, we know that it is a negative number - build sign extension
-  // register
-  const unsigned SER = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII.movUImm32(*buildSEConstantMBB, buildSEConstantMBB->end(), DL, SER,
-                0x80000000);
-
   // fallthrough to NegMBB
 
   // -------- NegMBB --------------
@@ -969,7 +955,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   const unsigned NSEShiftRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PHI), NRegToShift)
       .addReg(rs1)
-      .addMBB(buildSEConstantMBB)
+      .addMBB(HeadMBB)
       .addReg(NSEShiftRes)
       .addMBB(negMBB);
 
@@ -977,7 +963,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   unsigned IterRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::PHI), RegToIter)
       .addReg(ScratchReg)
-      .addMBB(buildSEConstantMBB)
+      .addMBB(HeadMBB)
       .addReg(IterRes)
       .addMBB(negMBB);
 
@@ -988,7 +974,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
   // Sign extend
   BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
       .addReg(NShiftRes)
-      .addReg(SER);
+      .addReg(LEROSCREG::B32SIGN);
 
   BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO), IterRes)
       .addReg(RegToIter)
@@ -1062,13 +1048,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
 
   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *PosCheck = F->CreateMachineBasicBlock(LLVM_BB);
-  MachineBasicBlock *negInit = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *negMBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *posMBB = F->CreateMachineBasicBlock(LLVM_BB);
 
   // Insertion order matters, to properly handle BB fallthrough
   F->insert(I, PosCheck);
-  F->insert(I, negInit);
   F->insert(I, negMBB);
   F->insert(I, posMBB);
   F->insert(I, TailMBB);
@@ -1085,9 +1069,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
   HeadMBB->addSuccessor(TailMBB);
 
   PosCheck->addSuccessor(posMBB);
-  PosCheck->addSuccessor(negInit);
-
-  negInit->addSuccessor(negMBB);
+  PosCheck->addSuccessor(negMBB);
 
   negMBB->addSuccessor(TailMBB);
   negMBB->addSuccessor(negMBB);
@@ -1106,10 +1088,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addReg(rs1)
       .addMBB(posMBB);
 
-  // From here, we know that it is a negative number - build sign extension
-  // register
-  const unsigned SER = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  TII.movUImm32(*negInit, negInit->end(), DL, SER, 0x80000000);
+  // From here, we know that it is a negative number
 
   // fallthrough to NegMBB
 
@@ -1121,7 +1100,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
 
   BuildMI(*negMBB, negMBB->begin(), DL, TII.get(Leros::PHI), NRegToShift)
       .addReg(rs1)
-      .addMBB(negInit)
+      .addMBB(PosCheck)
       .addReg(NSEShiftRes)
       .addMBB(negMBB);
   BuildMI(negMBB, DL, TII.get(Leros::SHRByOne_Pseudo), NShiftRes)
@@ -1131,14 +1110,14 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
   unsigned NIterRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   BuildMI(*negMBB, negMBB->begin(), DL, TII.get(Leros::PHI), NRegToIter)
       .addReg(rs2)
-      .addMBB(negInit)
+      .addMBB(PosCheck)
       .addReg(NIterRes)
       .addMBB(negMBB);
 
   // Sign extend
   BuildMI(negMBB, DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
       .addReg(NShiftRes)
-      .addReg(SER);
+      .addReg(LEROSCREG::B32SIGN);
 
   BuildMI(negMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), NIterRes)
       .addReg(NRegToIter)
@@ -1469,24 +1448,18 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
     }
 
     // Mask the upper bits
-    int64_t bitmask = -65536; // will expand to 0xFFFF0000
-    const unsigned MaskReg1 = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg1, bitmask);
     const unsigned MaskedMem = MRI.createVirtualRegister(&Leros::GPRRegClass);
     BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
             MaskedMem)
         .addReg(MemReg)
-        .addReg(MaskReg1);
+        .addReg(LEROSCREG::UHMASK);
 
     // Mask the lower bits of the store register
-    const unsigned MaskReg2 = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    bitmask = 0xFFFF;
-    TII.movImm32(*HeadMBB, HeadMBB->end(), DL, MaskReg2, bitmask);
     const unsigned MaskedStore = MRI.createVirtualRegister(&Leros::GPRRegClass);
     BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
             MaskedStore)
         .addReg(rstore)
-        .addReg(MaskReg2);
+        .addReg(LEROSCREG::LHMASK);
 
     // OR the two registers
     const unsigned MaskedRes = MRI.createVirtualRegister(&Leros::GPRRegClass);

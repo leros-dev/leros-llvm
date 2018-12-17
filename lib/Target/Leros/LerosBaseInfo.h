@@ -14,10 +14,33 @@
 #ifndef LLVM_LIB_TARGET_Leros_MCTARGETDESC_LerosBASEINFO_H
 #define LLVM_LIB_TARGET_Leros_MCTARGETDESC_LerosBASEINFO_H
 
+#include "MCTargetDesc/LerosMCTargetDesc.h"
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/CodeGen/TargetLowering.h"
 
 namespace llvm {
+
+namespace LEROSCREG {
+// Constant registers as defined by the Leros ABI
+enum {
+  ZERO = Leros::R100,    // 0x0
+  ONE = Leros::R101,     // 0x1
+  B8SIGN = Leros::R102,  // 0x80
+  B16SIGN = Leros::R103, // 0x8000
+  B32SIGN = Leros::R104, // 0x80000000
+  LBMASK = Leros::R105,  // 0xFF
+  LHMASK = Leros::R106,  // 0xFFFF
+  UHMASK = Leros::R107   // 0xFFFF0000
+};
+
+const std::map<uint64_t, int> values = {
+    {0x0, LEROSCREG::ZERO},           {0x1, LEROSCREG::ONE},
+    {0x80, LEROSCREG::B8SIGN},        {0x8000, LEROSCREG::B16SIGN},
+    {0x80000000, LEROSCREG::B32SIGN}, {0xFF, LEROSCREG::LBMASK},
+    {0xFFFF, LEROSCREG::LHMASK},      {0xFFFF0000, LEROSCREG::UHMASK},
+};
+
+} // namespace LEROSCREG
 
 namespace LEROSISD {
 enum {

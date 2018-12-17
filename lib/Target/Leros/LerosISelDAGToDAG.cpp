@@ -73,14 +73,29 @@ void LerosDAGToDAGISel::Select(SDNode *Node) {
   MVT XLenVT = Subtarget->getXLenVT();
   SDLoc DL(Node);
   EVT VT = Node->getValueType(0);
+  switch (Opcode) {
+  case ISD::Constant: {
+    auto ConstNode = cast<ConstantSDNode>(Node);
+    auto immediate = ConstNode->getZExtValue();
 
-  if (Opcode == ISD::FrameIndex) {
+    if (VT == XLenVT &&
+        LEROSCREG::values.find(immediate) != LEROSCREG::values.end()) {
+      SDValue New =
+          CurDAG->getCopyFromReg(CurDAG->getEntryNode(), SDLoc(Node),
+                                 LEROSCREG::values.at(immediate), XLenVT);
+      ReplaceNode(Node, New.getNode());
+      return;
+    }
+    break;
+  }
+  case ISD::FrameIndex: {
     SDValue Imm = CurDAG->getTargetConstant(0, DL, XLenVT);
     int FI = cast<FrameIndexSDNode>(Node)->getIndex();
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
     ReplaceNode(Node,
                 CurDAG->getMachineNode(Leros::ADD_RI_PSEUDO, DL, VT, TFI, Imm));
     return;
+  }
   }
 
   // Select the default instruction.
