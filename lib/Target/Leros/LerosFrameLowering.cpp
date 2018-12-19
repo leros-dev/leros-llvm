@@ -113,16 +113,16 @@ void LerosFrameLowering::adjustReg(MachineBasicBlock &MBB,
     return;
 
   if (isInt<8>(Val)) {
-    BuildMI(MBB, MBBI, DL, TII->get(Leros::ADD_RI_PSEUDO), DestReg)
+    BuildMI(MBB, MBBI, DL, TII->get(Leros::ADDI_PSEUDO), DestReg)
         .addReg(SrcReg)
         .addImm(Val)
         .setMIFlag(Flag);
   } else if (isInt<32>(Val)) {
-    unsigned Opc = Leros::ADD_RR_PSEUDO;
+    unsigned Opc = Leros::ADD_PSEUDO;
     bool isSub = Val < 0;
     if (isSub) {
       Val = -Val;
-      Opc = Leros::SUB_RR_PSEUDO;
+      Opc = Leros::SUB_PSEUDO;
     }
 
     unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);

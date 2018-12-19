@@ -87,7 +87,7 @@ void LerosRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     // Modify Offset and FrameReg appropriately
     unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
     TII->movImm32(MBB, II, DL, ScratchReg, Offset);
-    BuildMI(MBB, II, DL, TII->get(Leros::ADD_RR_PSEUDO), ScratchReg)
+    BuildMI(MBB, II, DL, TII->get(Leros::ADD_PSEUDO), ScratchReg)
         .addReg(FrameReg)
         .addReg(ScratchReg, RegState::Kill);
     Offset = 0;

@@ -7,39 +7,33 @@
 //
 //===----------------------------------------------------------------------===//
 
-// Opcodes for instructions operating on the Accumulator or a Register
-class LerosImmRegOpcode<bits<7> val> {
-    bits<7>Value = val;
-}
-
-class LerosLSOpcode<bits<8> val> {
+class LerosOpcode<bits<8> val> {
     bits<8>Value = val;
 }
-
-// Opcode class for branch instructions
 class LerosBOpcode<bits<4> val> {
     bits<4>Value = val;
 }
 
-class LerosJalOpcode<bits<5> val>{
-    bits<5>Value = val;
-}
-
 // Accumulator and Register-using opcodes
 
-def OPC_NOP     : LerosImmRegOpcode<0b0000000>;
-def OPC_ADD     : LerosImmRegOpcode<0b0000100>;
-def OPC_SUB     : LerosImmRegOpcode<0b0000110>;
-def OPC_SHR     : LerosImmRegOpcode<0b0001000>;
-def OPC_UNUSED  : LerosImmRegOpcode<0b0001100>;
-def OPC_LOAD    : LerosImmRegOpcode<0b0010000>;
-def OPC_AND     : LerosImmRegOpcode<0b0010001>;
-def OPC_OR      : LerosImmRegOpcode<0b0010010>;
-def OPC_XOR     : LerosImmRegOpcode<0b0010011>;
+def OPC_NOP     : LerosOpcode<0b00000000>;
+def OPC_ADDI    : LerosOpcode<0b00001001>;
+def OPC_ADDR    : LerosOpcode<0b00001000>;
+def OPC_SUBI    : LerosOpcode<0b00001101>;
+def OPC_SUBR    : LerosOpcode<0b00001100>;
+def OPC_SHR     : LerosOpcode<0b00010000>;
+def OPC_LOADR   : LerosOpcode<0b00100000>;
+def OPC_LOADI   : LerosOpcode<0b00100001>;
+def OPC_ANDI    : LerosOpcode<0b00100011>;
+def OPC_ANDR    : LerosOpcode<0b00100010>;
+def OPC_ORI     : LerosOpcode<0b00100101>;
+def OPC_ORR     : LerosOpcode<0b00100100>;
+def OPC_XORI    : LerosOpcode<0b00100111>;
+def OPC_XORR    : LerosOpcode<0b00100110>;
 
-def OPC_STORE   : LerosImmRegOpcode<0b0011000>;
-def OPC_OUT     : LerosImmRegOpcode<0b0011100>;
-def OPC_IN      : LerosImmRegOpcode<0b0000010>;
+def OPC_STORE   : LerosOpcode<0b00110000>;
+def OPC_OUT     : LerosOpcode<0b00111000>;
+def OPC_IN      : LerosOpcode<0b00000100>;
 
 
 // Branch opcodes
@@ -50,17 +44,17 @@ def OPC_BRP     : LerosBOpcode<0b1011>;
 def OPC_BRN     : LerosBOpcode<0b1100>;
 
 // Load/Store opcodes
-def OPC_LDADDR  : LerosImmRegOpcode<0b0101000>;
-def OPC_LDIND   : LerosLSOpcode<0b01100000>;
-def OPC_LDINDBU : LerosLSOpcode<0b01100001>;
-def OPC_STIND   : LerosLSOpcode<0b01110000>;
-def OPC_STINDB  : LerosLSOpcode<0b01110001>;
-def OPC_LOADH   : LerosLSOpcode<0b00101001>;
-def OPC_LOADH2  : LerosLSOpcode<0b00101010>;
-def OPC_LOADH3  : LerosLSOpcode<0b00101011>;
+def OPC_LDADDR  : LerosOpcode<0b01010000>;
+def OPC_LDIND   : LerosOpcode<0b01100000>;
+def OPC_LDINDBU : LerosOpcode<0b01100001>;
+def OPC_STIND   : LerosOpcode<0b01110000>;
+def OPC_STINDB  : LerosOpcode<0b01110001>;
+def OPC_LOADH   : LerosOpcode<0b00101001>;
+def OPC_LOADH2  : LerosOpcode<0b00101010>;
+def OPC_LOADH3  : LerosOpcode<0b00101011>;
 
 // JAL
-def OPC_JAL     : LerosJalOpcode<0b01000>;
+def OPC_JAL     : LerosOpcode<0b01000000>;
 
 // Pseudoinstruction formats
 class PseudoFormat<bits<4> val>{
@@ -119,46 +113,19 @@ class LerosPseudo<dag outs, dag ins, PseudoFormat format, list<dag> pattern>
   let TSFlags{3-0} = format.Value;
 }
 
-class LerosImmRegInst<dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
+class LerosImmRegInst<LerosOpcode opcode, dag outs, dag ins, string opcodestr, string argstr, list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
     bits<8> RegOrImm;
     let Inst{7-0} = RegOrImm;
-}
-
-class LerosRegInst<LerosImmRegOpcode opcode, dag outs, dag ins,  string opcodestr, string argstr,
-    list<dag> pattern>
-    : LerosImmRegInst<outs, ins, opcodestr, argstr, pattern>{
-    bits<8> r;
-    let RegOrImm = r;
-    let Inst{8} = 0;
-    let Inst{15-9} = opcode.Value;
-}
-
-// Instruction with no operands, that work exclusively on the accumulator, such as shr
-class LerosAccInst<LerosImmRegOpcode opcode, string opcodestr, list<dag> pattern>
-    : LerosInst<(outs), (ins), opcodestr, "", pattern>{
-    let Inst{8-0} = 0;
-    let Inst{15-9} = opcode.Value;
-}
-
-
-class LerosImmInst<LerosImmRegOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
-    list<dag> pattern>
-    : LerosImmRegInst<outs, ins, opcodestr, argstr, pattern>{
-    bits<8> imm8;
-    let RegOrImm = imm8;
-    let Inst{8} = 1;
-    let Inst{15-9} = opcode.Value;
-}
-
-class LerosImmInst_LS<LerosLSOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
-    list<dag> pattern>
-    : LerosImmRegInst<outs, ins, opcodestr, argstr, pattern>{
-    bits<8> imm8;
-    let RegOrImm = imm8;
     let Inst{15-8} = opcode.Value;
 }
 
+// Instruction with no operands, that work exclusively on the accumulator, such as shr
+class LerosAccInst<LerosOpcode opcode, string opcodestr>
+    : LerosInst<(outs), (ins), opcodestr, "", []>{
+    let Inst{8-0} = 0;
+    let Inst{15-8} = opcode.Value;
+}
 
 class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
     list<dag> pattern>

@@ -56,42 +56,42 @@ void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
   // Materialize a constant into a register through repeated usage of loadh
   // operations
   if (isInt<8>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
         .addImm((val)&0xff)
         .setMIFlag(Flag);
   } else if (isInt<16>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
         .addImm((val)&0xff)
         .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADHI_MI))
         .addImm((val >> 8) & 0xff)
         .setMIFlag(Flag);
   } else if (isInt<24>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
         .addImm(val & 0xff)
         .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADHI_MI))
         .addImm((val >> 8) & 0xff)
         .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2I_MI))
         .addImm((val >> 16) & 0xff)
         .setMIFlag(Flag);
   } else {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOAD_I))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
         .addImm((val)&0xff)
         .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH_AI))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADHI_MI))
         .addImm((val >> 8) & 0xff)
         .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2_AI))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2I_MI))
         .addImm((val >> 16) & 0xff)
         .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH3_AI))
+    BuildMI(MBB, MBBI, DL, get(Leros::LOADH3I_MI))
         .addImm((val >> 24) & 0xff)
         .setMIFlag(Flag);
   }
 
-  BuildMI(MBB, MBBI, DL, get(Leros::STORE_R), DstReg).setMIFlag(Flag);
+  BuildMI(MBB, MBBI, DL, get(Leros::STORE_MI), DstReg).setMIFlag(Flag);
 }
 
 void LerosInstrInfo::movUImm32(MachineBasicBlock &MBB,
@@ -111,13 +111,13 @@ void LerosInstrInfo::expandMOV(MachineBasicBlock &MBB,
     dst = I->getOperand(0).getReg();
     src = I->getOperand(1).getReg();
   }
-  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::LOAD_R)).addReg(src);
-  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::STORE_R)).addReg(dst);
+  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::LOAD_MI)).addReg(src);
+  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::STORE_MI)).addReg(dst);
 }
 
 void LerosInstrInfo::expandRET(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I) const {
-  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::LOAD_R)).addReg(Leros::R0);
+  BuildMI(MBB, I, I->getDebugLoc(), get(Leros::LOAD_MI)).addReg(Leros::R0);
   BuildMI(MBB, I, I->getDebugLoc(), get(Leros::JAL_ret)).addReg(Leros::R0);
 }
 
@@ -125,61 +125,55 @@ void LerosInstrInfo::expandSHR(MachineBasicBlock &MBB, MachineInstr &I) const {
   const unsigned &dst = I.getOperand(0).getReg(),
                  &src = I.getOperand(1).getReg();
   auto DL = I.getDebugLoc();
-  BuildMI(MBB, I, DL, get(Leros::LOAD_R)).addReg(src);
+  BuildMI(MBB, I, DL, get(Leros::LOAD_MI)).addReg(src);
   // Reg and immediate does nothing, but required for the signature of SHR
-  BuildMI(MBB, I, DL, get(Leros::SHR_IMPL));
-  BuildMI(MBB, I, DL, get(Leros::STORE_R)).addReg(dst);
+  BuildMI(MBB, I, DL, get(Leros::SHR_MI));
+  BuildMI(MBB, I, DL, get(Leros::STORE_MI)).addReg(dst);
 }
 
-void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
-#define OPCASE(instr, postfix)                                                 \
-  case instr##_R##postfix##_PSEUDO:                                            \
-    opcode = instr##_A##postfix;                                               \
+#define OPCASE(instr)                                                          \
+  case instr##_PSEUDO:                                                         \
+    opcode = instr##_##MI;                                                     \
     break;
+
+void LerosInstrInfo::expandRRR(MachineBasicBlock &MBB, MachineInstr &MI) const {
 
   unsigned opcode = MI.getDesc().getOpcode();
   switch (opcode) {
   default:
     llvm_unreachable("Unhandled opcode in expandRRR");
-    OPCASE(Leros::ADD, R)
-    OPCASE(Leros::SUB, R)
-    OPCASE(Leros::AND, R)
-    OPCASE(Leros::OR, R)
-    OPCASE(Leros::XOR, R)
+    OPCASE(Leros::ADD)
+    OPCASE(Leros::SUB)
+    OPCASE(Leros::AND)
+    OPCASE(Leros::OR)
+    OPCASE(Leros::XOR)
   }
-#undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
                  &rs1 = MI.getOperand(1).getReg(),
                  &rs2 = MI.getOperand(2).getReg();
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs1);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addReg(rs2);
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(dst);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(dst);
 }
 
 void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
-#define OPCASE(instr, postfix)                                                 \
-  case instr##_R##postfix##_PSEUDO:                                            \
-    opcode = instr##_A##postfix;                                               \
-    break;
-
   unsigned opcode = MI.getDesc().getOpcode();
   switch (opcode) {
   default:
     llvm_unreachable("Unhandled opcode in expandRRI");
-    OPCASE(Leros::ADD, I)
-    OPCASE(Leros::SUB, I)
-    OPCASE(Leros::AND, I)
-    OPCASE(Leros::OR, I)
-    OPCASE(Leros::XOR, I)
-    OPCASE(Leros::LOADH, I)
-    OPCASE(Leros::LOADH2, I)
-    OPCASE(Leros::LOADH3, I)
+    OPCASE(Leros::ADDI)
+    OPCASE(Leros::SUBI)
+    OPCASE(Leros::ANDI)
+    OPCASE(Leros::ORI)
+    OPCASE(Leros::XORI)
+    OPCASE(Leros::LOADHI)
+    OPCASE(Leros::LOADH2I)
+    OPCASE(Leros::LOADH3I)
   }
-#undef OPCASE
   const unsigned &dst = MI.getOperand(0).getReg(),
                  &rs1 = MI.getOperand(1).getReg();
 
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs1);
   if (MI.getOperand(2).getType() == MachineOperand::MO_GlobalAddress) {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode))
         .addGlobalAddress(MI.getOperand(2).getGlobal());
@@ -190,7 +184,7 @@ void LerosInstrInfo::expandRRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode))
         .addImm(MI.getOperand(2).getImm());
   }
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(dst);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(dst);
 }
 
 void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
@@ -198,16 +192,17 @@ void LerosInstrInfo::expandRI(MachineBasicBlock &MBB, MachineInstr &MI) const {
   const unsigned &dst = MI.getOperand(0).getReg();
 
   if (MI.getOperand(1).getType() == MachineOperand::MO_GlobalAddress) {
-    BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
+    BuildMI(MBB, MI, DL, get(Leros::LOADI_MI))
         .addGlobalAddress(MI.getOperand(1).getGlobal());
   } else if (MI.getOperand(1).getType() == MachineOperand::MO_BlockAddress) {
-    BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
+    BuildMI(MBB, MI, DL, get(Leros::LOADI_MI))
         .addBlockAddress(MI.getOperand(1).getBlockAddress());
   } else {
-    BuildMI(MBB, MI, DL, get(Leros::LOAD_I)).addImm(MI.getOperand(1).getImm());
+    BuildMI(MBB, MI, DL, get(Leros::LOADI_MI))
+        .addImm(MI.getOperand(1).getImm());
   }
 
-  BuildMI(MBB, MI, DL, get(Leros::STORE_R)).addReg(dst);
+  BuildMI(MBB, MI, DL, get(Leros::STORE_MI)).addReg(dst);
 }
 
 unsigned LerosInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
@@ -236,10 +231,10 @@ void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
 
 #define ADD_SYMBOL(GET_SYM, ADD_SYM)                                           \
   auto op = operand.GET_SYM();                                                 \
-  BuildMI(MBB, MI, DL, get(Leros::LOAD_I)).ADD_SYM(op, 0, LEROSTF::MO_B0);     \
-  BuildMI(MBB, MI, DL, get(Leros::LOADH_AI)).ADD_SYM(op, 0, LEROSTF::MO_B1);   \
-  BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI)).ADD_SYM(op, 0, LEROSTF::MO_B2);  \
-  BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI)).ADD_SYM(op, 0, LEROSTF::MO_B3);
+  BuildMI(MBB, MI, DL, get(Leros::LOADI_MI)).ADD_SYM(op, 0, LEROSTF::MO_B0);   \
+  BuildMI(MBB, MI, DL, get(Leros::LOADHI_MI)).ADD_SYM(op, 0, LEROSTF::MO_B1);  \
+  BuildMI(MBB, MI, DL, get(Leros::LOADH2I_MI)).ADD_SYM(op, 0, LEROSTF::MO_B2); \
+  BuildMI(MBB, MI, DL, get(Leros::LOADH3I_MI)).ADD_SYM(op, 0, LEROSTF::MO_B3);
 
   if (operand.getType() == MachineOperand::MO_GlobalAddress) {
     ADD_SYMBOL(getGlobal, addGlobalAddress)
@@ -247,13 +242,13 @@ void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
     ADD_SYMBOL(getBlockAddress, addBlockAddress)
   } else if (operand.getType() == MachineOperand::MO_ExternalSymbol) {
     auto op = operand.getSymbolName();
-    BuildMI(MBB, MI, DL, get(Leros::LOAD_I))
+    BuildMI(MBB, MI, DL, get(Leros::LOADI_MI))
         .addExternalSymbol(op, LEROSTF::MO_B0);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH_AI))
+    BuildMI(MBB, MI, DL, get(Leros::LOADHI_MI))
         .addExternalSymbol(op, LEROSTF::MO_B1);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH2_AI))
+    BuildMI(MBB, MI, DL, get(Leros::LOADH2I_MI))
         .addExternalSymbol(op, LEROSTF::MO_B2);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH3_AI))
+    BuildMI(MBB, MI, DL, get(Leros::LOADH3I_MI))
         .addExternalSymbol(op, LEROSTF::MO_B3);
   } else {
     llvm_unreachable("Unknown operand type for PseudoCALL");
@@ -330,8 +325,8 @@ void LerosInstrInfo::expandBRCMP(MachineBasicBlock &MBB,
   bb = MI.getOperand(2).getMBB();
   const unsigned &rs1 = MI.getOperand(0).getReg();
   const unsigned &rs2 = MI.getOperand(1).getReg();
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_AR)).addReg(rs2);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::SUB_MI)).addReg(rs2);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);
 }
 
@@ -356,7 +351,7 @@ void LerosInstrInfo::expandBRRS(MachineBasicBlock &MBB,
   MachineBasicBlock *bb;
   bb = MI.getOperand(1).getMBB();
   const unsigned &rs1 = MI.getOperand(0).getReg();
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs1);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs1);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addMBB(bb);
 }
 
@@ -366,19 +361,19 @@ void LerosInstrInfo::expandBRIND(MachineBasicBlock &MBB,
   // Since we do not want to link here, we use a scratch register to dump the
   // linked address into
   auto scratchReg = Leros::R3;
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(reg);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(reg);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(scratchReg);
 }
 
 void LerosInstrInfo::expandCALLIND(MachineBasicBlock &MBB,
                                    MachineInstr &MI) const {
   const auto &reg = MI.getOperand(0).getReg();
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(reg);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(reg);
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(Leros::R0);
 }
 
 void LerosInstrInfo::expandNOP(MachineBasicBlock &MBB, MachineInstr &MI) const {
-  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::NOP_IMPL)).addImm(0);
+  BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::NOP_MI)).addImm(0);
 }
 
 void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
@@ -392,13 +387,13 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
   default:
     llvm_unreachable("Unknown opcode for LS pseudoinstruction format");
   case Leros::STORE_M_PSEUDO: {
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STIND)).addImm(imm);
     break;
   }
   case Leros::STORE_8_M_PSEUDO: {
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STINDB)).addImm(imm);
     break;
@@ -406,14 +401,14 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
   case Leros::LOAD_U8_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDINDBU)).addImm(imm);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
     break;
   }
   case Leros::LOAD_U16_M_PSEUDO:
   case Leros::LOAD_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
 
     // Check whether we have to zero or sign extend the load if this was not a
     // full-word load
@@ -426,10 +421,10 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
       // Mask the lower halfword
       // Build the operand which we have to OR with. We use a register from
       // GPRPseudoExpandRegClass since we are post reg allocation
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_R)).addReg(rs2);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_AR))
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_MI))
           .addReg(LEROSCREG::LHMASK);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_R)).addReg(rs2);
+      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
       break;
     }
     }
@@ -488,10 +483,10 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         llvm_unreachable(err.c_str());
       }
       return false;
-    case Leros::SHRByOne_Pseudo:
+    case Leros::SHR_PSEUDO:
       expandSHR(MBB, MI);
       break;
-    case Leros::NOP:
+    case Leros::NOP_PSEUDO:
       expandNOP(MBB, MI);
       break;
     case Leros::PseudoCALL:

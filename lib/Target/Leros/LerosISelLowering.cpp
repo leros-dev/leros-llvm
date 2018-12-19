@@ -160,13 +160,13 @@ SDValue LerosTargetLowering::lowerGlobalAddress(SDValue Op,
   SDValue GAB3 = DAG.getTargetGlobalAddress(GV, DL, Ty, 0, LEROSTF::MO_B3);
 
   SDValue MNB0 =
-      SDValue(DAG.getMachineNode(Leros::LOAD_RI_PSEUDO, DL, Ty, GAB0), 0);
-  SDValue MNB1 = SDValue(
-      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB0, GAB1), 0);
-  SDValue MNB2 = SDValue(
-      DAG.getMachineNode(Leros::LOADH2_RI_PSEUDO, DL, Ty, MNB1, GAB2), 0);
-  SDValue MNB3 = SDValue(
-      DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB2, GAB3), 0);
+      SDValue(DAG.getMachineNode(Leros::LOADI_PSEUDO, DL, Ty, GAB0), 0);
+  SDValue MNB1 =
+      SDValue(DAG.getMachineNode(Leros::LOADHI_PSEUDO, DL, Ty, MNB0, GAB1), 0);
+  SDValue MNB2 =
+      SDValue(DAG.getMachineNode(Leros::LOADH2I_PSEUDO, DL, Ty, MNB1, GAB2), 0);
+  SDValue MNB3 =
+      SDValue(DAG.getMachineNode(Leros::LOADH3I_PSEUDO, DL, Ty, MNB2, GAB3), 0);
 
   if (Offset != 0)
     return DAG.getNode(ISD::ADD, DL, Ty, MNB3,
@@ -197,13 +197,13 @@ SDValue LerosTargetLowering::lowerBlockAddress(SDValue Op,
   SDValue BAB3 = DAG.getTargetBlockAddress(BA, Ty, Offset, LEROSTF::MO_B3);
 
   SDValue MNB0 =
-      SDValue(DAG.getMachineNode(Leros::LOAD_RI_PSEUDO, DL, Ty, BAB0), 0);
-  SDValue MNB1 = SDValue(
-      DAG.getMachineNode(Leros::LOADH_RI_PSEUDO, DL, Ty, MNB0, BAB1), 0);
-  SDValue MNB2 = SDValue(
-      DAG.getMachineNode(Leros::LOADH2_RI_PSEUDO, DL, Ty, MNB1, BAB2), 0);
-  SDValue MNB3 = SDValue(
-      DAG.getMachineNode(Leros::LOADH3_RI_PSEUDO, DL, Ty, MNB2, BAB3), 0);
+      SDValue(DAG.getMachineNode(Leros::LOADI_PSEUDO, DL, Ty, BAB0), 0);
+  SDValue MNB1 =
+      SDValue(DAG.getMachineNode(Leros::LOADHI_PSEUDO, DL, Ty, MNB0, BAB1), 0);
+  SDValue MNB2 =
+      SDValue(DAG.getMachineNode(Leros::LOADH2I_PSEUDO, DL, Ty, MNB1, BAB2), 0);
+  SDValue MNB3 =
+      SDValue(DAG.getMachineNode(Leros::LOADH3I_PSEUDO, DL, Ty, MNB2, BAB3), 0);
 
   return MNB3;
 }
@@ -333,20 +333,21 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
   unsigned rs2;
   int64_t imm;
 
-  if (MI.getOpcode() == Leros::SHL_RI_PSEUDO) {
+  if (MI.getOpcode() == Leros::SHLI_PSEUDO) {
     imm = MI.getOperand(2).getImm();
     if (imm > Subtarget.getXLen()) {
       llvm_unreachable("Immediate value must be lteq XLen");
     }
     if (imm == 1) {
       // A single rs1 self addition is sufficient
-      BuildMI(*BB, MI, DL, TII.get(Leros::ADD_RR_PSEUDO), dstReg)
+      BuildMI(*BB, MI, DL, TII.get(Leros::ADD_PSEUDO), dstReg)
           .addReg(rs1)
           .addReg(rs1);
       MI.eraseFromParent(); // The pseudo instruction is gone now.
       return BB;
     }
   } else {
+    // Shift by register operand
     rs2 = MI.getOperand(2).getReg();
   }
 
@@ -366,7 +367,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
   shiftMBB->addSuccessor(TailMBB);
   shiftMBB->addSuccessor(shiftMBB);
 
-  if (MI.getOpcode() == Leros::SHL_RI_PSEUDO) {
+  if (MI.getOpcode() == Leros::SHLI_PSEUDO) {
     // shift by immediate operand
     // We here do the following control flow
     //     HeadMBB
@@ -402,13 +403,12 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::ADD_RR_PSEUDO),
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::ADD_PSEUDO),
             ShiftRes)
         .addReg(RegToShift)
         .addReg(RegToShift);
 
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO),
-            SubRes)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SUBI_PSEUDO), SubRes)
         .addReg(RegToIter)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
@@ -459,11 +459,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSHL(MachineInstr &MI,
         .addMBB(shiftMBB);
 
     // shift by register operand
-    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_RR_PSEUDO), ShiftRes)
+    BuildMI(shiftMBB, DL, TII.get(Leros::ADD_PSEUDO), ShiftRes)
         .addReg(RegToShift)
         .addReg(RegToShift);
 
-    BuildMI(shiftMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), SubRes)
+    BuildMI(shiftMBB, DL, TII.get(Leros::SUBI_PSEUDO), SubRes)
         .addReg(RegWithIter)
         .addImm(1);
 
@@ -583,17 +583,17 @@ MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
   unsigned rs1_s = MRI.createVirtualRegister(&Leros::GPRRegClass);
   unsigned rs2_s = MRI.createVirtualRegister(&Leros::GPRRegClass);
 
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO), rs1_s)
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO), rs1_s)
       .addReg(rs1)
       .addReg(LEROSCREG::B32SIGN);
 
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO), rs2_s)
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO), rs2_s)
       .addReg(rs2)
       .addReg(LEROSCREG::B32SIGN);
 
   // XOR the two sign registers
   unsigned xor_res = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::XOR_RR_PSEUDO), xor_res)
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::XOR_PSEUDO), xor_res)
       .addReg(rs1_s)
       .addReg(rs2_s);
 
@@ -798,13 +798,13 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
     llvm_unreachable("Unknown SEXT opcode");
   case Leros::LOAD_S8_M_PSEUDO: {
     memLoadOpcode = Leros::LOAD_U8_M_PSEUDO;
-    opcode = Leros::LOADH_RI_PSEUDO;
+    opcode = Leros::LOADHI_PSEUDO;
     signMaskReg = LEROSCREG::B8SIGN;
     break;
   }
   case Leros::LOAD_S16_M_PSEUDO: {
     memLoadOpcode = Leros::LOAD_M_PSEUDO;
-    opcode = Leros::LOADH2_RI_PSEUDO;
+    opcode = Leros::LOADH2I_PSEUDO;
     signMaskReg = LEROSCREG::B16SIGN;
     break;
   }
@@ -855,8 +855,7 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   // Mask sign of loaded operand
 
   const unsigned maskedLoad = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
-          maskedLoad)
+  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO), maskedLoad)
       .addReg(ScratchReg)
       .addReg(signMaskReg);
 
@@ -967,16 +966,15 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
       .addReg(IterRes)
       .addMBB(negMBB);
 
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::SHRByOne_Pseudo),
-          NShiftRes)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::SHR_PSEUDO), NShiftRes)
       .addReg(NRegToShift);
 
   // Sign extend
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::OR_PSEUDO), NSEShiftRes)
       .addReg(NShiftRes)
       .addReg(LEROSCREG::B32SIGN);
 
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO), IterRes)
+  BuildMI(*negMBB, negMBB->end(), DL, TII.get(Leros::SUBI_PSEUDO), IterRes)
       .addReg(RegToIter)
       .addImm(1);
 
@@ -1005,11 +1003,10 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAI(MachineInstr &MI,
       .addReg(PIterRes)
       .addMBB(posMBB);
 
-  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::SHRByOne_Pseudo),
-          PShiftRes)
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::SHR_PSEUDO), PShiftRes)
       .addReg(PRegToShift);
 
-  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO), PIterRes)
+  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::SUBI_PSEUDO), PIterRes)
       .addReg(PRegToIter)
       .addImm(1);
 
@@ -1103,7 +1100,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addMBB(PosCheck)
       .addReg(NSEShiftRes)
       .addMBB(negMBB);
-  BuildMI(negMBB, DL, TII.get(Leros::SHRByOne_Pseudo), NShiftRes)
+  BuildMI(negMBB, DL, TII.get(Leros::SHR_PSEUDO), NShiftRes)
       .addReg(NRegToShift);
 
   unsigned NRegToIter = MRI.createVirtualRegister(&Leros::GPRRegClass);
@@ -1115,11 +1112,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addMBB(negMBB);
 
   // Sign extend
-  BuildMI(negMBB, DL, TII.get(Leros::OR_RR_PSEUDO), NSEShiftRes)
+  BuildMI(negMBB, DL, TII.get(Leros::OR_PSEUDO), NSEShiftRes)
       .addReg(NShiftRes)
       .addReg(LEROSCREG::B32SIGN);
 
-  BuildMI(negMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), NIterRes)
+  BuildMI(negMBB, DL, TII.get(Leros::SUBI_PSEUDO), NIterRes)
       .addReg(NRegToIter)
       .addImm(1);
 
@@ -1147,10 +1144,10 @@ MachineBasicBlock *LerosTargetLowering::EmitSRAR(MachineInstr &MI,
       .addReg(PIterRes)
       .addMBB(posMBB);
 
-  BuildMI(posMBB, DL, TII.get(Leros::SHRByOne_Pseudo), PShiftRes)
+  BuildMI(posMBB, DL, TII.get(Leros::SHR_PSEUDO), PShiftRes)
       .addReg(PRegToShift);
 
-  BuildMI(posMBB, DL, TII.get(Leros::SUB_RI_PSEUDO), PIterRes)
+  BuildMI(posMBB, DL, TII.get(Leros::SUBI_PSEUDO), PIterRes)
       .addReg(PRegToIter)
       .addImm(1);
 
@@ -1190,15 +1187,14 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
   unsigned rs2;
   int64_t imm;
 
-  if (MI.getOpcode() == Leros::SRL_RI_PSEUDO) {
+  if (MI.getOpcode() == Leros::SRLI_PSEUDO) {
     imm = MI.getOperand(2).getImm();
     if (imm > Subtarget.getXLen()) {
       llvm_unreachable("Immediate value must be lteq XLen");
     }
     if (imm == 1) {
       // A single shr is sufficient
-      BuildMI(*HeadMBB, MI, DL, TII.get(Leros::SHRByOne_Pseudo), dstReg)
-          .addReg(rs1);
+      BuildMI(*HeadMBB, MI, DL, TII.get(Leros::SHR_PSEUDO), dstReg).addReg(rs1);
       MI.eraseFromParent(); // The pseudo instruction is gone now.
       return HeadMBB;
     }
@@ -1222,7 +1218,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
   shiftMBB->addSuccessor(shiftMBB);
   shiftMBB->addSuccessor(TailMBB);
 
-  if (MI.getOpcode() == Leros::SRL_RI_PSEUDO) {
+  if (MI.getOpcode() == Leros::SRLI_PSEUDO) {
     // shift by immediate operand
     // We here do the following control flow
     //     HeadMBB
@@ -1256,12 +1252,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SHRByOne_Pseudo),
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SHR_PSEUDO),
             ShiftRes)
         .addReg(RegToShift);
 
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO),
-            SubRes)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SUBI_PSEUDO), SubRes)
         .addReg(RegToIter)
         .addImm(1);
     // We can use PseudoBRC as the opcode, since we branche while SubRes > 0
@@ -1311,12 +1306,11 @@ MachineBasicBlock *LerosTargetLowering::EmitSRL(MachineInstr &MI,
         .addReg(SubRes)
         .addMBB(shiftMBB);
 
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SHRByOne_Pseudo),
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SHR_PSEUDO),
             ShiftRes)
         .addReg(RegToShift);
 
-    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SUB_RI_PSEUDO),
-            SubRes)
+    BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::SUBI_PSEUDO), SubRes)
         .addReg(RegToIter)
         .addImm(1);
     BuildMI(*shiftMBB, shiftMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
@@ -1373,7 +1367,6 @@ LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
       .addMBB(TailMBB);
 
   // IfTrueMBB - nothing here, falls through to TailMBB
-  BuildMI(*IfTrueMBB, IfTrueMBB->begin(), DL, TII.get(Leros::NOP));
 
   // %Result = phi [ %TrueValue, IfTrueMBB ], [ %FalseValue, HeadMBB ]
   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI),
@@ -1449,22 +1442,20 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
 
     // Mask the upper bits
     const unsigned MaskedMem = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
-            MaskedMem)
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO), MaskedMem)
         .addReg(MemReg)
         .addReg(LEROSCREG::UHMASK);
 
     // Mask the lower bits of the store register
     const unsigned MaskedStore = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_RR_PSEUDO),
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO),
             MaskedStore)
         .addReg(rstore)
         .addReg(LEROSCREG::LHMASK);
 
     // OR the two registers
     const unsigned MaskedRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::OR_RR_PSEUDO),
-            MaskedRes)
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::OR_PSEUDO), MaskedRes)
         .addReg(MaskedStore)
         .addReg(MaskedMem);
 
@@ -1496,15 +1487,15 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     llvm_unreachable("Unexpected instr type to insert");
   case Leros::Select_GPR_Using_CC_GPR:
     return EmitSELECT(MI, BB);
-  case Leros::SHL_RI_PSEUDO:
-  case Leros::SHL_RR_PSEUDO:
+  case Leros::SHLI_PSEUDO:
+  case Leros::SHLR_PSEUDO:
     return EmitSHL(MI, BB);
-  case Leros::SRL_RI_PSEUDO:
-  case Leros::SRL_RR_PSEUDO:
+  case Leros::SRLI_PSEUDO:
+  case Leros::SRLR_PSEUDO:
     return EmitSRL(MI, BB);
-  case Leros::SRA_RI_PSEUDO:
+  case Leros::SRAI_PSEUDO:
     return EmitSRAI(MI, BB);
-  case Leros::SRA_RR_PSEUDO:
+  case Leros::SRAR_PSEUDO:
     return EmitSRAR(MI, BB);
   case Leros::SETEQ_PSEUDO:
   case Leros::SETGE_PSEUDO:

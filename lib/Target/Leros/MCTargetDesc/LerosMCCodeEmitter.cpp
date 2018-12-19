@@ -174,19 +174,19 @@ unsigned LerosMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
     // We might get a symbol reference that has been parsed through assembly, so
     // check for load instructions that use symbols
     switch (MI.getOpcode()) {
-    case Leros::LOAD_I: {
+    case Leros::LOADI_MI: {
       FixupKind = Leros::fixup_leros_b0;
       break;
     }
-    case Leros::LOADH_AI: {
+    case Leros::LOADHI_MI: {
       FixupKind = Leros::fixup_leros_b1;
       break;
     }
-    case Leros::LOADH2_AI: {
+    case Leros::LOADH2I_MI: {
       FixupKind = Leros::fixup_leros_b2;
       break;
     }
-    case Leros::LOADH3_AI: {
+    case Leros::LOADH3I_MI: {
       FixupKind = Leros::fixup_leros_b3;
       break;
     }

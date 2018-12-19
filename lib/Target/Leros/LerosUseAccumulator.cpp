@@ -93,7 +93,7 @@ bool LerosUseAccumulator::removeRedundantStoreMBB(MachineBasicBlock &MBB) {
       lastStores.clear();
       lastUsages.clear();
     }
-    if (MBBI->getOpcode() == Leros::STORE_R) {
+    if (MBBI->getOpcode() == Leros::STORE_MI) {
       const unsigned &reg = MBBI->getOperand(0).getReg();
       if (lastStores.find(reg) == lastStores.end()) {
         // First (last) store to the reg is always valid
@@ -160,7 +160,7 @@ bool LerosUseAccumulator::removeRedundantLDADDR(MachineBasicBlock &MBB) {
         modifiedRegInAdressReg = false;
       }
       currentAddressReg = reg;
-    } else if (MBBI->getOpcode() == Leros::STORE_R) {
+    } else if (MBBI->getOpcode() == Leros::STORE_MI) {
       const int &reg = static_cast<int>(MBBI->getOperand(0).getReg());
       if (reg == currentAddressReg) {
         // Modified the register which is currently present
@@ -204,8 +204,8 @@ bool LerosUseAccumulator::removeRedundantLoad(
     return false;
   }
 
-  if (MBBI->getOpcode() == Leros::STORE_R &&
-      NextMBBI->getOpcode() == Leros::LOAD_R) {
+  if (MBBI->getOpcode() == Leros::STORE_MI &&
+      NextMBBI->getOpcode() == Leros::LOAD_MI) {
     // Check operands
     const unsigned &rs1 = MBBI->getOperand(0).getReg();
     const unsigned &rs2 = NextMBBI->getOperand(0).getReg();

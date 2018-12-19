@@ -93,7 +93,7 @@ void LerosDAGToDAGISel::Select(SDNode *Node) {
     int FI = cast<FrameIndexSDNode>(Node)->getIndex();
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
     ReplaceNode(Node,
-                CurDAG->getMachineNode(Leros::ADD_RI_PSEUDO, DL, VT, TFI, Imm));
+                CurDAG->getMachineNode(Leros::ADDI_PSEUDO, DL, VT, TFI, Imm));
     return;
   }
   }
@@ -149,9 +149,9 @@ void LerosDAGToDAGISel::doPeepholeLoadStoreADDI() {
 
     SDValue Base = N->getOperand(BaseOpIdx);
 
-    // If the base is an LOAD_RI_PSEUDO, we can merge it in to the load/store.
+    // If the base is an ADDI_PSEUDO, we can merge it in to the load/store.
     if (!Base.isMachineOpcode() ||
-        Base.getMachineOpcode() != Leros::ADD_RI_PSEUDO)
+        Base.getMachineOpcode() != Leros::ADDI_PSEUDO)
       continue;
 
     SDValue ImmOperand = Base.getOperand(1);
