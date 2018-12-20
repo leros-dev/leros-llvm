@@ -63,21 +63,7 @@ Instruction formats for the various pseudo instructions that creates the
 @warning MUST be kept in sync with the format definitions defined in
 LerosInstrFormats.td
 */
-enum {
-  NoFormat,
-  RRR,
-  RRI,
-  BranchCmp,
-  RI,
-  BranchIndirect,
-  LoadStore,
-  Signed8BitLoad,
-  Signed16BitLoad,
-  Unsigned8BitLoad,
-  Unsigned16BitLoad,
-  ByteStore,
-  BranchRs
-};
+enum { NoFormat, RRR, RRI, BranchCmp, RI, LoadStore, BranchRs };
 } // namespace LEROSIF
 
 // Leros expression target flags

@@ -412,12 +412,7 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
 
     // Check whether we have to zero or sign extend the load if this was not a
     // full-word load
-    switch (MI.getDesc().TSFlags) {
-    default: {
-      // Full word load, we exit here
-      break;
-    }
-    case LEROSIF::Unsigned16BitLoad: {
+    if (opcode == Leros::LOAD_U16_M_PSEUDO) {
       // Mask the lower halfword
       // Build the operand which we have to OR with. We use a register from
       // GPRPseudoExpandRegClass since we are post reg allocation
@@ -427,52 +422,26 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
       BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
       break;
     }
-    }
     break;
   }
   }
-}
+} // namespace llvm
 
 bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   MachineBasicBlock &MBB = *MI.getParent();
+  const auto opc = MI.getDesc().getOpcode();
 
+  // clang-format off
+  // Initially, check if a format has been specified for the pseudo instruction as a TSFlag
   switch (MI.getDesc().TSFlags) {
-  default:
-    llvm_unreachable("All pseudo-instructions must be expandable");
-  case LEROSIF::RRR: {
-    expandRRR(MBB, MI);
-    break;
-  }
-  case LEROSIF::RRI: {
-    expandRRI(MBB, MI);
-    break;
-  }
-  case LEROSIF::RI: {
-    expandRI(MBB, MI);
-    break;
-  }
-  case LEROSIF::BranchCmp: {
-    expandBRCMP(MBB, MI);
-    break;
-  }
-  case LEROSIF::BranchRs: {
-    expandBRRS(MBB, MI);
-    break;
-  }
-  case LEROSIF::BranchIndirect: {
-    expandBRIND(MBB, MI);
-    break;
-  }
-  case LEROSIF::Signed8BitLoad:
-  case LEROSIF::Signed16BitLoad:
-  case LEROSIF::Unsigned8BitLoad:
-  case LEROSIF::Unsigned16BitLoad:
-  case LEROSIF::LoadStore: {
-    expandLS(MBB, MI);
-    break;
-  }
+  default:                        llvm_unreachable("All pseudo-instructions must be expandable");
+  case LEROSIF::RRR:            { expandRRR(MBB, MI); break; }
+  case LEROSIF::RRI:            { expandRRI(MBB, MI); break; }
+  case LEROSIF::RI:             { expandRI(MBB, MI); break; }
+  case LEROSIF::BranchCmp:      { expandBRCMP(MBB, MI); break; }
+  case LEROSIF::BranchRs:       { expandBRRS(MBB, MI); break; }
+  case LEROSIF::LoadStore:      { expandLS(MBB, MI); break; }
   case LEROSIF::NoFormat: {
-    const auto opc = MI.getDesc().getOpcode();
     switch (opc) {
     default:
       if (opc > TargetOpcode::GENERIC_OP_END) {
@@ -483,28 +452,20 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         llvm_unreachable(err.c_str());
       }
       return false;
-    case Leros::SHR_PSEUDO:
-      expandSHR(MBB, MI);
-      break;
-    case Leros::NOP_PSEUDO:
-      expandNOP(MBB, MI);
-      break;
-    case Leros::PseudoCALL:
-      expandCALL(MBB, MI);
-      break;
-    case Leros::PseudoCALLIndirect:
-      expandCALLIND(MBB, MI);
-      break;
-    case Leros::MOV:
-      expandMOV(MBB, MI, true);
-      break;
-    case Leros::RET:
-      expandRET(MBB, MI);
-      break;
+    case Leros::BRIND_PSEUDO:       expandBRIND(MBB,MI);    break;
+    case Leros::SHR_PSEUDO:         expandSHR(MBB, MI);     break;
+    case Leros::NOP_PSEUDO:         expandNOP(MBB, MI);     break;
+    case Leros::PseudoCALL:         expandCALL(MBB, MI);    break;
+    case Leros::PseudoCALLIndirect: expandCALLIND(MBB, MI); break;
+    case Leros::MOV:                expandMOV(MBB, MI,true);break;
+    case Leros::RET:                expandRET(MBB, MI);     break;
     }
   }
   }
+  // clang-format on
 
+  // User-specified pseudo instructcion has been expanded. Delete pseudo
+  // instruction
   MBB.erase(MI);
   return true;
 } // namespace llvm

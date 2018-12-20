@@ -62,21 +62,15 @@ class PseudoFormat<bits<4> val>{
 }
 
 // Format specifies the encoding used by the pseudoinstruction. This is used in
-// expandPostRAPseudo to determine which form of accumulator-using expansion to use.
+// expandPostRAPseudo to determine which form of expansion to use.
 // These definitions must be kept in-sync with LerosBaseInfo.h.
 def F_NA : PseudoFormat<0>;     // No special formatting
 def F_RRR : PseudoFormat<1>;    // Register -> Register-Register formatting
 def F_RRI : PseudoFormat<2>;    // Register -> Register, Immediate formatting
 def F_BRCmp : PseudoFormat<3>;  // Conditional branch with 2 registers (comparisons)
 def F_RI : PseudoFormat<4>;     // Register -> Immediate
-def F_BRIND : PseudoFormat<5>;     // Indirect branch formatting
-def F_LS : PseudoFormat<6>;     // Memory load/store formatting
-def F_S8L : PseudoFormat<7>;    // sign-extended 8-bit memory load
-def F_S16L: PseudoFormat<8>;    // Sign-extended 16-bit memory load
-def F_U8L : PseudoFormat<9>;    // zero-extended 8-bit memory load
-def F_U16L : PseudoFormat<10>;  // zero-extended 16-bit memory load
-def F_8S    : PseudoFormat<11>; // 8-bit (byte) memory store
-def F_BRRs : PseudoFormat<12>;  // Conditional branch with 1 register
+def F_LS : PseudoFormat<5>;     // Memory load/store formatting
+def F_BRRs : PseudoFormat<6>;  // Conditional branch with 1 register
 
 
 

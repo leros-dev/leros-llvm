@@ -223,7 +223,6 @@ multiclass Implement_BrRs<LerosBOpcode opcode, string opcodestr>{
     def _IMPL   :   INSTR_BranchCond<opcode, opcodestr>;
 }
 
-
 // Pseudo instruction wrapper for a Reg -> Reg, Imm instruction
 class PSEUDO_RRI<SDNode opnode, Operand ImmClass> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
    ImmClass:$simm), F_RRI, [(set i32:$rd, (opnode i32:$r1, ImmClass:$simm))]>;
@@ -240,7 +239,7 @@ let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
 class PSEUDO_Store_M : LerosPseudo<(outs), (ins GPR:$rs2, GPR:$rs1, simm8:$imm8), F_LS, []>;
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-class PSEUDO_Load_M<PseudoFormat format>  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), format, []>;
+class PSEUDO_Load_M  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), F_LS, []>;
 
 multiclass INSTR_Imm<LerosOpcode opcode, string opcodestr, SDNode opnode, Operand immClass>{
     // Pseudo instruction definition
@@ -258,7 +257,7 @@ multiclass INSTR_Reg<LerosOpcode opcode, string opcodestr, SDNode opnode>{
     def _MI  : INSTR_AccReg<opcode, opcodestr>;
 }
 
-multiclass INSTR_Pseudo<LerosOpcode opcode, SDNode opnode, Operand immClass>{
+multiclass INSTR_Pseudo<SDNode opnode, Operand immClass>{
     let usesCustomInserter = 1 in {
         def I_PSEUDO  : PSEUDO_RRI<opnode, immClass>; // Register-immediate instruction
         def R_PSEUDO  : PSEUDO_RRR<opnode>; // Register-register instruction
@@ -298,9 +297,9 @@ let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in {
 def SHR_PSEUDO: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
 def SHR_MI  : LerosAccInst<OPC_SHR, "shr">;
 
-defm SRL  : INSTR_Pseudo<OPC_SHR     , srl,  simm8>; // This instruction will get expanded by EmitSRL
-defm SHL  : INSTR_Pseudo<OPC_NOP     , shl,  simm8>; // This instruction will get expanded by EmitSHL
-defm SRA  : INSTR_Pseudo<OPC_NOP     , sra,  simm8>; // This instruction will get expanded by EmitSRA
+defm SRL  : INSTR_Pseudo<srl,  simm8>; // This instruction will get expanded by EmitSRL
+defm SHL  : INSTR_Pseudo<shl,  simm8>; // This instruction will get expanded by EmitSHL
+defm SRA  : INSTR_Pseudo<sra,  simm8>; // This instruction will get expanded by EmitSRA
 
 // Set pseudo-instructions will be emitted as custom branch sequences with phi nodes
 let usesCustomInserter = 1 in {
@@ -340,15 +339,15 @@ let usesCustomInserter=1 in {
 }
 
 
-def LOAD_M_PSEUDO       : PSEUDO_Load_M<F_LS>;
+def LOAD_M_PSEUDO       : PSEUDO_Load_M;
 // Sign-extending loads use custom inserter for the sign extension mechanism, see emitInstrUsingCustomInserter
 let usesCustomInserter=1 in {
-    def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M<F_S8L>;
-    def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M<F_S16L>;
+    def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M;
+    def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M;
 }
 // Unsigned 8- and 16 bit loads just sets topmost bits to 0 (LerosInstrInfo::expandLS)
-def LOAD_U8_M_PSEUDO    : PSEUDO_Load_M<F_U8L>;
-def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<F_U16L>;
+def LOAD_U8_M_PSEUDO    : PSEUDO_Load_M;
+def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M;
 
 // NOP instruction. Pseudo NOP can be used without any arguments, later expanded to NOP_IMPL.
 // NOP_IMPL contains a register argument because llvm complains about instructions with no in/out nodes
@@ -385,7 +384,7 @@ def BRNEQ_PSEUDO       : Pseudo_BrCmpRs1Rs2;
 
 // Indirect branch (expands to jal in LerosInstrInfo::expandBRIND)
 let isBranch = 1, isTerminator = 1, isIndirectBranch = 1, isBarrier=1 in
-def PseudoBRIND : LerosPseudo<(outs), (ins GPR:$rd), F_BRIND, [(brind GPR:$rd)]>;
+def BRIND_PSEUDO : LerosPseudo<(outs), (ins GPR:$rd), F_NA, [(brind GPR:$rd)]>;
 
 // ================================================
 
