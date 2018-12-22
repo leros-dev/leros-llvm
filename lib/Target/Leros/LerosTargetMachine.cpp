@@ -32,9 +32,9 @@ extern "C" void LLVMInitializeLerosTarget() {
 
 static std::string computeDataLayout(const Triple &TT) {
   if (TT.isArch64Bit()) {
-    return "e-m:e-p:64:64-i64:64-i128:128-n64-S128";
+    return "E-m:e-p:64:64-i64:64-i128:128-n64-S128";
   } else {
-    return "e-m:e-p:32:32-i64:64-n32-S128";
+    return "E-m:e-p:32:32-i64:64-n32-S128";
   }
 }
 

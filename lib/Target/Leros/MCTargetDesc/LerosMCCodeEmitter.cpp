@@ -96,7 +96,7 @@ void LerosMCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
     llvm_unreachable("Unhandled encodeInstruction length!");
   case 2: {
     uint16_t Bits = getBinaryCodeForInstr(MI, Fixups, STI);
-    support::endian::write<uint16_t>(OS, Bits, support::little);
+    support::endian::write<uint16_t>(OS, Bits, support::big);
     break;
   }
   }

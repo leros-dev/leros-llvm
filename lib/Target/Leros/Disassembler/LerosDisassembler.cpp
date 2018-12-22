@@ -175,7 +175,7 @@ DecodeStatus LerosDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
   uint32_t Insn;
   DecodeStatus Result;
 
-  Insn = support::endian::read16le(Bytes.data());
+  Insn = support::endian::read16be(Bytes.data());
 
   LLVM_DEBUG(dbgs() << "Trying Leros_C table (16-bit Instruction):\n");
   // Calling the auto-generated decoder function.

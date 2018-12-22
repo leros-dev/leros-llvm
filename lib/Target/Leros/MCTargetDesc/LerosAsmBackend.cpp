@@ -144,7 +144,7 @@ void LerosAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   // For each byte of the fragment that the fixup touches, mask in the
   // bits from the fixup value.
   for (unsigned i = 0; i != NumBytes; ++i) {
-    Data[Offset + i] |= uint8_t((Value >> (i * 8)) & 0xff);
+    Data[Offset + NumBytes - 1 - i] |= uint8_t((Value >> (i * 8)) & 0xff);
   }
 }
 
