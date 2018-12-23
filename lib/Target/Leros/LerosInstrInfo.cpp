@@ -404,24 +404,23 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
     break;
   }
-  case Leros::LOAD_U16_M_PSEUDO:
+  case Leros::LOAD_U16_M_PSEUDO: {
+    // Load the fullword
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
+    // Mask the lower halfword
+    // Build the operand which we have to OR with. We use a register from
+    // GPRPseudoExpandRegClass since we are post reg allocation
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_MI))
+        .addReg(LEROSCREG::LHMASK);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
+
+    break;
+  }
   case Leros::LOAD_M_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
-
-    // Check whether we have to zero or sign extend the load if this was not a
-    // full-word load
-    if (opcode == Leros::LOAD_U16_M_PSEUDO) {
-      // Mask the lower halfword
-      // Build the operand which we have to OR with. We use a register from
-      // GPRPseudoExpandRegClass since we are post reg allocation
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_MI))
-          .addReg(LEROSCREG::LHMASK);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
-      break;
-    }
     break;
   }
   }
