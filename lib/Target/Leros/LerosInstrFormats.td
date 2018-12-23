@@ -21,7 +21,7 @@ def OPC_ADDI    : LerosOpcode<0b00001001>;
 def OPC_ADDR    : LerosOpcode<0b00001000>;
 def OPC_SUBI    : LerosOpcode<0b00001101>;
 def OPC_SUBR    : LerosOpcode<0b00001100>;
-def OPC_SHR     : LerosOpcode<0b00010000>;
+def OPC_SRA     : LerosOpcode<0b00010000>;
 def OPC_LOADR   : LerosOpcode<0b00100000>;
 def OPC_LOADI   : LerosOpcode<0b00100001>;
 def OPC_ANDI    : LerosOpcode<0b00100011>;

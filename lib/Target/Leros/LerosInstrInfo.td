@@ -293,13 +293,9 @@ let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in {
     def STINDB : INSTR_AccImm<OPC_STINDB, "stindb", simm8>;
 }
 // Shifts are all pseudo instructions since they require custom emmission. 
-// shr has an actual leros instruction, whereas shl and sra are emissions of small algorithms
-def SHR_PSEUDO: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
-def SHR_MI  : LerosAccInst<OPC_SHR, "shr">;
-
-defm SRL  : INSTR_Pseudo<srl,  simm8>; // This instruction will get expanded by EmitSRL
-defm SHL  : INSTR_Pseudo<shl,  simm8>; // This instruction will get expanded by EmitSHL
-defm SRA  : INSTR_Pseudo<sra,  simm8>; // This instruction will get expanded by EmitSRA
+// sra has an actual leros instruction, whereas shl and sra are emissions of small algorithms
+def SRA1_PSEUDO: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
+def SRA1_MI  : LerosAccInst<OPC_SRA, "sra">;
 
 // Set pseudo-instructions will be emitted as custom branch sequences with phi nodes
 let usesCustomInserter = 1 in {

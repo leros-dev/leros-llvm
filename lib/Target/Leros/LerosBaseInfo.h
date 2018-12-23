@@ -23,6 +23,7 @@ namespace llvm {
 namespace LEROSCREG {
 // Constant registers as defined by the Leros ABI
 enum {
+  // Constants
   ZERO = Leros::R100,    // 0x0
   ONE = Leros::R101,     // 0x1
   B8SIGN = Leros::R102,  // 0x80
@@ -30,7 +31,13 @@ enum {
   B32SIGN = Leros::R104, // 0x80000000
   LBMASK = Leros::R105,  // 0xFF
   LHMASK = Leros::R106,  // 0xFFFF
-  UHMASK = Leros::R107   // 0xFFFF0000
+  UHMASK = Leros::R107,  // 0xFFFF0000
+
+  // Runtime function pointers
+  SHL = Leros::R120,
+  SRA = Leros::R121,
+  SRL = Leros::R122
+
 };
 
 const std::map<uint64_t, int> values = {
@@ -39,6 +46,10 @@ const std::map<uint64_t, int> values = {
     {0x80000000, LEROSCREG::B32SIGN}, {0xFF, LEROSCREG::LBMASK},
     {0xFFFF, LEROSCREG::LHMASK},      {0xFFFF0000, LEROSCREG::UHMASK},
 };
+
+const std::map<const char *, int> functions = {{"__ashlsi3", LEROSCREG::SHL},
+                                               {"__ashrsi3", LEROSCREG::SRA},
+                                               {"__lshrsi3", LEROSCREG::SRL}};
 
 } // namespace LEROSCREG
 

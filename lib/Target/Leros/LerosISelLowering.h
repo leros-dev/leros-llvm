@@ -90,14 +90,10 @@ private:
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       LLVMContext &Context) const override;
 
-  MachineBasicBlock *EmitSHL(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitTruncatedStore(MachineInstr &MI,
                                         MachineBasicBlock *BB) const;
-  MachineBasicBlock *EmitSRAI(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSEXTLOAD(MachineInstr &MI,
                                   MachineBasicBlock *BB) const;
-  MachineBasicBlock *EmitSRAR(MachineInstr &MI, MachineBasicBlock *BB) const;
-  MachineBasicBlock *EmitSRL(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSET(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitUSET(MachineInstr &MI, MachineBasicBlock *BB) const;
   MachineBasicBlock *EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const;

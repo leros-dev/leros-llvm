@@ -83,7 +83,7 @@ private:
   void expandBRRS(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandBRIND(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandCALLIND(MachineBasicBlock &MBB, MachineInstr &MI) const;
-  void expandSHR(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandSRA1(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandCALL(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };

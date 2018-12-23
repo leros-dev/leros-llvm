@@ -121,13 +121,13 @@ void LerosInstrInfo::expandRET(MachineBasicBlock &MBB,
   BuildMI(MBB, I, I->getDebugLoc(), get(Leros::JAL_ret)).addReg(Leros::R0);
 }
 
-void LerosInstrInfo::expandSHR(MachineBasicBlock &MBB, MachineInstr &I) const {
+void LerosInstrInfo::expandSRA1(MachineBasicBlock &MBB, MachineInstr &I) const {
   const unsigned &dst = I.getOperand(0).getReg(),
                  &src = I.getOperand(1).getReg();
   auto DL = I.getDebugLoc();
   BuildMI(MBB, I, DL, get(Leros::LOAD_MI)).addReg(src);
   // Reg and immediate does nothing, but required for the signature of SHR
-  BuildMI(MBB, I, DL, get(Leros::SHR_MI));
+  BuildMI(MBB, I, DL, get(Leros::SRA1_MI));
   BuildMI(MBB, I, DL, get(Leros::STORE_MI)).addReg(dst);
 }
 
@@ -242,14 +242,20 @@ void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
     ADD_SYMBOL(getBlockAddress, addBlockAddress)
   } else if (operand.getType() == MachineOperand::MO_ExternalSymbol) {
     auto op = operand.getSymbolName();
-    BuildMI(MBB, MI, DL, get(Leros::LOADI_MI))
-        .addExternalSymbol(op, LEROSTF::MO_B0);
-    BuildMI(MBB, MI, DL, get(Leros::LOADHI_MI))
-        .addExternalSymbol(op, LEROSTF::MO_B1);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH2I_MI))
-        .addExternalSymbol(op, LEROSTF::MO_B2);
-    BuildMI(MBB, MI, DL, get(Leros::LOADH3I_MI))
-        .addExternalSymbol(op, LEROSTF::MO_B3);
+    if (LEROSCREG::functions.find(op) != LEROSCREG::functions.end()) {
+      // Calling a runtime function with function pointer in a constant register
+      BuildMI(MBB, MI, DL, get(Leros::LOAD_MI))
+          .addReg(LEROSCREG::functions.at(op));
+    } else {
+      BuildMI(MBB, MI, DL, get(Leros::LOADI_MI))
+          .addExternalSymbol(op, LEROSTF::MO_B0);
+      BuildMI(MBB, MI, DL, get(Leros::LOADHI_MI))
+          .addExternalSymbol(op, LEROSTF::MO_B1);
+      BuildMI(MBB, MI, DL, get(Leros::LOADH2I_MI))
+          .addExternalSymbol(op, LEROSTF::MO_B2);
+      BuildMI(MBB, MI, DL, get(Leros::LOADH3I_MI))
+          .addExternalSymbol(op, LEROSTF::MO_B3);
+    }
   } else {
     llvm_unreachable("Unknown operand type for PseudoCALL");
   }
@@ -453,7 +459,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
       }
       return false;
     case Leros::BRIND_PSEUDO:       expandBRIND(MBB,MI);    break;
-    case Leros::SHR_PSEUDO:         expandSHR(MBB, MI);     break;
+    case Leros::SRA1_PSEUDO:        expandSRA1(MBB, MI);     break;
     case Leros::NOP_PSEUDO:         expandNOP(MBB, MI);     break;
     case Leros::PseudoCALL:         expandCALL(MBB, MI);    break;
     case Leros::PseudoCALLIndirect: expandCALLIND(MBB, MI); break;
