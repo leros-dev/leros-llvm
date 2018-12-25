@@ -110,7 +110,7 @@ bool LerosDAGToDAGISel::SelectAddrFI(SDValue Addr, SDValue &Base) {
   return false;
 }
 
-// Merge an ADD_RI_PSEUDO into the offset of a load/store instruction where
+// Merge an ADD_PSEUDO into the offset of a load/store instruction where
 // possible. This is only possible for offsets in a signed 8 bit range, and as
 // such we only do it if the source operand for a load/store instruction stems
 // from a ADD_RI_PSEUDO and not a loadh sequence
@@ -131,11 +131,11 @@ void LerosDAGToDAGISel::doPeepholeLoadStoreADDI() {
     switch (N->getMachineOpcode()) {
     default:
       continue;
-    case Leros::LOAD_M_PSEUDO:
+    case Leros::LDIND_PSEUDO:
       BaseOpIdx = 0;
       OffsetOpIdx = 1;
       break;
-    case Leros::STORE_M_PSEUDO:
+    case Leros::STIND_PSEUDO:
       BaseOpIdx = 1;
       OffsetOpIdx = 2;
       break;

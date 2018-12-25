@@ -181,7 +181,7 @@ def BYTE3 : SDNodeXForm<imm, [{
 // Instructions
 //===----------------------------------------------------------------------===//
     // Instructions with dependency: Reg -> (Acc)
-    class INSTR_RegAcc<LerosOpcode opcode, string opcodestr>
+    class INSTR_RRRAcc<LerosOpcode opcode, string opcodestr>
         : LerosImmRegInst<opcode, (outs GPR:$RegOrImm), (ins),
             opcodestr, "$RegOrImm", []>;
     
@@ -226,6 +226,9 @@ multiclass Implement_BrRs<LerosBOpcode opcode, string opcodestr>{
 // Pseudo instruction wrapper for a Reg -> Reg, Imm instruction
 class PSEUDO_RRI<SDNode opnode, Operand ImmClass> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
    ImmClass:$simm), F_RRI, [(set i32:$rd, (opnode i32:$r1, ImmClass:$simm))]>;
+class PSEUDO_RRI_NoPat<Operand ImmClass, PseudoFormat format> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
+  ImmClass:$simm), format, []>;
+
 
 // Pseudo instruction wrapper for a Reg -> Reg, Reg instruction
 class PSEUDO_RRR<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
@@ -241,7 +244,7 @@ class PSEUDO_Store_M : LerosPseudo<(outs), (ins GPR:$rs2, GPR:$rs1, simm8:$imm8)
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
 class PSEUDO_Load_M  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), F_LS, []>;
 
-multiclass INSTR_Imm<LerosOpcode opcode, string opcodestr, SDNode opnode, Operand immClass>{
+multiclass INSTR_RRI<LerosOpcode opcode, string opcodestr, SDNode opnode, Operand immClass>{
     // Pseudo instruction definition
     def _PSEUDO  : PSEUDO_RRI<opnode, immClass>; // Register-immediate instruction
 
@@ -249,7 +252,17 @@ multiclass INSTR_Imm<LerosOpcode opcode, string opcodestr, SDNode opnode, Operan
     def _MI  : INSTR_AccImm<opcode, !strconcat(opcodestr, "i"), immClass>;
 }
 
-multiclass INSTR_Reg<LerosOpcode opcode, string opcodestr, SDNode opnode>{
+multiclass INSTR_Store<LerosOpcode opcode, string opcodestr, Operand immClass>{
+    def _PSEUDO  : PSEUDO_Store_M;
+    def _MI  : INSTR_AccImm<opcode, !strconcat(opcodestr, "i"), immClass>;
+}
+
+multiclass INSTR_Load<LerosOpcode opcode, string opcodestr, Operand immClass>{
+    def _PSEUDO  : PSEUDO_Load_M;
+    def _MI  : INSTR_AccImm<opcode, !strconcat(opcodestr, "i"), immClass>;
+}
+
+multiclass INSTR_RRR<LerosOpcode opcode, string opcodestr, SDNode opnode>{
     // Pseudo instruction definition
     def _PSEUDO  : PSEUDO_RRR<opnode>; // Register-register instruction
 
@@ -266,31 +279,31 @@ multiclass INSTR_Pseudo<SDNode opnode, Operand immClass>{
 
 // Instruction declarations
 let isReMaterializable = 1 in
-defm ADD    : INSTR_Reg<OPC_ADDR    ,    "add",    add>;
-defm ADDI   : INSTR_Imm<OPC_ADDI    ,    "add",    add,   simm8>;
+defm ADD    : INSTR_RRR<OPC_ADDR    ,    "add",    add>;
+defm ADDI   : INSTR_RRI<OPC_ADDI    ,    "add",    add,   simm8>;
 
-defm SUB    : INSTR_Reg<OPC_SUBR     ,    "sub",    sub>;
-defm SUBI   : INSTR_Imm<OPC_SUBI     ,    "sub",    sub,    simm8>;
+defm SUB    : INSTR_RRR<OPC_SUBR     ,    "sub",    sub>;
+defm SUBI   : INSTR_RRI<OPC_SUBI     ,    "sub",    sub,    simm8>;
 
-defm AND    : INSTR_Reg<OPC_ANDR     ,    "and",    and>;
-defm ANDI   : INSTR_Imm<OPC_ANDI     ,    "and",    and,    uimm7>;
+defm AND    : INSTR_RRR<OPC_ANDR     ,    "and",    and>;
+defm ANDI   : INSTR_RRI<OPC_ANDI     ,    "and",    and,    uimm7>;
 
-defm OR     : INSTR_Reg<OPC_ORR      ,    "or",     or>;
-defm ORI    : INSTR_Imm<OPC_ORI      ,    "or",     or,     uimm7>;
+defm OR     : INSTR_RRR<OPC_ORR      ,    "or",     or>;
+defm ORI    : INSTR_RRI<OPC_ORI      ,    "or",     or,     uimm7>;
 
-defm XOR    : INSTR_Reg<OPC_XORR     ,    "xor",    xor>;
-defm XORI   : INSTR_Imm<OPC_XORI     ,    "xor",    xor,    uimm7>;
+defm XOR    : INSTR_RRR<OPC_XORR     ,    "xor",    xor>;
+defm XORI   : INSTR_RRI<OPC_XORI     ,    "xor",    xor,    uimm7>;
 
 def LDADDR : INSTR_AccReg<OPC_LDADDR, "ldaddr">;
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in{
-    def LDIND : INSTR_AccImm<OPC_LDIND, "ldind", simm8>;
-    def LDINDBU : INSTR_AccImm<OPC_LDINDBU, "ldindbu", simm8>;
+    defm LDIND   : INSTR_Load<OPC_LDIND,   "ldind",     simm8>;
+    defm LDINDBU : INSTR_Load<OPC_LDINDBU, "ldindbu",   simm8>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in {
-    def STIND : INSTR_AccImm<OPC_STIND, "stind", simm8>;
-    def STINDB : INSTR_AccImm<OPC_STINDB, "stindb", simm8>;
+    defm STIND   : INSTR_Store<OPC_STIND,     "stind",      simm8>;
+    defm STINDB  : INSTR_Store<OPC_STINDB,    "stindb",     simm8>;
 }
 // Shifts are all pseudo instructions since they require custom emmission. 
 // sra has an actual leros instruction, whereas shl and sra are emissions of small algorithms
@@ -317,17 +330,12 @@ def LOADI_MI    : INSTR_AccImm<OPC_LOADI, "loadi", simm8_symbolref>;
 // emitted during instruction selection to select immediate operands
 def LOADI_PSEUDO : PSEUDO_RI;
 
-defm LOADHI    : INSTR_Imm<OPC_LOADH    ,  "loadh",   LOADH,  simm8_symbolref>;
-defm LOADH2I   : INSTR_Imm<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8_symbolref>;
-defm LOADH3I   : INSTR_Imm<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
+defm LOADHI    : INSTR_RRI<OPC_LOADH    ,  "loadh",   LOADH,   simm8_symbolref>;
+defm LOADH2I   : INSTR_RRI<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8_symbolref>;
+defm LOADH3I   : INSTR_RRI<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
 
 // Accumulator->register store
-def STORE_MI   : INSTR_RegAcc<OPC_STORE, "store">;
-
-// Memory access pseudoinstruction definitions
-def STORE_M_PSEUDO      : PSEUDO_Store_M;
-
-def STORE_8_M_PSEUDO    : PSEUDO_Store_M;
+def STORE_MI   : INSTR_RRRAcc<OPC_STORE, "store">;
 
 // Truncated 16-bit stores uses a custom inserter
 let usesCustomInserter=1 in {
@@ -335,14 +343,12 @@ let usesCustomInserter=1 in {
 }
 
 
-def LOAD_M_PSEUDO       : PSEUDO_Load_M;
 // Sign-extending loads use custom inserter for the sign extension mechanism, see emitInstrUsingCustomInserter
 let usesCustomInserter=1 in {
     def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M;
     def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M;
 }
 // Unsigned 8- and 16 bit loads just sets topmost bits to 0 (LerosInstrInfo::expandLS)
-def LOAD_U8_M_PSEUDO    : PSEUDO_Load_M;
 def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M;
 
 // NOP instruction. Pseudo NOP can be used without any arguments, later expanded to NOP_IMPL.
@@ -390,7 +396,7 @@ let isCall = 1, Uses=[R0] in
 def JAL_call     : INSTR_AccReg<OPC_JAL, "jal">;
 
 let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0], isCodeGenOnly=1 in
-def JAL_ret     : INSTR_RegAcc<OPC_JAL, "jal">;
+def JAL_ret     : INSTR_RRRAcc<OPC_JAL, "jal">;
 
 // Function return using jal
 let isReturn=1, isTerminator=1, isBarrier=1, Uses=[R0] in
@@ -543,17 +549,17 @@ multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
             (Inst AddrFI:$rs1, simm8:$imm8)>;
 }
 
-defm : LdPat<load, LOAD_M_PSEUDO>;
-defm : LdPat<load, LOAD_M_PSEUDO>;
+defm : LdPat<load, LDIND_PSEUDO>;
+defm : LdPat<load, LDIND_PSEUDO>;
 defm : LdPat<sextloadi8, LOAD_S8_M_PSEUDO>;
-defm : LdPat<extloadi8, LOAD_U8_M_PSEUDO>;
-defm : LdPat<zextloadi8, LOAD_U8_M_PSEUDO>;
+defm : LdPat<extloadi8, LDINDBU_PSEUDO>;
+defm : LdPat<zextloadi8, LDINDBU_PSEUDO>;
 defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO>;
 defm : LdPat<extloadi16, LOAD_U16_M_PSEUDO>;
 defm : LdPat<zextloadi16, LOAD_U16_M_PSEUDO>;
 
 // Stores
-multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst> {
+multiclass StPat<PatFrag StoreOp, LerosPseudo Inst> {
   def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), 
             (Inst GPR:$rs2, GPR:$rs1, 0)>;
   def : Pat<(StoreOp GPR:$rs2, AddrFI:$rs1), 
@@ -567,8 +573,8 @@ multiclass StPat<PatFrag StoreOp, PSEUDO_Store_M Inst> {
 }
 
 
-defm : StPat<store, STORE_M_PSEUDO>;
-defm : StPat<truncstorei8, STORE_8_M_PSEUDO>;
+defm : StPat<store, STIND_PSEUDO>;
+defm : StPat<truncstorei8, STINDB_PSEUDO>;
 defm : StPat<truncstorei16, STORE_16_M_PSEUDO>;
 
 

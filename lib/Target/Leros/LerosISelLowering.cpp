@@ -634,13 +634,13 @@ LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
   default:
     llvm_unreachable("Unknown SEXT opcode");
   case Leros::LOAD_S8_M_PSEUDO: {
-    memLoadOpcode = Leros::LOAD_U8_M_PSEUDO;
+    memLoadOpcode = Leros::LDINDBU_PSEUDO;
     opcode = Leros::LOADHI_PSEUDO;
     signMaskReg = LEROSCREG::B8SIGN;
     break;
   }
   case Leros::LOAD_S16_M_PSEUDO: {
-    memLoadOpcode = Leros::LOAD_M_PSEUDO;
+    memLoadOpcode = Leros::LDIND_PSEUDO;
     opcode = Leros::LOADH2I_PSEUDO;
     signMaskReg = LEROSCREG::B16SIGN;
     break;
@@ -815,10 +815,9 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
   auto rmem = MI.getOperand(1);
   auto imm = MI.getOperand(2).getImm();
 
-  if (MI.getOpcode() == Leros::STORE_8_M_PSEUDO) {
+  if (MI.getOpcode() == Leros::STINDB_PSEUDO) {
     // Utilize the byte-store of leros
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_8_M_PSEUDO),
-            rstore)
+    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STINDB_PSEUDO), rstore)
         .addReg(rmem.getReg())
         .addImm(imm);
   } else {
@@ -828,12 +827,12 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
     // Load the memory at the location
     const unsigned MemReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
     if (rmem.isReg()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LDIND_PSEUDO),
               MemReg)
           .addReg(rmem.getReg())
           .addImm(imm);
     } else if (rmem.isFI()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LOAD_M_PSEUDO),
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LDIND_PSEUDO),
               MemReg)
           .addFrameIndex(rmem.getIndex())
           .addImm(imm);
@@ -862,12 +861,12 @@ LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
 
     // Store the memory
     if (rmem.isReg()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_M_PSEUDO))
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STIND_PSEUDO))
           .addReg(MaskedRes)
           .addReg(rmem.getReg())
           .addImm(imm);
     } else if (rmem.isFI()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STORE_M_PSEUDO))
+      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STIND_PSEUDO))
           .addReg(MaskedRes)
           .addFrameIndex(rmem.getIndex())
           .addImm(imm);
@@ -898,7 +897,7 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case Leros::LOAD_S8_M_PSEUDO:
   case Leros::LOAD_S16_M_PSEUDO:
     return EmitSEXTLOAD(MI, BB);
-  case Leros::STORE_8_M_PSEUDO:
+  case Leros::STINDB_PSEUDO:
   case Leros::STORE_16_M_PSEUDO:
     return EmitTruncatedStore(MI, BB);
   }

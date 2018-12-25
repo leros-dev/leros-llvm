@@ -218,7 +218,7 @@ void LerosInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   if (I != MBB.end())
     DL = I->getDebugLoc();
 
-  BuildMI(MBB, I, DL, get(Leros::LOAD_M_PSEUDO), DstReg)
+  BuildMI(MBB, I, DL, get(Leros::LDIND_PSEUDO), DstReg)
       .addFrameIndex(FrameIndex)
       .addImm(0);
 }
@@ -392,28 +392,28 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
   switch (opcode) {
   default:
     llvm_unreachable("Unknown opcode for LS pseudoinstruction format");
-  case Leros::STORE_M_PSEUDO: {
+  case Leros::STIND_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STIND)).addImm(imm);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STIND_MI)).addImm(imm);
     break;
   }
-  case Leros::STORE_8_M_PSEUDO: {
+  case Leros::STINDB_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STINDB)).addImm(imm);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STINDB_MI)).addImm(imm);
     break;
   }
-  case Leros::LOAD_U8_M_PSEUDO: {
+  case Leros::LDINDBU_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDINDBU)).addImm(imm);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDINDBU_MI)).addImm(imm);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
     break;
   }
   case Leros::LOAD_U16_M_PSEUDO:
-  case Leros::LOAD_M_PSEUDO: {
+  case Leros::LDIND_PSEUDO: {
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND)).addImm(imm);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND_MI)).addImm(imm);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
 
     // Check whether we have to zero or sign extend the load if this was not a
@@ -517,7 +517,7 @@ void LerosInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   if (I != MBB.end())
     DL = I->getDebugLoc();
 
-  BuildMI(MBB, I, DL, get(Leros::STORE_M_PSEUDO))
+  BuildMI(MBB, I, DL, get(Leros::STIND_PSEUDO))
       .addReg(SrcReg, getKillRegState(IsKill))
       .addFrameIndex(FI)
       .addImm(0);
