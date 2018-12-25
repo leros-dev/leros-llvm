@@ -121,11 +121,38 @@ def uimm7 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<7>(Imm);}]> {
   let DecoderMethod = "decodeUImmOperand<7>";
 }
 
+// A 9 bit signed immediate where the lsb is zero
+def simm9_lsb0 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isShiftedInt<9,1>(Imm);}]> {
+  let ParserMatchClass = SImmAsmOperand<9, "Lsb0">;
+  let EncoderMethod = "getImmOpValueAsr<1>";
+  let DecoderMethod = "decodeSImmOperandAndLsl<9,1>";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isShiftedInt<8, 1>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
+}
+
+// A 10 bit signed immediate where the b0/b1 is always zero (width = 8).
+// Used for ldind/stind operands, which are 32-bit aligned
+def simm10_lsb00 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isShiftedInt<8, 2>(Imm);}]> {
+  let ParserMatchClass = SImmAsmOperand<10, "Lsb00">;
+  let EncoderMethod = "getImmOpValueAsr<2>";
+  let DecoderMethod = "decodeSImmOperandAndLsl<10,2>";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isShiftedInt<8, 2>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
+}
+
 // A 13 bit signed immediate where the lsb is zero
 def simm13_lsb0 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<13, "Lsb0">;
-  let EncoderMethod = "getImmOpValueAsr1";
-  let DecoderMethod = "decodeSImmOperandAndLsl1<13>";
+  let EncoderMethod = "getImmOpValueAsr<1>";
+  let DecoderMethod = "decodeSImmOperandAndLsl<13,1>";
   let MCOperandPredicate = [{
     int64_t Imm;
     if (MCOp.evaluateAsConstantImm(Imm))
@@ -237,12 +264,12 @@ class PSEUDO_RRR<SDNode opnode> : LerosPseudo<(outs GPR:$rd), (ins GPR:$r1,
 // Pseudo instruction wrapper for a Reg -> Imm instruction
 class PSEUDO_RI : LerosPseudo<(outs GPR:$rd), (ins simm8:$imm), F_RI, []>;
 
-// Pseudo instruction wrapper for memory access functions
+// Pseudo instruction classes for memory access functions
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
-class PSEUDO_Store_M : LerosPseudo<(outs), (ins GPR:$rs2, GPR:$rs1, simm8:$imm8), F_LS, []>;
+class PSEUDO_Store_M<Operand immClass> : LerosPseudo<(outs), (ins GPR:$rs2, GPR:$rs1, immClass:$imm8), F_LS, []>;
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-class PSEUDO_Load_M  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, simm8:$imm8), F_LS, []>;
+class PSEUDO_Load_M<Operand immClass>  : LerosPseudo<(outs GPR:$rs2), (ins GPR:$rs1, immClass:$imm8), F_LS, []>;
 
 multiclass INSTR_RRI<LerosOpcode opcode, string opcodestr, SDNode opnode, Operand immClass>{
     // Pseudo instruction definition
@@ -253,12 +280,12 @@ multiclass INSTR_RRI<LerosOpcode opcode, string opcodestr, SDNode opnode, Operan
 }
 
 multiclass INSTR_Store<LerosOpcode opcode, string opcodestr, Operand immClass>{
-    def _PSEUDO  : PSEUDO_Store_M;
+    def _PSEUDO  : PSEUDO_Store_M<immClass>;
     def _MI  : INSTR_AccImm<opcode, !strconcat(opcodestr, "i"), immClass>;
 }
 
 multiclass INSTR_Load<LerosOpcode opcode, string opcodestr, Operand immClass>{
-    def _PSEUDO  : PSEUDO_Load_M;
+    def _PSEUDO  : PSEUDO_Load_M<immClass>;
     def _MI  : INSTR_AccImm<opcode, !strconcat(opcodestr, "i"), immClass>;
 }
 
@@ -297,12 +324,12 @@ defm XORI   : INSTR_RRI<OPC_XORI     ,    "xor",    xor,    uimm7>;
 def LDADDR : INSTR_AccReg<OPC_LDADDR, "ldaddr">;
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in{
-    defm LDIND   : INSTR_Load<OPC_LDIND,   "ldind",     simm8>;
+    defm LDIND   : INSTR_Load<OPC_LDIND,   "ldind",     simm10_lsb00>;
     defm LDINDBU : INSTR_Load<OPC_LDINDBU, "ldindbu",   simm8>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in {
-    defm STIND   : INSTR_Store<OPC_STIND,     "stind",      simm8>;
+    defm STIND   : INSTR_Store<OPC_STIND,     "stind",      simm10_lsb00>;
     defm STINDB  : INSTR_Store<OPC_STINDB,    "stindb",     simm8>;
 }
 // Shifts are all pseudo instructions since they require custom emmission. 
@@ -339,17 +366,17 @@ def STORE_MI   : INSTR_RRRAcc<OPC_STORE, "store">;
 
 // Truncated 16-bit stores uses a custom inserter
 let usesCustomInserter=1 in {
-    def STORE_16_M_PSEUDO   : PSEUDO_Store_M;
+    def STORE_16_M_PSEUDO   : PSEUDO_Store_M<simm10_lsb00>;
 }
 
 
 // Sign-extending loads use custom inserter for the sign extension mechanism, see emitInstrUsingCustomInserter
 let usesCustomInserter=1 in {
-    def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M;
-    def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M;
+    def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M<simm8>;
+    def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M<simm10_lsb00>;
 }
 // Unsigned 8- and 16 bit loads just sets topmost bits to 0 (LerosInstrInfo::expandLS)
-def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M;
+def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<simm10_lsb00>;
 
 // NOP instruction. Pseudo NOP can be used without any arguments, later expanded to NOP_IMPL.
 // NOP_IMPL contains a register argument because llvm complains about instructions with no in/out nodes
@@ -536,46 +563,45 @@ def Select_GPR_Using_CC_GPR : SelectCC_rrr<GPR, GPR>;
 //  ----------- Memory load/store patterns -----------
 
 // Loads
-multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst> {
-  def : Pat<(LoadOp (add GPR:$rs1, simm8:$imm8)),
-            (Inst GPR:$rs1, simm8:$imm8)>;
-  def : Pat<(LoadOp (add AddrFI:$rs1, simm8:$imm8)),
-            (Inst AddrFI:$rs1, simm8:$imm8)>;
-  def : Pat<(LoadOp GPR:$rs1), 
-            (Inst GPR:$rs1, 0)>;
-  def : Pat<(LoadOp AddrFI:$rs1), 
-            (Inst AddrFI:$rs1, 0)>;
-  def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, simm8:$imm8)),
-            (Inst AddrFI:$rs1, simm8:$imm8)>;
+multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst, Operand immClass> {
+   def : Pat<(LoadOp (add GPR:$rs1, immClass:$imm)),
+            (Inst GPR:$rs1, immClass:$imm)>;
+   def : Pat<(LoadOp (add AddrFI:$rs1, immClass:$imm)),
+             (Inst AddrFI:$rs1, immClass:$imm)>;
+   def : Pat<(LoadOp GPR:$rs1),
+             (Inst GPR:$rs1, 0)>;
+   def : Pat<(LoadOp AddrFI:$rs1),
+             (Inst AddrFI:$rs1, 0)>;
+   def : Pat<(LoadOp (IsOrAdd AddrFI:$rs1, immClass:$imm)),
+             (Inst AddrFI:$rs1, immClass:$imm)>;
 }
 
-defm : LdPat<load, LDIND_PSEUDO>;
-defm : LdPat<load, LDIND_PSEUDO>;
-defm : LdPat<sextloadi8, LOAD_S8_M_PSEUDO>;
-defm : LdPat<extloadi8, LDINDBU_PSEUDO>;
-defm : LdPat<zextloadi8, LDINDBU_PSEUDO>;
-defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO>;
-defm : LdPat<extloadi16, LOAD_U16_M_PSEUDO>;
-defm : LdPat<zextloadi16, LOAD_U16_M_PSEUDO>;
+defm : LdPat<load, LDIND_PSEUDO, simm10_lsb00>;
+defm : LdPat<sextloadi8, LOAD_S8_M_PSEUDO, simm8>;
+defm : LdPat<extloadi8, LDINDBU_PSEUDO, simm8>;
+defm : LdPat<zextloadi8, LDINDBU_PSEUDO, simm8>;
+defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO, simm10_lsb00>;
+defm : LdPat<extloadi16, LOAD_U16_M_PSEUDO, simm10_lsb00>;
+defm : LdPat<zextloadi16, LOAD_U16_M_PSEUDO, simm10_lsb00>;
 
 // Stores
-multiclass StPat<PatFrag StoreOp, LerosPseudo Inst> {
+multiclass StPat<PatFrag StoreOp, LerosPseudo Inst, Operand immClass> {
   def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), 
             (Inst GPR:$rs2, GPR:$rs1, 0)>;
   def : Pat<(StoreOp GPR:$rs2, AddrFI:$rs1), 
             (Inst GPR:$rs2, AddrFI:$rs1, 0)>;
-  def : Pat<(StoreOp GPR:$rs2, (add GPR:$rs1, simm8:$imm8)),
-            (Inst GPR:$rs2, GPR:$rs1, simm8:$imm8)>;
-  def : Pat<(StoreOp GPR:$rs2, (add AddrFI:$rs1, simm8:$imm8)),
-            (Inst GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
-  def : Pat<(StoreOp GPR:$rs2, (IsOrAdd AddrFI:$rs1, simm8:$imm8)),
-            (Inst GPR:$rs2, AddrFI:$rs1, simm8:$imm8)>;
+  def : Pat<(StoreOp GPR:$rs2, (add GPR:$rs1, immClass:$imm)),
+            (Inst GPR:$rs2, GPR:$rs1, immClass:$imm)>;
+  def : Pat<(StoreOp GPR:$rs2, (add AddrFI:$rs1, immClass:$imm)),
+            (Inst GPR:$rs2, AddrFI:$rs1, immClass:$imm)>;
+  def : Pat<(StoreOp GPR:$rs2, (IsOrAdd AddrFI:$rs1, immClass:$imm)),
+            (Inst GPR:$rs2, AddrFI:$rs1, immClass:$imm)>;
 }
 
 
-defm : StPat<store, STIND_PSEUDO>;
-defm : StPat<truncstorei8, STINDB_PSEUDO>;
-defm : StPat<truncstorei16, STORE_16_M_PSEUDO>;
+defm : StPat<store, STIND_PSEUDO, simm10_lsb00>;
+defm : StPat<truncstorei8, STINDB_PSEUDO, simm8>;
+defm : StPat<truncstorei16, STORE_16_M_PSEUDO, simm10_lsb00>;
 
 
 // Stack pointer adjustments

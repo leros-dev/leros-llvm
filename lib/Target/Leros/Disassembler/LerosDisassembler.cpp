@@ -151,15 +151,15 @@ static DecodeStatus decodeSImmOperand(MCInst &Inst, uint64_t Imm,
   return MCDisassembler::Success;
 }
 
-template <unsigned N>
-static DecodeStatus decodeSImmOperandAndLsl1(MCInst &Inst, uint64_t Imm,
-                                             int64_t Address,
-                                             const void *Decoder) {
+template <unsigned N, unsigned S>
+static DecodeStatus decodeSImmOperandAndLsl(MCInst &Inst, uint64_t Imm,
+                                            int64_t Address,
+                                            const void *Decoder) {
   assert(isUInt<N>(Imm) && "Invalid immediate");
   // Sign-extend the number in the bottom N bits of Imm after accounting for
-  // the fact that the N bit immediate is stored in N-1 bits (the LSB is
+  // the fact that the N bit immediate is stored in N-1 bits (the #S LSB's are
   // always zero)
-  Inst.addOperand(MCOperand::createImm(SignExtend64<N>(Imm << 1)));
+  Inst.addOperand(MCOperand::createImm(SignExtend64<N>(Imm << S)));
   return MCDisassembler::Success;
 }
 

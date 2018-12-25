@@ -225,8 +225,8 @@ public:
   }
 
   // True if operand is a symbol with no modifiers, or a constant with no
-  // modifiers and isShiftedInt<N-1, 1>(Op).
-  template <int N> bool isBareSimmNLsb0() const {
+  // modifiers and isShiftedInt<N-S, S>(Op).
+  template <int N, int S> bool isBareSimmNLsb0() const {
     int64_t Imm;
     LerosMCExpr::VariantKind VK;
     if (!isImm())
@@ -236,7 +236,7 @@ public:
     if (!IsConstantImm)
       IsValid = LerosAsmParser::classifySymbolRef(getImm(), VK, Imm);
     else
-      IsValid = isShiftedInt<N - 1, 1>(Imm);
+      IsValid = isShiftedInt<N - S, S>(Imm);
     return IsValid && VK == LerosMCExpr::VK_Leros_None;
   }
 
@@ -254,7 +254,9 @@ public:
     return IsValid && VK == LerosMCExpr::VK_Leros_None;
   }
 
-  bool isSImm13Lsb0() const { return isBareSimmNLsb0<13>(); }
+  bool isSImm9Lsb0() const { return isBareSimmNLsb0<9, 1>(); }
+  bool isSImm10Lsb00() const { return isBareSimmNLsb0<10, 2>(); }
+  bool isSImm13Lsb0() const { return isBareSimmNLsb0<13, 1>(); }
 
   // Operand parser for signed 8-bit immediates which are either constants
   // or symbol references (used for load operations)

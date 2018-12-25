@@ -68,9 +68,10 @@ public:
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
 
-  unsigned getImmOpValueAsr1(const MCInst &MI, unsigned OpNo,
-                             SmallVectorImpl<MCFixup> &Fixups,
-                             const MCSubtargetInfo &STI) const;
+  template <int S>
+  unsigned getImmOpValueAsr(const MCInst &MI, unsigned OpNo,
+                            SmallVectorImpl<MCFixup> &Fixups,
+                            const MCSubtargetInfo &STI) const;
 
   unsigned getImmOpValue(const MCInst &MI, unsigned OpNo,
                          SmallVectorImpl<MCFixup> &Fixups,
@@ -119,16 +120,17 @@ LerosMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   return 0;
 }
 
+template <int S>
 unsigned
-LerosMCCodeEmitter::getImmOpValueAsr1(const MCInst &MI, unsigned OpNo,
-                                      SmallVectorImpl<MCFixup> &Fixups,
-                                      const MCSubtargetInfo &STI) const {
+LerosMCCodeEmitter::getImmOpValueAsr(const MCInst &MI, unsigned OpNo,
+                                     SmallVectorImpl<MCFixup> &Fixups,
+                                     const MCSubtargetInfo &STI) const {
   const MCOperand &MO = MI.getOperand(OpNo);
 
   if (MO.isImm()) {
     unsigned Res = MO.getImm();
-    assert((Res & 1) == 0 && "LSB is non-zero");
-    return Res >> 1;
+    assert((Res & maskTrailingOnes<unsigned>(S)) == 0 && "LSB(s) are non-zero");
+    return Res >> S;
   }
 
   return getImmOpValue(MI, OpNo, Fixups, STI);
