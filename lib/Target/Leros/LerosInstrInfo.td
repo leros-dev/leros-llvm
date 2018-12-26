@@ -122,7 +122,7 @@ def uimm7 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<7>(Imm);}]> {
 }
 
 // A 9 bit signed immediate where the lsb is zero
-def simm9_lsb0 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isShiftedInt<9,1>(Imm);}]> {
+def simm9_lsb0 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isShiftedInt<8,1>(Imm);}]> {
   let ParserMatchClass = SImmAsmOperand<9, "Lsb0">;
   let EncoderMethod = "getImmOpValueAsr<1>";
   let DecoderMethod = "decodeSImmOperandAndLsl<9,1>";
@@ -247,7 +247,7 @@ class Pseudo_BrRs : LerosPseudo<(outs), (ins GPR:$r1, simm13_lsb0:$imm12), F_BRR
 // Leros instruction counterpart
 multiclass Implement_BrRs<LerosBOpcode opcode, string opcodestr>{
     def _PSEUDO :   Pseudo_BrRs;
-    def _IMPL   :   INSTR_BranchCond<opcode, opcodestr>;
+    def _MI   :   INSTR_BranchCond<opcode, opcodestr>;
 }
 
 // Pseudo instruction wrapper for a Reg -> Reg, Imm instruction
@@ -281,12 +281,12 @@ multiclass INSTR_RRI<LerosOpcode opcode, string opcodestr, SDNode opnode, Operan
 
 multiclass INSTR_Store<LerosOpcode opcode, string opcodestr, Operand immClass>{
     def _PSEUDO  : PSEUDO_Store_M<immClass>;
-    def _MI  : INSTR_AccImm<opcode, !strconcat(opcodestr, "i"), immClass>;
+    def _MI  : INSTR_AccImm<opcode, opcodestr, immClass>;
 }
 
 multiclass INSTR_Load<LerosOpcode opcode, string opcodestr, Operand immClass>{
     def _PSEUDO  : PSEUDO_Load_M<immClass>;
-    def _MI  : INSTR_AccImm<opcode, !strconcat(opcodestr, "i"), immClass>;
+    def _MI  : INSTR_AccImm<opcode, opcodestr, immClass>;
 }
 
 multiclass INSTR_RRR<LerosOpcode opcode, string opcodestr, SDNode opnode>{
@@ -324,14 +324,22 @@ defm XORI   : INSTR_RRI<OPC_XORI     ,    "xor",    xor,    uimm7>;
 def LDADDR : INSTR_AccReg<OPC_LDADDR, "ldaddr">;
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in{
+    defm LDINDB  : INSTR_Load<OPC_LDINDB,  "ldindb",    simm8>;
+    defm LDINDH  : INSTR_Load<OPC_LDINDH,  "ldindh",    simm9_lsb0>;
     defm LDIND   : INSTR_Load<OPC_LDIND,   "ldind",     simm10_lsb00>;
-    defm LDINDBU : INSTR_Load<OPC_LDINDBU, "ldindbu",   simm8>;
+
+    // Unsigned load pseudo-instructions, does not have a corresponding MI
+    def LDINDBU_PSEUDO    : PSEUDO_Load_M<simm8>;
+    def LDINDHU_PSEUDO    : PSEUDO_Load_M<simm9_lsb0>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in {
     defm STIND   : INSTR_Store<OPC_STIND,     "stind",      simm10_lsb00>;
+    defm STINDH  : INSTR_Store<OPC_STINDH,    "stindh",     simm9_lsb0>;
     defm STINDB  : INSTR_Store<OPC_STINDB,    "stindb",     simm8>;
 }
+
+
 // Shifts are all pseudo instructions since they require custom emmission. 
 // sra has an actual leros instruction, whereas shl and sra are emissions of small algorithms
 def SRA1_PSEUDO: LerosPseudo<(outs GPR:$rd), (ins GPR:$rs), F_NA, []>;
@@ -364,20 +372,6 @@ defm LOADH3I   : INSTR_RRI<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
 // Accumulator->register store
 def STORE_MI   : INSTR_RRRAcc<OPC_STORE, "store">;
 
-// Truncated 16-bit stores uses a custom inserter
-let usesCustomInserter=1 in {
-    def STORE_16_M_PSEUDO   : PSEUDO_Store_M<simm10_lsb00>;
-}
-
-
-// Sign-extending loads use custom inserter for the sign extension mechanism, see emitInstrUsingCustomInserter
-let usesCustomInserter=1 in {
-    def LOAD_S8_M_PSEUDO    : PSEUDO_Load_M<simm8>;
-    def LOAD_S16_M_PSEUDO   : PSEUDO_Load_M<simm10_lsb00>;
-}
-// Unsigned 8- and 16 bit loads just sets topmost bits to 0 (LerosInstrInfo::expandLS)
-def LOAD_U16_M_PSEUDO   : PSEUDO_Load_M<simm10_lsb00>;
-
 // NOP instruction. Pseudo NOP can be used without any arguments, later expanded to NOP_IMPL.
 // NOP_IMPL contains a register argument because llvm complains about instructions with no in/out nodes
 def  NOP_PSEUDO   : LerosPseudo<(outs ), (ins), F_NA, []>;
@@ -393,7 +387,7 @@ def SCALL : LerosInst<(outs), (ins uimm8:$imm), "scall", "$imm", []>{
 // =================== BRANCHES ===================
 // Unconditional branch
 let isBarrier = 1, isBranch = 1, isTerminator = 1 in
-def BR_IMPL  : LerosBranchInst<OPC_BR, (outs), (ins simm13_lsb0:$imm12), "br", "$imm12", [(br bb:$imm12)]>{
+def BR_MI: LerosBranchInst<OPC_BR, (outs), (ins simm13_lsb0:$imm12), "br", "$imm12", [(br bb:$imm12)]>{
                 let Inst{11-0} = imm12;
 }
 
@@ -576,13 +570,13 @@ multiclass LdPat<PatFrag LoadOp, PSEUDO_Load_M Inst, Operand immClass> {
              (Inst AddrFI:$rs1, immClass:$imm)>;
 }
 
-defm : LdPat<load, LDIND_PSEUDO, simm10_lsb00>;
-defm : LdPat<sextloadi8, LOAD_S8_M_PSEUDO, simm8>;
-defm : LdPat<extloadi8, LDINDBU_PSEUDO, simm8>;
-defm : LdPat<zextloadi8, LDINDBU_PSEUDO, simm8>;
-defm : LdPat<sextloadi16, LOAD_S16_M_PSEUDO, simm10_lsb00>;
-defm : LdPat<extloadi16, LOAD_U16_M_PSEUDO, simm10_lsb00>;
-defm : LdPat<zextloadi16, LOAD_U16_M_PSEUDO, simm10_lsb00>;
+defm : LdPat<load,          LDIND_PSEUDO,       simm10_lsb00>;
+defm : LdPat<sextloadi8,    LDINDB_PSEUDO,      simm8>;
+defm : LdPat<extloadi8,     LDINDBU_PSEUDO,     simm8>;
+defm : LdPat<zextloadi8,    LDINDBU_PSEUDO,     simm8>;
+defm : LdPat<sextloadi16,   LDINDH_PSEUDO,      simm9_lsb0>;
+defm : LdPat<extloadi16,    LDINDHU_PSEUDO,     simm9_lsb0>;
+defm : LdPat<zextloadi16,   LDINDHU_PSEUDO,     simm9_lsb0>;
 
 // Stores
 multiclass StPat<PatFrag StoreOp, LerosPseudo Inst, Operand immClass> {
@@ -599,9 +593,9 @@ multiclass StPat<PatFrag StoreOp, LerosPseudo Inst, Operand immClass> {
 }
 
 
-defm : StPat<store, STIND_PSEUDO, simm10_lsb00>;
-defm : StPat<truncstorei8, STINDB_PSEUDO, simm8>;
-defm : StPat<truncstorei16, STORE_16_M_PSEUDO, simm10_lsb00>;
+defm : StPat<store,         STIND_PSEUDO,   simm10_lsb00>;
+defm : StPat<truncstorei8,  STINDB_PSEUDO,  simm8>;
+defm : StPat<truncstorei16, STINDH_PSEUDO,  simm9_lsb0>;
 
 
 // Stack pointer adjustments

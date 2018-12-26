@@ -278,7 +278,7 @@ unsigned LerosInstrInfo::insertBranch(
 
   // Unconditional branch.
   if (Cond.empty()) {
-    MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::BR_IMPL)).addMBB(TBB);
+    MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::BR_MI)).addMBB(TBB);
     if (BytesAdded)
       *BytesAdded += getInstSizeInBytes(MI);
     return 1;
@@ -296,7 +296,7 @@ unsigned LerosInstrInfo::insertBranch(
     return 1;
 
   // Two-way conditional branch.
-  MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::BR_IMPL)).addMBB(FBB);
+  MachineInstr &MI = *BuildMI(&MBB, DL, get(Leros::BR_MI)).addMBB(FBB);
   if (BytesAdded)
     *BytesAdded += getInstSizeInBytes(MI);
   return 2;
@@ -309,23 +309,22 @@ void LerosInstrInfo::expandBRCMP(MachineBasicBlock &MBB,
   default:
     llvm_unreachable("Unhandled opcode in expandBRCMP");
   case Leros::BREQ_PSEUDO: {
-    opcode = Leros::BRZ_IMPL;
+    opcode = Leros::BRZ_MI;
     break;
   }
   case Leros::BRNEQ_PSEUDO: {
-    opcode = Leros::BRNZ_IMPL;
+    opcode = Leros::BRNZ_MI;
     break;
   }
   case Leros::BRGTE_PSEUDO: {
-    opcode = Leros::BRP_IMPL;
+    opcode = Leros::BRP_MI;
     break;
   }
   case Leros::BRLT_PSEUDO: {
-    opcode = Leros::BRN_IMPL;
+    opcode = Leros::BRN_MI;
     break;
   }
   }
-#undef OPCASE
 
   MachineBasicBlock *bb;
   bb = MI.getOperand(2).getMBB();
@@ -338,11 +337,6 @@ void LerosInstrInfo::expandBRCMP(MachineBasicBlock &MBB,
 
 void LerosInstrInfo::expandBRRS(MachineBasicBlock &MBB,
                                 MachineInstr &MI) const {
-#define OPCASE(instr)                                                          \
-  case instr##_PSEUDO:                                                         \
-    opcode = instr##_IMPL;                                                     \
-    break;
-
   unsigned opcode = MI.getDesc().getOpcode();
   switch (opcode) {
   default:
@@ -352,7 +346,6 @@ void LerosInstrInfo::expandBRRS(MachineBasicBlock &MBB,
     OPCASE(Leros::BRP)
     OPCASE(Leros::BRN)
   }
-#undef OPCASE
 
   MachineBasicBlock *bb;
   bb = MI.getOperand(1).getMBB();
@@ -392,43 +385,52 @@ void LerosInstrInfo::expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const {
   switch (opcode) {
   default:
     llvm_unreachable("Unknown opcode for LS pseudoinstruction format");
-  case Leros::STIND_PSEUDO: {
+  case Leros::STIND_PSEUDO:
+  case Leros::STINDB_PSEUDO:
+  case Leros::STINDH_PSEUDO: {
+    switch (opcode) {
+      OPCASE(Leros::STIND)
+      OPCASE(Leros::STINDB)
+      OPCASE(Leros::STINDH)
+    }
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
     BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STIND_MI)).addImm(imm);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(opcode)).addImm(imm);
     break;
   }
-  case Leros::STINDB_PSEUDO: {
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STINDB_MI)).addImm(imm);
-    break;
-  }
-  case Leros::LDINDBU_PSEUDO: {
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDINDBU_MI)).addImm(imm);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
-    break;
-  }
-  case Leros::LOAD_U16_M_PSEUDO:
+  case Leros::LDINDBU_PSEUDO:
+  case Leros::LDINDB_PSEUDO:
+  case Leros::LDINDHU_PSEUDO:
+  case Leros::LDINDH_PSEUDO:
   case Leros::LDIND_PSEUDO: {
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDIND_MI)).addImm(imm);
-    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
-
-    // Check whether we have to zero or sign extend the load if this was not a
-    // full-word load
-    if (opcode == Leros::LOAD_U16_M_PSEUDO) {
-      // Mask the lower halfword
-      // Build the operand which we have to OR with. We use a register from
-      // GPRPseudoExpandRegClass since we are post reg allocation
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LOAD_MI)).addReg(rs2);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_MI))
-          .addReg(LEROSCREG::LHMASK);
-      BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
+    unsigned mi_opcode;
+    switch (opcode) {
+    case Leros::LDINDBU_PSEUDO:
+    case Leros::LDINDB_PSEUDO:
+      mi_opcode = Leros::LDINDB_MI;
+      break;
+    case Leros::LDINDHU_PSEUDO:
+    case Leros::LDINDH_PSEUDO:
+      mi_opcode = Leros::LDINDH_MI;
+      break;
+    case Leros::LDIND_PSEUDO:
+      mi_opcode = Leros::LDIND_MI;
       break;
     }
-    break;
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::LDADDR)).addReg(rs1);
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(mi_opcode)).addImm(imm);
+
+    if ((opcode == Leros::LDINDBU_PSEUDO) | (opcode == Leros::LDINDHU_PSEUDO)) {
+      // Unsigned load, mask the lower bits
+      if (opcode == Leros::LDINDBU_PSEUDO) {
+        BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_MI))
+            .addReg(Leros::R105); // 0xFF
+      } else {
+        BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::AND_MI))
+            .addReg(Leros::R106); // 0xFFFF
+      }
+    }
+    BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::STORE_MI)).addReg(rs2);
   }
   }
 } // namespace llvm

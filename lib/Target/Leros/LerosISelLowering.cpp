@@ -217,7 +217,6 @@ SDValue LerosTargetLowering::lowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue TrueV = Op.getOperand(1);
   SDValue FalseV = Op.getOperand(2);
   SDLoc DL(Op);
-  MVT XLenVT = Subtarget.getXLenVT();
 
   // (select condv, truev, falsev)
   // -> (lerosisd::select_cc condv, truev, falsev)
@@ -456,7 +455,7 @@ MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
 
   // ---- UnsignedRS2Negative rs2 is negative ----
   BuildMI(*UnsignedRS2Negative, UnsignedRS2Negative->end(), DL,
-          TII.get(Leros::BR_IMPL))
+          TII.get(Leros::BR_MI))
       .addMBB(UnsignedTailMBB);
 
   // ---- UnsignedRS1Negative: rs1 is negative ----
@@ -473,7 +472,7 @@ MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
   // Branch to tail, which now knows to grab the result from the unsigned
   // comparison
 
-  BuildMI(*UnsignedTailMBB, UnsignedTailMBB->end(), DL, TII.get(Leros::BR_IMPL))
+  BuildMI(*UnsignedTailMBB, UnsignedTailMBB->end(), DL, TII.get(Leros::BR_MI))
       .addMBB(TailMBB);
 
   // -------- SignedComparisonMBB --------------
@@ -490,7 +489,7 @@ MachineBasicBlock *LerosTargetLowering::EmitUSET(MachineInstr &MI,
 
   // From here, we know that comparison was false
   // register
-  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::BR_IMPL))
+  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::BR_MI))
       .addMBB(SignedTailMBB);
 
   // -------- trueMBB --------------
@@ -593,7 +592,7 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
   const unsigned falseRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
   TII.movImm32(*falseMBB, falseMBB->end(), DL, falseRes, 0);
 
-  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::BR_IMPL))
+  BuildMI(*falseMBB, falseMBB->end(), DL, TII.get(Leros::BR_MI))
       .addMBB(TailMBB);
 
   // -------- trueMBB --------------
@@ -609,122 +608,6 @@ MachineBasicBlock *LerosTargetLowering::EmitSET(MachineInstr &MI,
       .addMBB(falseMBB)
       .addReg(trueRes)
       .addMBB(trueMBB);
-  MI.eraseFromParent(); // The pseudo instruction is gone now.
-  return TailMBB;
-}
-
-MachineBasicBlock *
-LerosTargetLowering::EmitSEXTLOAD(MachineInstr &MI,
-                                  MachineBasicBlock *BB) const {
-  const LerosInstrInfo &TII =
-      *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
-  const BasicBlock *LLVM_BB = BB->getBasicBlock();
-  DebugLoc DL = MI.getDebugLoc();
-  MachineFunction::iterator I = ++BB->getIterator();
-  MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
-
-  MachineBasicBlock *HeadMBB = BB;
-  MachineFunction *F = BB->getParent();
-
-  unsigned opcode;
-  unsigned memLoadOpcode;
-  unsigned signMaskReg;
-
-  switch (MI.getOpcode()) {
-  default:
-    llvm_unreachable("Unknown SEXT opcode");
-  case Leros::LOAD_S8_M_PSEUDO: {
-    memLoadOpcode = Leros::LDINDBU_PSEUDO;
-    opcode = Leros::LOADHI_PSEUDO;
-    signMaskReg = LEROSCREG::B8SIGN;
-    break;
-  }
-  case Leros::LOAD_S16_M_PSEUDO: {
-    memLoadOpcode = Leros::LDIND_PSEUDO;
-    opcode = Leros::LOADH2I_PSEUDO;
-    signMaskReg = LEROSCREG::B16SIGN;
-    break;
-  }
-  }
-
-  const unsigned &dstReg = MI.getOperand(0).getReg();
-  auto op1 = MI.getOperand(1);
-  const auto &imm = MI.getOperand(2).getImm();
-
-  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
-  MachineBasicBlock *posMBB = F->CreateMachineBasicBlock(LLVM_BB);
-  MachineBasicBlock *negMBB = F->CreateMachineBasicBlock(LLVM_BB);
-
-  // Insertion order matters, to properly handle BB fallthrough
-  F->insert(I, posMBB);
-  F->insert(I, negMBB);
-  F->insert(I, TailMBB);
-
-  // Move all remaining instructions to TailMBB.
-  TailMBB->splice(TailMBB->begin(), HeadMBB,
-                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
-  // Update machine-CFG edges by transferring all successors of the current
-  // block to the new block which will contain the Phi node for the select.
-  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
-
-  // Set successors for remaining MBBs
-  HeadMBB->addSuccessor(posMBB);
-  HeadMBB->addSuccessor(negMBB);
-
-  negMBB->addSuccessor(TailMBB);
-  posMBB->addSuccessor(TailMBB);
-
-  // -------- HeadMBB --------------
-  // Load memory
-  const unsigned ScratchReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  if (op1.isReg()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(memLoadOpcode), ScratchReg)
-        .addReg(op1.getReg())
-        .addImm(imm);
-  } else if (op1.isFI()) {
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(memLoadOpcode), ScratchReg)
-        .addFrameIndex(op1.getIndex())
-        .addImm(imm);
-  } else {
-    llvm_unreachable("Unknown operand type for SEXT emission!");
-  }
-
-  // Mask sign of loaded operand
-
-  const unsigned maskedLoad = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO), maskedLoad)
-      .addReg(ScratchReg)
-      .addReg(signMaskReg);
-
-  // result != 0 => negative number
-  BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::BRNZ_PSEUDO))
-      .addReg(maskedLoad)
-      .addMBB(negMBB);
-
-  // -------- posMBB --------------
-  // From here we know that the loaded operand is positive - bitmask lower bits
-  const unsigned ZEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*posMBB, posMBB->end(), DL, TII.get(opcode), ZEXTRes)
-      .addReg(ScratchReg)
-      .addImm(0x0);
-
-  BuildMI(*posMBB, posMBB->end(), DL, TII.get(Leros::BR_IMPL)).addMBB(TailMBB);
-
-  // From here, we know that loaded operand is negative. Sign extend from either
-  // the 8th or 16th bit (depending on $opcode)
-  const unsigned SEXTRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-  BuildMI(*negMBB, negMBB->end(), DL, TII.get(opcode), SEXTRes)
-      .addReg(ScratchReg)
-      .addImm(0xFF);
-  // Fallthrough to tail
-
-  // -------- tailMBB --------------
-  // Get result through a phi node
-  BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Leros::PHI), dstReg)
-      .addReg(SEXTRes)
-      .addMBB(negMBB)
-      .addReg(ZEXTRes)
-      .addMBB(posMBB);
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return TailMBB;
 }
@@ -782,104 +665,6 @@ LerosTargetLowering::EmitSELECT(MachineInstr &MI, MachineBasicBlock *BB) const {
 }
 
 MachineBasicBlock *
-LerosTargetLowering::EmitTruncatedStore(MachineInstr &MI,
-                                        MachineBasicBlock *BB) const {
-  const LerosInstrInfo &TII =
-      *BB->getParent()->getSubtarget<LerosSubtarget>().getInstrInfo();
-  DebugLoc DL = MI.getDebugLoc();
-  MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
-  MachineFunction::iterator I = ++BB->getIterator();
-
-  const BasicBlock *LLVM_BB = BB->getBasicBlock();
-  MachineBasicBlock *HeadMBB = BB;
-  MachineFunction *F = BB->getParent();
-  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
-
-  // We dont explicitely need a new basic block here, but to keep the solution
-  // clean and error free, we insert a new one (tailMBB), move all successors to
-  // this, and add all of our new instructions onto the HeadMBB end iterator
-
-  F->insert(I, TailMBB);
-  // Move all remaining instructions to TailMBB.
-  TailMBB->splice(TailMBB->begin(), HeadMBB,
-                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
-
-  // Update machine-CFG edges by transferring all successors of the current
-  // block to the new block which will contain the Phi node for the select.
-  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
-
-  // HeadMBB falls through to TailMBB
-  HeadMBB->addSuccessor(TailMBB);
-
-  auto rstore = MI.getOperand(0).getReg();
-  auto rmem = MI.getOperand(1);
-  auto imm = MI.getOperand(2).getImm();
-
-  if (MI.getOpcode() == Leros::STINDB_PSEUDO) {
-    // Utilize the byte-store of leros
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STINDB_PSEUDO), rstore)
-        .addReg(rmem.getReg())
-        .addImm(imm);
-  } else {
-    // 16-bit store. Load the memory at the location, mask upper half-word and
-    // OR it with the value which is to-be stored
-
-    // Load the memory at the location
-    const unsigned MemReg = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    if (rmem.isReg()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LDIND_PSEUDO),
-              MemReg)
-          .addReg(rmem.getReg())
-          .addImm(imm);
-    } else if (rmem.isFI()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::LDIND_PSEUDO),
-              MemReg)
-          .addFrameIndex(rmem.getIndex())
-          .addImm(imm);
-    } else {
-      llvm_unreachable("Unknown operand type for SEXT emission!");
-    }
-
-    // Mask the upper bits
-    const unsigned MaskedMem = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO), MaskedMem)
-        .addReg(MemReg)
-        .addReg(LEROSCREG::UHMASK);
-
-    // Mask the lower bits of the store register
-    const unsigned MaskedStore = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::AND_PSEUDO),
-            MaskedStore)
-        .addReg(rstore)
-        .addReg(LEROSCREG::LHMASK);
-
-    // OR the two registers
-    const unsigned MaskedRes = MRI.createVirtualRegister(&Leros::GPRRegClass);
-    BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::OR_PSEUDO), MaskedRes)
-        .addReg(MaskedStore)
-        .addReg(MaskedMem);
-
-    // Store the memory
-    if (rmem.isReg()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STIND_PSEUDO))
-          .addReg(MaskedRes)
-          .addReg(rmem.getReg())
-          .addImm(imm);
-    } else if (rmem.isFI()) {
-      BuildMI(*HeadMBB, HeadMBB->end(), DL, TII.get(Leros::STIND_PSEUDO))
-          .addReg(MaskedRes)
-          .addFrameIndex(rmem.getIndex())
-          .addImm(imm);
-    } else {
-      llvm_unreachable("Unknown operand type for SEXT emission!");
-    }
-  }
-
-  MI.eraseFromParent(); // The pseudo instruction is gone now.
-  return TailMBB;
-}
-
-MachineBasicBlock *
 LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
   switch (MI.getOpcode()) {
@@ -894,12 +679,6 @@ LerosTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case Leros::SETUGE_PSEUDO:
   case Leros::SETULT_PSEUDO:
     return EmitUSET(MI, BB);
-  case Leros::LOAD_S8_M_PSEUDO:
-  case Leros::LOAD_S16_M_PSEUDO:
-    return EmitSEXTLOAD(MI, BB);
-  case Leros::STINDB_PSEUDO:
-  case Leros::STORE_16_M_PSEUDO:
-    return EmitTruncatedStore(MI, BB);
   }
 }
 

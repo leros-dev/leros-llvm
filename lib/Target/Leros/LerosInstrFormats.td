@@ -46,9 +46,11 @@ def OPC_BRN     : LerosBOpcode<0b1100>;
 // Load/Store opcodes
 def OPC_LDADDR  : LerosOpcode<0b01010000>;
 def OPC_LDIND   : LerosOpcode<0b01100000>;
-def OPC_LDINDBU : LerosOpcode<0b01100001>;
+def OPC_LDINDB  : LerosOpcode<0b01100001>;
+def OPC_LDINDH  : LerosOpcode<0b01100010>;
 def OPC_STIND   : LerosOpcode<0b01110000>;
 def OPC_STINDB  : LerosOpcode<0b01110001>;
+def OPC_STINDH  : LerosOpcode<0b01110010>;
 def OPC_LOADH   : LerosOpcode<0b00101001>;
 def OPC_LOADH2  : LerosOpcode<0b00101010>;
 def OPC_LOADH3  : LerosOpcode<0b00101011>;
