@@ -161,12 +161,8 @@ def simm13_lsb0 : Operand<OtherVT> {
   }];
 }
 
-// Standalone (codegen-only) immleaf patterns - used for loading constants greater than
-// 8 bit into the accumulator. Order is important - we want to reduce the number of loads
-// to what actually represents the immediate
-def simm16 : ImmLeaf<XLenVT, [{return isInt<16>(Imm);}]>;
-def simm24 : ImmLeaf<XLenVT, [{return isInt<24>(Imm);}]>;
-def simm32 : ImmLeaf<XLenVT, [{return isInt<32>(Imm);}]>;
+// Standalone (codegen-only) immleaf patterns
+def simm32 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<32>(Imm);}]>;
 
 // Symbol operands for calls
 def BareSymbol : AsmOperandClass {
@@ -188,21 +184,6 @@ def bare_symbol : Operand<XLenVT> {
 def ixlenimm : Operand<XLenVT> {
   let ParserMatchClass = ImmXLenAsmOperand<"">;
 }
-
-// Byte extraction node transformation, used for sequentialising immediate
-// generation of larger than 8-bit immediates using loadh instructions
-def BYTE0 : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant((N->getZExtValue() >> (0 * 8)) & 0xff,
-                                   SDLoc(N), N->getValueType(0));}]>;
-def BYTE1 : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant((N->getZExtValue() >> (1 * 8)) & 0xff,
-                                   SDLoc(N), N->getValueType(0));}]>;
-def BYTE2 : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant((N->getZExtValue() >> (2 * 8)) & 0xff,
-                                   SDLoc(N), N->getValueType(0));}]>;
-def BYTE3 : SDNodeXForm<imm, [{
-  return CurDAG->getTargetConstant((N->getZExtValue() >> (3 * 8)) & 0xff,
-                                   SDLoc(N), N->getValueType(0));}]>;
 
 //===----------------------------------------------------------------------===//
 // Instructions
@@ -369,6 +350,10 @@ defm LOADHI    : INSTR_RRI<OPC_LOADH    ,  "loadh",   LOADH,   simm8_symbolref>;
 defm LOADH2I   : INSTR_RRI<OPC_LOADH2   ,  "loadh2",  LOADH2,  simm8_symbolref>;
 defm LOADH3I   : INSTR_RRI<OPC_LOADH3   ,  "loadh3",  LOADH3,  simm8_symbolref>;
 
+// simm32 immediates are matched to LOAD_IMM32_PSEUDO, which will determine the
+// optimal sequence of LOADHI instructions to use during pseudo instruction expansion
+def LOAD_IMM32_PSEUDO : LerosPseudo<(outs GPR:$rd), (ins simm32:$imm), F_NA, []>;
+
 // Accumulator->register store
 def STORE_MI   : INSTR_RRRAcc<OPC_STORE, "store">;
 
@@ -450,35 +435,7 @@ def IsOrAdd: PatFrag<(ops node:$A, node:$B), (or node:$A, node:$B), [{
 //===----------------------------------------------------------------------===//
 // Immediate patterns
 //===----------------------------------------------------------------------===//
-
-// We want to be able to capture immediate loading patterns through the target
-// description files. The following sequence minimizes the required loads and stores
-// which are selected for an immediate
-def : Pat<(simm8:$imm), 
-        (LOADI_PSEUDO imm:$imm)>;
-
-def : Pat<(simm16:$imm), 
-    (LOADHI_PSEUDO
-        (LOADI_PSEUDO (BYTE0 imm:$imm)), 
-    (BYTE1 imm:$imm))>;
-
-def : Pat<(simm24:$imm), 
-    (LOADH2I_PSEUDO
-        (LOADHI_PSEUDO
-            (LOADI_PSEUDO (BYTE0 imm:$imm)), 
-        (BYTE1 imm:$imm)), 
-    (BYTE2 imm:$imm))>;
-
-def : Pat<(simm32:$imm),
-    (LOADH3I_PSEUDO
-        (LOADH2I_PSEUDO
-            (LOADHI_PSEUDO
-                (LOADI_PSEUDO (BYTE0 imm:$imm)), 
-            (BYTE1 imm:$imm)), 
-        (BYTE2 imm:$imm)),
-    (BYTE3 imm:$imm))>;
-
-// Todo: Extend for 64-bit
+def : Pat<(simm32:$imm), (LOAD_IMM32_PSEUDO simm32:$imm)>;
 
 //===----------------------------------------------------------------------===//
 // Codegen patterns

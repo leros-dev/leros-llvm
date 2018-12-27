@@ -53,39 +53,34 @@ void LerosInstrInfo::movImm32(MachineBasicBlock &MBB,
                               MachineInstr::MIFlag Flag) const {
   assert(isInt<32>(val) && "Can only materialize 32-bit constants");
 
-  // Materialize a constant into a register through repeated usage of loadh
-  // operations
-  if (isInt<8>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
-        .addImm((val)&0xff)
-        .setMIFlag(Flag);
-  } else if (isInt<16>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
-        .addImm((val)&0xff)
-        .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADHI_MI))
-        .addImm((val >> 8) & 0xff)
-        .setMIFlag(Flag);
-  } else if (isInt<24>(val)) {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
-        .addImm(val & 0xff)
-        .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADHI_MI))
-        .addImm((val >> 8) & 0xff)
-        .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2I_MI))
-        .addImm((val >> 16) & 0xff)
-        .setMIFlag(Flag);
-  } else {
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
-        .addImm((val)&0xff)
-        .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADHI_MI))
-        .addImm((val >> 8) & 0xff)
-        .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, get(Leros::LOADH2I_MI))
-        .addImm((val >> 16) & 0xff)
-        .setMIFlag(Flag);
+  // Materialize a constant into a register, emitting only required operations
+  // (given knowledge of the sign-extending effects of Leros loadi instructions)
+  char bytes[4];
+  for (int i = 0; i < 4; i++) {
+    bytes[i] = static_cast<char>((val >> (i * CHAR_BIT)) & 0xFF);
+  }
+  BuildMI(MBB, MBBI, DL, get(Leros::LOADI_MI))
+      .addImm((val)&0xff)
+      .setMIFlag(Flag);
+  if (!isInt<8>(val)) {
+    if (((bytes[0] < 0) && (bytes[1] != -1)) ||
+        (bytes[0] >= 0) && (bytes[1] != 0)) {
+      // Only emit loadhi if it differs from a sign-extension value
+      BuildMI(MBB, MBBI, DL, get(Leros::LOADHI_MI))
+          .addImm((val >> 8) & 0xff)
+          .setMIFlag(Flag);
+    }
+  }
+  if (!isInt<16>(val)) {
+    if (((bytes[1] < 0) && (bytes[2] != -1)) ||
+        (bytes[1] >= 0) && (bytes[2] != 0)) {
+      // Only emit middle loadh2i if it differs from a sign-extension value
+      BuildMI(MBB, MBBI, DL, get(Leros::LOADH2I_MI))
+          .addImm((val >> 16) & 0xff)
+          .setMIFlag(Flag);
+    }
+  }
+  if (!isInt<24>(val)) {
     BuildMI(MBB, MBBI, DL, get(Leros::LOADH3I_MI))
         .addImm((val >> 24) & 0xff)
         .setMIFlag(Flag);
@@ -243,7 +238,8 @@ void LerosInstrInfo::expandCALL(MachineBasicBlock &MBB,
   } else if (operand.getType() == MachineOperand::MO_ExternalSymbol) {
     auto op = operand.getSymbolName();
     if (LEROSCREG::functions.find(op) != LEROSCREG::functions.end()) {
-      // Calling a runtime function with function pointer in a constant register
+      // Calling a runtime function with function pointer in a constant
+      // register
       BuildMI(MBB, MI, DL, get(Leros::LOAD_MI))
           .addReg(LEROSCREG::functions.at(op));
     } else {
@@ -371,6 +367,12 @@ void LerosInstrInfo::expandCALLIND(MachineBasicBlock &MBB,
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::JAL_call)).addReg(Leros::R0);
 }
 
+void LerosInstrInfo::expandLOADIMM(MachineBasicBlock &MBB,
+                                   MachineInstr &MI) const {
+  movImm32(MBB, MI, MI.getDebugLoc(), MI.getOperand(0).getReg(),
+           MI.getOperand(1).getImm());
+}
+
 void LerosInstrInfo::expandNOP(MachineBasicBlock &MBB, MachineInstr &MI) const {
   BuildMI(MBB, MI, MI.getDebugLoc(), get(Leros::NOP_MI)).addImm(0);
 }
@@ -467,6 +469,7 @@ bool LerosInstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     case Leros::PseudoCALLIndirect: expandCALLIND(MBB, MI); break;
     case Leros::MOV:                expandMOV(MBB, MI,true);break;
     case Leros::RET:                expandRET(MBB, MI);     break;
+    case Leros::LOAD_IMM32_PSEUDO:  expandLOADIMM(MBB, MI); break;
     }
   }
   }

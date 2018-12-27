@@ -86,6 +86,7 @@ private:
   void expandSRA1(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandLS(MachineBasicBlock &MBB, MachineInstr &MI) const;
   void expandCALL(MachineBasicBlock &MBB, MachineInstr &MI) const;
+  void expandLOADIMM(MachineBasicBlock &MBB, MachineInstr &MI) const;
 };
 } // namespace llvm
 #endif
