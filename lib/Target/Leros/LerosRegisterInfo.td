@@ -28,9 +28,13 @@ let RegAltNameIndices = [NoRegAltName] in {
 def XLenVT : ValueTypeByHwMode<[Leros32, Leros64, DefaultMode],
                                [i32,     i64,     i32]>;
 
-// General purpose registers
+// The order of registers represents the preferred allocation sequence.
+// Registers are listed in the order caller-save, callee-save, specials.
 def GPR : RegisterClass<"Leros", [XLenVT], 32, (add
-    (sequence "R%u", 0, 255)
+    (sequence "R%u", 4, 11),
+    (sequence "R%u", 21, 255),
+    (sequence "R%u", 12, 20),
+    (sequence "R%u", 0, 3)
   )> {
     let RegInfos = RegInfoByHwMode<[Leros32,           Leros64,            DefaultMode],
                                    [RegInfo<32,32,32>, RegInfo<64,64,64>,  RegInfo<32,32,32>]>;
