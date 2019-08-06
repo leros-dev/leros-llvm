@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 CLANG_VERSION="8.0.0"
 BUILD_DIRECTORY=build-leros-llvm
 
@@ -19,7 +21,7 @@ git submodule update --init
 git submodule update --recursive --remote
 
 # Create build folder next to source
-mkdir $BUILD_ROOT
+mkdir -p $BUILD_ROOT
 cd $BUILD_ROOT
 
 # Set CMake arguments
@@ -71,5 +73,5 @@ cd ..
 cd "build-leros-compiler-rt-builtins"
 cd "lib"
 cd "linux"
-mkdir "${BUILD_CLANG_LIB_DIR}/lib"
+mkdir -p "${BUILD_CLANG_LIB_DIR}/lib"
 mv "$RUNTIME_LIBRARY_NAME" "$BUILD_CLANG_LIB_DIR/lib/$RUNTIME_LIBRARY_NAME"
