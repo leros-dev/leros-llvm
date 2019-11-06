@@ -77,6 +77,7 @@ public:
 
   bool addInstSelector() override;
   void addPreEmitPass() override;
+  void addPreRegAlloc() override;
 };
 } // namespace
 
@@ -86,6 +87,10 @@ TargetPassConfig *LerosTargetMachine::createPassConfig(PassManagerBase &PM) {
 
 void LerosPassConfig::addPreEmitPass() {
   addPass(createLerosUseAccumulatorPass());
+}
+
+void LerosPassConfig::addPreRegAlloc() {
+  addPass(createLerosParallelPathPass());
 }
 
 bool LerosPassConfig::addInstSelector() {

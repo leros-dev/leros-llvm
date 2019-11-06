@@ -10,8 +10,8 @@
 class LerosOpcode<bits<8> val> {
     bits<8>Value = val;
 }
-class LerosBOpcode<bits<4> val> {
-    bits<4>Value = val;
+class LerosBOpcode<bits<5> val> {
+    bits<5>Value = val;
 }
 
 // Accumulator and Register-using opcodes
@@ -37,11 +37,17 @@ def OPC_IN      : LerosOpcode<0b00000100>;
 
 
 // Branch opcodes
-def OPC_BR      : LerosBOpcode<0b1000>;
-def OPC_BRZ     : LerosBOpcode<0b1001>;
-def OPC_BRNZ    : LerosBOpcode<0b1010>;
-def OPC_BRP     : LerosBOpcode<0b1011>;
-def OPC_BRN     : LerosBOpcode<0b1100>;
+def OPC_BR      : LerosBOpcode<0b10000>;
+def OPC_BRZ     : LerosBOpcode<0b10010>;
+def OPC_BRNZ    : LerosBOpcode<0b10100>;
+def OPC_BRP     : LerosBOpcode<0b10110>;
+def OPC_BRN     : LerosBOpcode<0b11000>;
+// Parallel path
+def OPC_BRZP    : LerosBOpcode<0b11010>;
+def OPC_BRNZP   : LerosBOpcode<0b11100>;
+def OPC_BRPP    : LerosBOpcode<0b10111>;
+def OPC_BRNP    : LerosBOpcode<0b11001>;
+def OPC_BREPP   : LerosBOpcode<0b11110>;
 
 // Load/Store opcodes
 def OPC_LDADDR  : LerosOpcode<0b01010000>;
@@ -126,8 +132,8 @@ class LerosAccInst<LerosOpcode opcode, string opcodestr>
 class LerosBranchInst<LerosBOpcode opcode, dag outs, dag ins, string opcodestr, string argstr,
     list<dag> pattern>
     : LerosInst<outs, ins, opcodestr, argstr, pattern>{
-    bits<12> imm12;
-    let Inst{11-0} = imm12;
-    let Inst{15-12} = opcode.Value;
+    bits<11> imm12;
+    let Inst{10-0} = imm12;
+    let Inst{15-11} = opcode.Value;
     let isBranch = 1;
 } 

@@ -205,7 +205,7 @@ def ixlenimm : Operand<XLenVT> {
 
     class INSTR_BranchCond<LerosBOpcode opcode, string opcodestr>
         : LerosBranchInst<opcode, (outs), (ins simm13_lsb0:$imm12), opcodestr, "$imm12", []>{
-                let Inst{11-0} = imm12;
+                let Inst{10-0} = imm12;
                 let isBranch = 1;
                 let isTerminator = 1;
             }
@@ -373,7 +373,7 @@ def SCALL : LerosInst<(outs), (ins uimm8:$imm), "scall", "$imm", []>{
 // Unconditional branch
 let isBarrier = 1, isBranch = 1, isTerminator = 1 in
 def BR_MI: LerosBranchInst<OPC_BR, (outs), (ins simm13_lsb0:$imm12), "br", "$imm12", [(br bb:$imm12)]>{
-                let Inst{11-0} = imm12;
+                let Inst{10-0} = imm12;
 }
 
 // Leros branch instructions - Defined as Implement_BrRs for:
@@ -389,6 +389,18 @@ def BRGTE_PSEUDO       : Pseudo_BrCmpRs1Rs2;
 def BRLT_PSEUDO        : Pseudo_BrCmpRs1Rs2;
 def BREQ_PSEUDO        : Pseudo_BrCmpRs1Rs2;
 def BRNEQ_PSEUDO       : Pseudo_BrCmpRs1Rs2;
+
+// Parallel path Pseudo instruction
+defm BRNZP           : Implement_BrRs<OPC_BRNZP,   "brnzp"   >;
+defm BRZP            : Implement_BrRs<OPC_BRZP,    "brzp"    >;
+defm BRPP            : Implement_BrRs<OPC_BRPP,    "brnpp"   >;
+defm BRNP            : Implement_BrRs<OPC_BRNP,    "brnp"    >;
+// End path
+defm BREPP           : Implement_BrRs<OPC_BREPP,   "brepp"   >;
+def  BRGTEP_PSEUDO   : Pseudo_BrCmpRs1Rs2;
+def  BRLTP_PSEUDO    : Pseudo_BrCmpRs1Rs2;
+def  BREQP_PSEUDO    : Pseudo_BrCmpRs1Rs2;
+def  BRNEQP_PSEUDO   : Pseudo_BrCmpRs1Rs2;
 
 // Indirect branch (expands to jal in LerosInstrInfo::expandBRIND)
 let isBranch = 1, isTerminator = 1, isIndirectBranch = 1, isBarrier=1 in

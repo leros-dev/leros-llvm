@@ -35,6 +35,9 @@ FunctionPass *createLerosISelDag(LerosTargetMachine &TM);
 
 FunctionPass *createLerosUseAccumulatorPass();
 void initializeLerosUseAccumulatorPass(PassRegistry &);
+
+FunctionPass *createLerosParallelPathPass();
+void initializeLerosParallelPathPass(PassRegistry &);
 }
 
 #endif

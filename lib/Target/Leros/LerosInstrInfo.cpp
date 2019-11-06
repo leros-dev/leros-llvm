@@ -320,6 +320,23 @@ void LerosInstrInfo::expandBRCMP(MachineBasicBlock &MBB,
     opcode = Leros::BRN_MI;
     break;
   }
+  // Parallel path cases
+  case Leros::BREQP_PSEUDO: {
+    opcode = Leros::BRZP_MI;
+    break;
+  }
+  case Leros::BRNEQP_PSEUDO: {
+    opcode = Leros::BRNZP_MI;
+    break;
+  }
+  case Leros::BRGTEP_PSEUDO: {
+    opcode = Leros::BRPP_MI;
+    break;
+  }
+  case Leros::BRLTP_PSEUDO: {
+    opcode = Leros::BRNP_MI;
+    break;
+  }
   }
 
   MachineBasicBlock *bb;
@@ -341,6 +358,10 @@ void LerosInstrInfo::expandBRRS(MachineBasicBlock &MBB,
     OPCASE(Leros::BRNZ)
     OPCASE(Leros::BRP)
     OPCASE(Leros::BRN)
+    OPCASE(Leros::BRZP)
+    OPCASE(Leros::BRNZP)
+    OPCASE(Leros::BRPP)
+    OPCASE(Leros::BRNP)
   }
 
   MachineBasicBlock *bb;
