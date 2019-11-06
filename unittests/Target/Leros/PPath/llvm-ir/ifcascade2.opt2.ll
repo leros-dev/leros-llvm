@@ -1,0 +1,53 @@
+; ModuleID = 'ifcascade2.c'
+source_filename = "ifcascade2.c"
+target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
+target triple = "leros32-unknown-unknown-elf"
+
+; Function Attrs: nounwind
+define dso_local i32 @main() local_unnamed_addr #0 {
+  %1 = tail call i32 @rand() #2
+  %2 = icmp sgt i32 %1, 200
+  br i1 %2, label %3, label %5
+
+; <label>:3:                                      ; preds = %0
+  %4 = add nsw i32 %1, 1
+  br label %16
+
+; <label>:5:                                      ; preds = %0
+  %6 = add i32 %1, -51
+  %7 = icmp ult i32 %6, 49
+  br i1 %7, label %8, label %10
+
+; <label>:8:                                      ; preds = %5
+  %9 = add nsw i32 %1, -1
+  br label %16
+
+; <label>:10:                                     ; preds = %5
+  %11 = icmp slt i32 %1, 51
+  br i1 %11, label %12, label %14
+
+; <label>:12:                                     ; preds = %10
+  %13 = shl nsw i32 %1, 2
+  br label %16
+
+; <label>:14:                                     ; preds = %10
+  %15 = add nsw i32 %1, 2
+  br label %16
+
+; <label>:16:                                     ; preds = %8, %14, %12, %3
+  %17 = phi i32 [ %4, %3 ], [ %9, %8 ], [ %13, %12 ], [ %15, %14 ]
+  ret i32 %17
+}
+
+; Function Attrs: nounwind
+declare dso_local i32 @rand() local_unnamed_addr #1
+
+attributes #0 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #1 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #2 = { nounwind }
+
+!llvm.module.flags = !{!0}
+!llvm.ident = !{!1}
+
+!0 = !{i32 1, !"wchar_size", i32 4}
+!1 = !{!"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git 7ea1af6a830f9ec7969d7347feaffeca60a0770f)"}

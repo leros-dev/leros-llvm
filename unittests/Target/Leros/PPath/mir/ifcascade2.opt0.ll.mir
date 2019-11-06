@@ -1,0 +1,136 @@
+	.text
+	.file	"ifcascade2.c"
+	.globl	main                    # -- Begin function main
+	.p2align	1
+	.type	main,@function
+main:                                   # @main
+# %bb.0:
+	load	r1
+	addi	-32
+	store	r1
+	load	r0
+	ldaddr	r1
+	stind	28
+	load	r1
+	stind	24
+	load	r2
+	stind	20
+	load	r1
+	addi	32
+	store	r2
+	load	r100
+	store	r4
+	ldaddr	r2
+	stind	-16
+	loadi	rand
+	loadhi	rand
+	loadh2i	rand
+	loadh3i	rand
+	jal	r0
+	load	r4
+	ldaddr	r2
+	stind	-20
+	ldind	-20
+	store	r4
+	loadi	-55
+	loadhi	0
+	store	r5
+	load	r4
+	sub	r5
+	brnp	.LBB0_2
+# %bb.1:
+	ldaddr	r2
+	ldind	-20
+	addi	1
+	store	r4
+	stind	-20
+	brepp	.LBB0_10
+.LBB0_2:
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	loadi	99
+	store	r5
+	sub	r4
+	brn	.LBB0_5
+	brepp	.LBB0_3
+.LBB0_3:
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	loadi	51
+	store	r5
+	load	r4
+	sub	r5
+	brn	.LBB0_5
+	brepp	.LBB0_4
+.LBB0_4:
+	ldaddr	r2
+	ldind	-20
+	addi	-1
+	store	r4
+	stind	-20
+	brepp	.LBB0_9
+.LBB0_5:
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	loadi	50
+	store	r5
+	sub	r4
+	brn	.LBB0_7
+	brepp	.LBB0_6
+.LBB0_6:
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	loadi	3
+	store	r5
+	load	r4
+	stind	-24
+	loadi	__mulsi3
+	loadhi	__mulsi3
+	loadh2i	__mulsi3
+	loadh3i	__mulsi3
+	jal	r0
+	ldaddr	r2
+	ldind	-24
+	store	r5
+	add	r4
+	store	r4
+	stind	-20
+	brepp	.LBB0_8
+.LBB0_7:
+	ldaddr	r2
+	ldind	-20
+	addi	2
+	store	r4
+	stind	-20
+	brepp	.LBB0_8
+.LBB0_8:
+	brepp	.LBB0_9
+.LBB0_9:
+	brepp	.LBB0_10
+.LBB0_10:
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	ldaddr	r1
+	ldind	20
+	store	r2
+	ldind	24
+	store	r1
+	ldaddr	r1
+	ldind	28
+	store	r0
+	load	r1
+	addi	32
+	store	r1
+	load	r0
+	jal	r0
+.Lfunc_end0:
+	.size	main, .Lfunc_end0-main
+                                        # -- End function
+
+	.ident	"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git 7ea1af6a830f9ec7969d7347feaffeca60a0770f)"
+	.section	".note.GNU-stack","",@progbits

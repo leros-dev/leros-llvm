@@ -1,0 +1,2542 @@
+# After Instruction Selection:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  %2:gpr = SETLT_PSEUDO %1:gpr, %0:gpr
+  %3:gpr = Select_GPR_Using_CC_GPR killed %2:gpr, %0:gpr, %1:gpr
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Expand ISel Pseudo-instructions:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Early Tail Duplication:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Optimize machine instruction PHIs:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Merge disjoint stack slots:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Local Stack Slot Allocation:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Remove dead machine instructions:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Early Machine Loop Invariant Code Motion:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Machine Common Subexpression Elimination:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Machine code sinking:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Peephole Optimizations:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Remove dead machine instructions:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+main
+# After Leros Parallel Path pass:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Detect Dead Lanes:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Process Implicit Definitions:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY %3:gpr
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Live Variable Analysis:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY killed $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO killed %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY killed %3:gpr
+  RET implicit $r0, implicit killed $r4
+
+# End machine code for function main.
+
+# After Machine Natural Loop Construction:
+# Machine code for function main: IsSSA, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY killed $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = PHI %4:gpr, %bb.1, %5:gpr, %bb.2
+  BRZ_PSEUDO killed %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = PHI %1:gpr, %bb.3, %0:gpr, %bb.4
+  $r4 = COPY killed %3:gpr
+  RET implicit $r0, implicit killed $r4
+
+# End machine code for function main.
+
+# After Eliminate PHI nodes for register allocation:
+# Machine code for function main: NoPHIs, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY killed $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  %6:gpr = COPY killed %4:gpr
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+  %6:gpr = COPY killed %5:gpr
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = COPY killed %6:gpr
+  %7:gpr = COPY killed %1:gpr
+  BRZ_PSEUDO killed %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  %7:gpr = COPY killed %0:gpr
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = COPY killed %7:gpr
+  $r4 = COPY killed %3:gpr
+  RET implicit $r0, implicit killed $r4
+
+# End machine code for function main.
+
+# After Two-Address instruction pass:
+# Machine code for function main: NoPHIs, TracksLiveness
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  %0:gpr = COPY killed $r4
+  %1:gpr = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO %1:gpr, %0:gpr, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  %4:gpr = STORE_MI
+  %6:gpr = COPY killed %4:gpr
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  %5:gpr = STORE_MI
+  %6:gpr = COPY killed %5:gpr
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  %2:gpr = COPY killed %6:gpr
+  %7:gpr = COPY killed %1:gpr
+  BRZ_PSEUDO killed %2:gpr, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  %7:gpr = COPY killed %0:gpr
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  %3:gpr = COPY killed %7:gpr
+  $r4 = COPY killed %3:gpr
+  RET implicit $r0, implicit killed $r4
+
+# End machine code for function main.
+
+# After Simple Register Coalescing:
+# Machine code for function main: NoPHIs, TracksLiveness
+
+0B	bb.0 (%ir-block.0):
+	  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+16B	  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+32B	  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+48B	  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+64B	  %0:gpr = COPY killed $r4
+80B	  %7:gpr = LOAD_IMM32_PSEUDO 100
+96B	  BRLT_PSEUDO %7:gpr, %0:gpr, %bb.2
+
+112B	bb.1 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+128B	  LOADI_MI 0
+144B	  %6:gpr = STORE_MI
+176B	  BR_MI %bb.3
+
+192B	bb.2 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+208B	  LOADI_MI 1
+224B	  %6:gpr = STORE_MI
+
+256B	bb.3 (%ir-block.0):
+	; predecessors: %bb.2, %bb.1
+	  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+304B	  BRZ_PSEUDO %6:gpr, %bb.5
+
+320B	bb.4 (%ir-block.0):
+	; predecessors: %bb.3
+	  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+336B	  %7:gpr = COPY %0:gpr
+
+352B	bb.5 (%ir-block.0):
+	; predecessors: %bb.3, %bb.4
+
+384B	  $r4 = COPY %7:gpr
+400B	  RET implicit $r0, implicit killed $r4
+
+# End machine code for function main.
+
+# After Rename Disconnected Subregister Components:
+# Machine code for function main: NoPHIs, TracksLiveness
+
+0B	bb.0 (%ir-block.0):
+	  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+16B	  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+32B	  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+48B	  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+64B	  %0:gpr = COPY killed $r4
+80B	  %7:gpr = LOAD_IMM32_PSEUDO 100
+96B	  BRLT_PSEUDO %7:gpr, %0:gpr, %bb.2
+
+112B	bb.1 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+128B	  LOADI_MI 0
+144B	  %6:gpr = STORE_MI
+176B	  BR_MI %bb.3
+
+192B	bb.2 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+208B	  LOADI_MI 1
+224B	  %6:gpr = STORE_MI
+
+256B	bb.3 (%ir-block.0):
+	; predecessors: %bb.2, %bb.1
+	  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+304B	  BRZ_PSEUDO %6:gpr, %bb.5
+
+320B	bb.4 (%ir-block.0):
+	; predecessors: %bb.3
+	  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+336B	  %7:gpr = COPY %0:gpr
+
+352B	bb.5 (%ir-block.0):
+	; predecessors: %bb.3, %bb.4
+
+384B	  $r4 = COPY %7:gpr
+400B	  RET implicit $r0, implicit killed $r4
+
+# End machine code for function main.
+
+# After Machine Instruction Scheduler:
+# Machine code for function main: NoPHIs, TracksLiveness
+
+0B	bb.0 (%ir-block.0):
+	  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+16B	  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+32B	  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+48B	  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+64B	  %0:gpr = COPY killed $r4
+80B	  %7:gpr = LOAD_IMM32_PSEUDO 100
+96B	  BRLT_PSEUDO %7:gpr, %0:gpr, %bb.2
+
+112B	bb.1 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+128B	  LOADI_MI 0
+144B	  %6:gpr = STORE_MI
+176B	  BR_MI %bb.3
+
+192B	bb.2 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+208B	  LOADI_MI 1
+224B	  %6:gpr = STORE_MI
+
+256B	bb.3 (%ir-block.0):
+	; predecessors: %bb.2, %bb.1
+	  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+304B	  BRZ_PSEUDO %6:gpr, %bb.5
+
+320B	bb.4 (%ir-block.0):
+	; predecessors: %bb.3
+	  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+336B	  %7:gpr = COPY %0:gpr
+
+352B	bb.5 (%ir-block.0):
+	; predecessors: %bb.3, %bb.4
+
+384B	  $r4 = COPY %7:gpr
+400B	  RET implicit $r0, implicit killed $r4
+
+# End machine code for function main.
+
+# After Greedy Register Allocator:
+# Machine code for function main: NoPHIs, TracksLiveness
+
+0B	bb.0 (%ir-block.0):
+	  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+16B	  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+32B	  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+48B	  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+64B	  %0:gpr = COPY $r4
+80B	  %7:gpr = LOAD_IMM32_PSEUDO 100
+96B	  BRLT_PSEUDO %7:gpr, %0:gpr, %bb.2
+
+112B	bb.1 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+128B	  LOADI_MI 0
+144B	  %6:gpr = STORE_MI
+176B	  BR_MI %bb.3
+
+192B	bb.2 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+208B	  LOADI_MI 1
+224B	  %6:gpr = STORE_MI
+
+256B	bb.3 (%ir-block.0):
+	; predecessors: %bb.2, %bb.1
+	  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+304B	  BRZ_PSEUDO %6:gpr, %bb.5
+
+320B	bb.4 (%ir-block.0):
+	; predecessors: %bb.3
+	  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+336B	  %7:gpr = COPY %0:gpr
+
+352B	bb.5 (%ir-block.0):
+	; predecessors: %bb.3, %bb.4
+
+384B	  $r4 = COPY %7:gpr
+400B	  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Virtual Register Rewriter:
+# Machine code for function main: NoPHIs, TracksLiveness, NoVRegs
+
+0B	bb.0 (%ir-block.0):
+	  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+16B	  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+32B	  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+48B	  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+64B	  $r5 = COPY $r4
+80B	  $r4 = LOAD_IMM32_PSEUDO 100
+96B	  BRLT_PSEUDO $r4, $r5, %bb.2
+
+112B	bb.1 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+	  liveins: $r4, $r5
+128B	  LOADI_MI 0
+144B	  $r6 = STORE_MI
+176B	  BR_MI %bb.3
+
+192B	bb.2 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+	  liveins: $r4, $r5
+208B	  LOADI_MI 1
+224B	  $r6 = STORE_MI
+
+256B	bb.3 (%ir-block.0):
+	; predecessors: %bb.2, %bb.1
+	  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+	  liveins: $r4, $r5, $r6
+304B	  BRZ_PSEUDO killed $r6, %bb.5
+
+320B	bb.4 (%ir-block.0):
+	; predecessors: %bb.3
+	  successors: %bb.5(0x80000000); %bb.5(100.00%)
+	  liveins: $r5
+336B	  $r4 = COPY killed $r5
+
+352B	bb.5 (%ir-block.0):
+	; predecessors: %bb.3, %bb.4
+	  liveins: $r4
+400B	  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Stack Slot Coloring:
+# Machine code for function main: NoPHIs, TracksLiveness, NoVRegs
+
+0B	bb.0 (%ir-block.0):
+	  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+16B	  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+32B	  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+48B	  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+64B	  $r5 = COPY $r4
+80B	  $r4 = LOAD_IMM32_PSEUDO 100
+96B	  BRLT_PSEUDO $r4, $r5, %bb.2
+
+112B	bb.1 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+	  liveins: $r4, $r5
+128B	  LOADI_MI 0
+144B	  $r6 = STORE_MI
+176B	  BR_MI %bb.3
+
+192B	bb.2 (%ir-block.0):
+	; predecessors: %bb.0
+	  successors: %bb.3(0x80000000); %bb.3(100.00%)
+	  liveins: $r4, $r5
+208B	  LOADI_MI 1
+224B	  $r6 = STORE_MI
+
+256B	bb.3 (%ir-block.0):
+	; predecessors: %bb.2, %bb.1
+	  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+	  liveins: $r4, $r5, $r6
+304B	  BRZ_PSEUDO killed $r6, %bb.5
+
+320B	bb.4 (%ir-block.0):
+	; predecessors: %bb.3
+	  successors: %bb.5(0x80000000); %bb.5(100.00%)
+	  liveins: $r5
+336B	  $r4 = COPY killed $r5
+
+352B	bb.5 (%ir-block.0):
+	; predecessors: %bb.3, %bb.4
+	  liveins: $r4
+400B	  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Machine Copy Propagation Pass:
+# Machine code for function main: NoPHIs, TracksLiveness, NoVRegs
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+  liveins: $r4, $r5, $r6
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+  liveins: $r5
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+  liveins: $r4
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Machine Loop Invariant Code Motion:
+# Machine code for function main: NoPHIs, TracksLiveness, NoVRegs
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+  liveins: $r4, $r5, $r6
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+  liveins: $r5
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+  liveins: $r4
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After PostRA Machine Sink:
+# Machine code for function main: NoPHIs, TracksLiveness, NoVRegs
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+  liveins: $r4, $r5, $r6
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+  liveins: $r5
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+  liveins: $r4
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Shrink Wrapping analysis:
+# Machine code for function main: NoPHIs, TracksLiveness, NoVRegs
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $r1, implicit $r1
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  ADJCALLSTACKUP 0, 0, implicit-def dead $r1, implicit $r1
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+  liveins: $r4, $r5, $r6
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+  liveins: $r5
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+  liveins: $r4
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Prologue/Epilogue Insertion & Frame Finalization:
+# Machine code for function main: NoPHIs, TracksLiveness, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  $r1 = frame-setup ADDI_PSEUDO $r1, -16
+  STIND_PSEUDO killed $r0, $r1, 12
+  STIND_PSEUDO killed $r1, $r1, 8
+  STIND_PSEUDO killed $r2, $r1, 4
+  $r2 = frame-setup ADDI_PSEUDO $r1, 16
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+  liveins: $r4, $r5
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+  liveins: $r4, $r5, $r6
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+  liveins: $r5
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+  liveins: $r4
+  $r2 = LDIND_PSEUDO $r1, 4
+  $r1 = LDIND_PSEUDO $r1, 8
+  $r0 = LDIND_PSEUDO $r1, 12
+  $r1 = frame-destroy ADDI_PSEUDO $r1, 16
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Control Flow Optimizer:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  $r1 = frame-setup ADDI_PSEUDO $r1, -16
+  STIND_PSEUDO killed $r0, $r1, 12
+  STIND_PSEUDO killed $r1, $r1, 8
+  STIND_PSEUDO killed $r2, $r1, 4
+  $r2 = frame-setup ADDI_PSEUDO $r1, 16
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  $r2 = LDIND_PSEUDO $r1, 4
+  $r1 = LDIND_PSEUDO $r1, 8
+  $r0 = LDIND_PSEUDO $r1, 12
+  $r1 = frame-destroy ADDI_PSEUDO $r1, 16
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Tail Duplication:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  $r1 = frame-setup ADDI_PSEUDO $r1, -16
+  STIND_PSEUDO killed $r0, $r1, 12
+  STIND_PSEUDO killed $r1, $r1, 8
+  STIND_PSEUDO killed $r2, $r1, 4
+  $r2 = frame-setup ADDI_PSEUDO $r1, 16
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  $r2 = LDIND_PSEUDO $r1, 4
+  $r1 = LDIND_PSEUDO $r1, 8
+  $r0 = LDIND_PSEUDO $r1, 12
+  $r1 = frame-destroy ADDI_PSEUDO $r1, 16
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Machine Copy Propagation Pass:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  $r1 = frame-setup ADDI_PSEUDO $r1, -16
+  STIND_PSEUDO killed $r0, $r1, 12
+  STIND_PSEUDO killed $r1, $r1, 8
+  STIND_PSEUDO killed $r2, $r1, 4
+  $r2 = frame-setup ADDI_PSEUDO $r1, 16
+  PseudoCALL @rand, <regmask $r0 $r1 $r2 $r12 $r13 $r14 $r15 $r16 $r17 $r18 $r19 $r20>, implicit-def dead $r0, implicit-def $r1, implicit-def $r4
+  $r5 = COPY $r4
+  $r4 = LOAD_IMM32_PSEUDO 100
+  BRLT_PSEUDO $r4, $r5, %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  BRZ_PSEUDO killed $r6, %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  $r4 = COPY killed $r5
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  $r2 = LDIND_PSEUDO $r1, 4
+  $r1 = LDIND_PSEUDO $r1, 8
+  $r0 = LDIND_PSEUDO $r1, 12
+  $r1 = frame-destroy ADDI_PSEUDO $r1, 16
+  RET implicit $r0, implicit $r4
+
+# End machine code for function main.
+
+# After Post-RA pseudo instruction expansion pass:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  LDADDR $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  LDADDR $r1
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  LOAD_MI $r4
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDADDR $r1
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Post RA top-down list latency scheduler:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  LDADDR $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  LDADDR $r1
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  LOAD_MI $r4
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDADDR $r1
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Analyze Machine Code For Garbage Collection:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  LDADDR $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  LDADDR $r1
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  LOAD_MI $r4
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDADDR $r1
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Branch Probability Basic Block Placement:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  LDADDR $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  LDADDR $r1
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  LOAD_MI $r4
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDADDR $r1
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Leros accumulator usage pass:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Contiguously Lay Out Funclets:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After StackMap Liveness Analysis:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Live DEBUG_VALUE analysis:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Insert fentry calls:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Insert XRay ops:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
+# After Implement the 'patchable-function' attribute:
+# Machine code for function main: NoPHIs, NoVRegs
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP-4]
+  fi#1: size=4, align=4, at location [SP-8]
+  fi#2: size=4, align=4, at location [SP-12]
+
+bb.0 (%ir-block.0):
+  successors: %bb.1(0x40000000), %bb.2(0x40000000); %bb.1(50.00%), %bb.2(50.00%)
+
+  LOAD_MI $r1
+  ADDI_MI -16
+  STORE_MI $r1
+  LOAD_MI $r0
+  LDADDR $r1
+  STIND_MI 12
+  LOAD_MI $r1
+  STIND_MI 8
+  LOAD_MI $r2
+  STIND_MI 4
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r2
+  LOADI_MI target-flags(<unknown>) @rand
+  LOADHI_MI target-flags(<unknown>) @rand
+  LOADH2I_MI target-flags(<unknown>) @rand
+  LOADH3I_MI target-flags(<unknown>) @rand
+  JAL_call $r0, implicit $r0
+  LOAD_MI $r4
+  STORE_MI $r5
+  LOADI_MI 100
+  $r4 = STORE_MI
+  SUB_MI $r5
+  BRN_MI %bb.2
+
+bb.1 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 0
+  $r6 = STORE_MI
+  BR_MI %bb.3
+
+bb.2 (%ir-block.0):
+; predecessors: %bb.0
+  successors: %bb.3(0x80000000); %bb.3(100.00%)
+
+  LOADI_MI 1
+  $r6 = STORE_MI
+
+bb.3 (%ir-block.0):
+; predecessors: %bb.2, %bb.1
+  successors: %bb.4(0x40000000), %bb.5(0x40000000); %bb.4(50.00%), %bb.5(50.00%)
+
+  LOAD_MI $r6
+  BRZ_MI %bb.5
+
+bb.4 (%ir-block.0):
+; predecessors: %bb.3
+  successors: %bb.5(0x80000000); %bb.5(100.00%)
+
+  LOAD_MI $r5
+  STORE_MI $r4
+
+bb.5 (%ir-block.0):
+; predecessors: %bb.3, %bb.4
+
+  LDADDR $r1
+  LDIND_MI 4
+  STORE_MI $r2
+  LDIND_MI 8
+  STORE_MI $r1
+  LDADDR $r1
+  LDIND_MI 12
+  STORE_MI $r0
+  LOAD_MI $r1
+  ADDI_MI 16
+  STORE_MI $r1
+  LOAD_MI $r0
+  JAL_ret $r0, implicit $r0
+
+# End machine code for function main.
+
