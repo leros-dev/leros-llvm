@@ -91,11 +91,11 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
       // TODO: get the terminator and check if it is a end path instruction
       // If so, decrement currentNbPPaths
       
-      // We do not support conditional branch-statements from loops
+      // No branch statements for loops can use the parallel path feature
+      // Conditional statements inner loops can however ...
       loopInfo = MLI->getLoopFor(&block);
-      if (loopInfo->getHeader() != NULL)/* &&
-					   loopInfo->getHeader()->getNumber() == block.getNumber())*/ {
-	LLVM_DEBUG(dbgs() << "We are the head loop  " << *loopInfo << "\n");
+      if (loopInfo != NULL && loopInfo->isLoopExiting(&block)) {
+	LLVM_DEBUG(dbgs() << "We can exit loop from here " << *loopInfo << ", eliminating ...\n");
 	continue;
       }
       
@@ -107,7 +107,7 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	// so there is a need to distinguish !!!
 	if (instr->isConditionalBranch()) {
 	  LLVM_DEBUG(dbgs() << "Instruction:" << *instr << "\n");
-	  
+
 	  // Retrieve the immediate post dominator, i.e. where the paths join/merge
 	  assert(MPDT->getNode(&block) &&
 		 MPDT->getNode(&block)->getIDom());// &&
