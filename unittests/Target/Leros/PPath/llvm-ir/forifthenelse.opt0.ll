@@ -1,5 +1,5 @@
-; ModuleID = 'whileifthenelse.c'
-source_filename = "whileifthenelse.c"
+; ModuleID = 'forifthenelse.c'
+source_filename = "forifthenelse.c"
 target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
 target triple = "leros32-unknown-unknown-elf"
 
@@ -8,40 +8,45 @@ define dso_local i32 @main() #0 {
 entry:
   %retval = alloca i32, align 4
   %x = alloca i32, align 4
+  %i = alloca i32, align 4
   store i32 0, i32* %retval, align 4
   %call = call i32 @rand() #2
   store i32 %call, i32* %x, align 4
-  br label %while.cond
+  store i32 0, i32* %i, align 4
+  br label %for.cond
 
-while.cond:                                       ; preds = %if.end, %entry
-  %0 = load i32, i32* %x, align 4
+for.cond:                                         ; preds = %for.inc, %entry
+  %0 = load i32, i32* %i, align 4
   %cmp = icmp slt i32 %0, 100
-  br i1 %cmp, label %while.body, label %while.end
+  br i1 %cmp, label %for.body, label %for.end
 
-while.body:                                       ; preds = %while.cond
+for.body:                                         ; preds = %for.cond
   %1 = load i32, i32* %x, align 4
-  %inc = add nsw i32 %1, 1
-  store i32 %inc, i32* %x, align 4
-  %2 = load i32, i32* %x, align 4
-  %cmp1 = icmp sgt i32 %2, 50
+  %cmp1 = icmp sgt i32 %1, 200
   br i1 %cmp1, label %if.then, label %if.else
 
-if.then:                                          ; preds = %while.body
-  %3 = load i32, i32* %x, align 4
-  %inc2 = add nsw i32 %3, 1
-  store i32 %inc2, i32* %x, align 4
+if.then:                                          ; preds = %for.body
+  %2 = load i32, i32* %x, align 4
+  %inc = add nsw i32 %2, 1
+  store i32 %inc, i32* %x, align 4
   br label %if.end
 
-if.else:                                          ; preds = %while.body
-  %4 = load i32, i32* %x, align 4
-  %mul = mul nsw i32 %4, 2
-  store i32 %mul, i32* %x, align 4
+if.else:                                          ; preds = %for.body
+  %3 = load i32, i32* %x, align 4
+  %dec = add nsw i32 %3, -1
+  store i32 %dec, i32* %x, align 4
   br label %if.end
 
 if.end:                                           ; preds = %if.else, %if.then
-  br label %while.cond
+  br label %for.inc
 
-while.end:                                        ; preds = %while.cond
+for.inc:                                          ; preds = %if.end
+  %4 = load i32, i32* %i, align 4
+  %inc2 = add nsw i32 %4, 1
+  store i32 %inc2, i32* %i, align 4
+  br label %for.cond
+
+for.end:                                          ; preds = %for.cond
   %5 = load i32, i32* %x, align 4
   ret i32 %5
 }

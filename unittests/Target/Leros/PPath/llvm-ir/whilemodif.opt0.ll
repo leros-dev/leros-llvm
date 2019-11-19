@@ -1,5 +1,5 @@
-; ModuleID = 'whileifthenelse.c'
-source_filename = "whileifthenelse.c"
+; ModuleID = 'whilemodif.c'
+source_filename = "whilemodif.c"
 target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
 target triple = "leros32-unknown-unknown-elf"
 
@@ -13,37 +13,22 @@ entry:
   store i32 %call, i32* %x, align 4
   br label %while.cond
 
-while.cond:                                       ; preds = %if.end, %entry
+while.cond:                                       ; preds = %while.body, %entry
   %0 = load i32, i32* %x, align 4
+  %inc = add nsw i32 %0, 1
+  store i32 %inc, i32* %x, align 4
   %cmp = icmp slt i32 %0, 100
   br i1 %cmp, label %while.body, label %while.end
 
 while.body:                                       ; preds = %while.cond
   %1 = load i32, i32* %x, align 4
-  %inc = add nsw i32 %1, 1
-  store i32 %inc, i32* %x, align 4
-  %2 = load i32, i32* %x, align 4
-  %cmp1 = icmp sgt i32 %2, 50
-  br i1 %cmp1, label %if.then, label %if.else
-
-if.then:                                          ; preds = %while.body
-  %3 = load i32, i32* %x, align 4
-  %inc2 = add nsw i32 %3, 1
-  store i32 %inc2, i32* %x, align 4
-  br label %if.end
-
-if.else:                                          ; preds = %while.body
-  %4 = load i32, i32* %x, align 4
-  %mul = mul nsw i32 %4, 2
-  store i32 %mul, i32* %x, align 4
-  br label %if.end
-
-if.end:                                           ; preds = %if.else, %if.then
+  %inc1 = add nsw i32 %1, 1
+  store i32 %inc1, i32* %x, align 4
   br label %while.cond
 
 while.end:                                        ; preds = %while.cond
-  %5 = load i32, i32* %x, align 4
-  ret i32 %5
+  %2 = load i32, i32* %x, align 4
+  ret i32 %2
 }
 
 ; Function Attrs: nounwind

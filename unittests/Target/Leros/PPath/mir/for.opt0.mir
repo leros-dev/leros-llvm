@@ -1,5 +1,5 @@
 	.text
-	.file	"while.c"
+	.file	"for.c"
 	.globl	main                    # -- Begin function main
 	.p2align	1
 	.type	main,@function
@@ -22,6 +22,8 @@ main:                                   # @main
 	store	r4
 	ldaddr	r2
 	stind	-16
+	load	r4
+	stind	-28
 	loadi	rand
 	loadhi	rand
 	loadh2i	rand
@@ -30,15 +32,18 @@ main:                                   # @main
 	load	r4
 	ldaddr	r2
 	stind	-20
+	ldind	-28
+	store	r4
+	stind	-24
 	br	.LBB0_1
 .LBB0_1:                                # =>This Inner Loop Header: Depth=1
 	ldaddr	r2
-	ldind	-20
+	ldind	-24
 	store	r4
 	loadi	99
 	store	r5
 	sub	r4
-	brn	.LBB0_3
+	brn	.LBB0_4
 	br	.LBB0_2
 .LBB0_2:                                #   in Loop: Header=BB0_1 Depth=1
 	ldaddr	r2
@@ -46,8 +51,15 @@ main:                                   # @main
 	addi	1
 	store	r4
 	stind	-20
+	br	.LBB0_3
+.LBB0_3:                                #   in Loop: Header=BB0_1 Depth=1
+	ldaddr	r2
+	ldind	-24
+	addi	1
+	store	r4
+	stind	-24
 	br	.LBB0_1
-.LBB0_3:
+.LBB0_4:
 	ldaddr	r2
 	ldind	-20
 	store	r4

@@ -1,0 +1,104 @@
+	.text
+	.file	"whileifthenelse.c"
+	.globl	main                    # -- Begin function main
+	.p2align	1
+	.type	main,@function
+main:                                   # @main
+# %bb.0:                                # %entry
+	load	r1
+	addi	-32
+	store	r1
+	load	r0
+	ldaddr	r1
+	stind	28
+	load	r1
+	stind	24
+	load	r2
+	stind	20
+	load	r1
+	addi	32
+	store	r2
+	load	r100
+	store	r4
+	ldaddr	r2
+	stind	-16
+	loadi	rand
+	loadhi	rand
+	loadh2i	rand
+	loadh3i	rand
+	jal	r0
+	load	r4
+	ldaddr	r2
+	stind	-20
+	br	.LBB0_1
+.LBB0_1:                                # %while.cond
+                                        # =>This Inner Loop Header: Depth=1
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	loadi	99
+	store	r5
+	sub	r4
+	brn	.LBB0_6
+	br	.LBB0_2
+.LBB0_2:                                # %while.body
+                                        #   in Loop: Header=BB0_1 Depth=1
+	ldaddr	r2
+	ldind	-20
+	addi	1
+	stind	-20
+	ldind	-20
+	store	r4
+	loadi	51
+	store	r5
+	load	r4
+	sub	r5
+	brn	.LBB0_4
+	br	.LBB0_3
+.LBB0_3:                                # %if.then
+                                        #   in Loop: Header=BB0_1 Depth=1
+	ldaddr	r2
+	ldind	-20
+	addi	1
+	store	r4
+	stind	-20
+	br	.LBB0_5
+.LBB0_4:                                # %if.else
+                                        #   in Loop: Header=BB0_1 Depth=1
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	load	r101
+	store	r5
+	load	r120
+	jal	r0
+	load	r4
+	ldaddr	r2
+	stind	-20
+	br	.LBB0_5
+.LBB0_5:                                # %if.end
+                                        #   in Loop: Header=BB0_1 Depth=1
+	br	.LBB0_1
+.LBB0_6:                                # %while.end
+	ldaddr	r2
+	ldind	-20
+	store	r4
+	ldaddr	r1
+	ldind	20
+	store	r2
+	ldind	24
+	store	r1
+	ldaddr	r1
+	ldind	28
+	store	r0
+	load	r1
+	addi	32
+	store	r1
+	load	r0
+	jal	r0
+.Lfunc_end0:
+	.size	main, .Lfunc_end0-main
+                                        # -- End function
+
+	.ident	"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git 10c41408d56fa25c0b64f87b93e7c6f43542361e)"
+	.section	".note.GNU-stack","",@progbits
