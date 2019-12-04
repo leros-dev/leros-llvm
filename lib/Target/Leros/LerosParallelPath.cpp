@@ -69,8 +69,6 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
   
   if (ParallelPathOpts) {
     TII = static_cast<const LerosInstrInfo *>(MF.getSubtarget().getInstrInfo());    
-    // Are we in a parallel path
-    bool parallelPathEna = false;
 
     // If we want to work before Instruction Selection
     //    const Function &Fn = MF.getFunction();
@@ -83,10 +81,12 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 
     // If we want to work before Instruction Selection    
     for (MachineBasicBlock &block : MF) {
-      MachineLoop *loopInfo; 
-      LLVM_DEBUG(dbgs() << "bb." << block.getNumber() << ": "
-		 << block.size() << " instructions \n");
-      LLVM_DEBUG(dbgs()  << "Before PPath:\n" << block);
+      MachineLoop *loopInfo;
+      
+      
+      LLVM_DEBUG(dbgs() << "bb." << block.getNumber() << "." << block.getName());
+      LLVM_DEBUG(dbgs() << ": " << block.size() << " instructions \n");
+      LLVM_DEBUG(dbgs() << "Before PPath:\n" << block);
 
       // TODO: get the terminator and check if it is a end path instruction
       // If so, decrement currentNbPPaths
@@ -95,7 +95,7 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
       // Conditional statements inner loops can however ...
       loopInfo = MLI->getLoopFor(&block);
       if (loopInfo != NULL && loopInfo->isLoopExiting(&block)) {
-	LLVM_DEBUG(dbgs() << "We can exit loop from here " << *loopInfo << ", eliminating ...\n");
+	LLVM_DEBUG(dbgs() << "We can exit loop from this block, eliminating ...\n");
 	continue;
       }
       
@@ -106,7 +106,7 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	// NOTE: start path instruction should be marked as conditional branches!
 	// so there is a need to distinguish !!!
 	if (instr->isConditionalBranch()) {
-	  LLVM_DEBUG(dbgs() << "Instruction:" << *instr << "\n");
+	  LLVM_DEBUG(dbgs() << "Instruction:" << *instr);
 
 	  // Retrieve the immediate post dominator, i.e. where the paths join/merge
 	  assert(MPDT->getNode(&block) &&
@@ -117,14 +117,17 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	  // instructions will follow in predecessors of this join
 	  // block
 	  MachineBasicBlock* joinBlock = MPDT->getNode(&block)->getIDom()->getBlock();
+	  LLVM_DEBUG(dbgs() << "Join block: bb." << joinBlock->getNumber()
+		     << "." << joinBlock->getName() << "\n");
 
 	  // Retrieve the first basic blocks of both branch and fall-through paths	 
 	  MachineBasicBlock* branchBlock = NULL;
 	  MachineBasicBlock* fallThroughBlock = NULL;	  
 	  for (MachineOperand &MO : instr->operands()) {
 	    if (MO.isMBB()) {
-	      LLVM_DEBUG(dbgs() << "Found branch target:" << MO << "\n");
 	      branchBlock = MO.getMBB();
+	      LLVM_DEBUG(dbgs() << "Found branch target: bb." << branchBlock->getNumber()
+			 << "." << branchBlock->getName() << "\n");	      
 	    }
 	  }
 	  unsigned nbSuc = 0;
@@ -135,19 +138,26 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	      LLVM_DEBUG(dbgs() << "More than 2 successors, eliminating\n");
 	      break;
 	    }
-	    if (sucBlock != branchBlock) fallThroughBlock = sucBlock;
+	    if (sucBlock != branchBlock) {
+	      fallThroughBlock = sucBlock;
+	      LLVM_DEBUG(dbgs() << "Fall Through target: bb."
+			 << fallThroughBlock->getNumber()
+			 << "." << fallThroughBlock->getName() << "\n");
+	    }
 	  }
 	  if (nbSuc > 2) break;
-	  
+
 	  // Let's identify the last blocks of both branch and fall-through paths 
 	  unsigned nbPred = 0;
 	  MachineInstr* branchPathEndInst = NULL;
 	  MachineInstr* fallThroughPathEndInst = NULL;
 	  MachineBasicBlock* branchPathEndBlock = NULL;
-	  MachineBasicBlock* fallThroughPathEndBlock = NULL;	  	  
+	  MachineBasicBlock* fallThroughPathEndBlock = NULL;	  	  	  	  
 	  for (MachineBasicBlock::pred_iterator PBB = joinBlock->pred_begin(),
 		 PBBE = joinBlock->pred_end(); PBB != PBBE; ++PBB) {
 	    MachineBasicBlock* predBlock = *PBB;
+	    LLVM_DEBUG(dbgs() << "Pred to join: bb." << predBlock->getNumber()
+		       << "." << predBlock->getName() << "\n");
 	    
 	    // Triangle and diamonds shapes only
 	    if (++nbPred > 2) break;
@@ -163,21 +173,25 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	    for (MachineBasicBlock::iterator TBBI = predBlock->getFirstTerminator(),
 		   TBBE = predBlock->end(); TBBI != TBBE; ++TBBI) {
 	      predLastInst = &*TBBI;
+	      if (predBlock == &block) {
+		LLVM_DEBUG(dbgs() << "Predblock is current block, going for next predblock\n");
+		break;
+	      }
 	      if (predLastInst == NULL || predLastInst->isConditionalBranch()) {
-		LLVM_DEBUG(dbgs() << "Last instruction must be an unconditional branch\n");
-		// TODO: if it is a conditional branch, then it is the fall trough, no?
-		// TODO: check this ...
-		// We have to continue in case we first see the fall-through path and not
-		// the branch path
+		LLVM_DEBUG(dbgs() << "Last instruction should not be an unconditional branch\n");
 		continue;
-	      }	    
-	      
+	      }
+
 	      // Checking to which paths the instruction belongs to
 	      if (MDT->dominates(branchBlock, predBlock)) {
+		LLVM_DEBUG(dbgs() << "branch block dominates predBlock: bb." <<
+			   predBlock->getNumber() << "." << predBlock->getName() << "\n");
 		branchPathEndInst = predLastInst;
 		branchPathEndBlock = predBlock;
 	      }
 	      if (MDT->dominates(fallThroughBlock, predBlock)) {
+		LLVM_DEBUG(dbgs() << "fallTrough block dominates predBlock: bb." <<
+			   predBlock->getNumber() << "." << predBlock->getName() << "\n");
 		fallThroughPathEndInst = predLastInst;
 		fallThroughPathEndBlock = predBlock;
 	      }
@@ -189,12 +203,12 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	    LLVM_DEBUG(dbgs() << "Merge block has more than 2 predecessors, eliminating ...\n");
 	    continue;
 	  }
-	  if (branchPathEndInst == NULL) {
-	    LLVM_DEBUG(dbgs() << "Conditional branch is at least a triangle shape\n");
+	  if (branchPathEndInst == NULL && fallThroughPathEndInst == NULL) {
+	    LLVM_DEBUG(dbgs() << "Something went wrong when analyzing this conditional branch, skipping ...\n");
 	    continue;
 	  }
 	  
-	  LLVM_DEBUG(dbgs() << "TODO: change LLVM IR for parallel path instruction\n");
+	  LLVM_DEBUG(dbgs() << "Going to insert parallel path instructions ...\n");
 	  // Now let's modify the LLVM IR for parallel path instructions
 	  // TODO: we must add information from the initial instructions
 	  // auto *newInst = new branchSPPathInst(Type:: , 0, "brspp");
@@ -204,15 +218,17 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	  // newInst = new branchEPPathInst(Type:: , 0, "brepp");	  
 	  // ReplaceInstWithInst(branchPathEndInst, newInst);
 	  ++NumEndPPaths;
-	  if (fallThroughPathEndInst != NULL) {
+	  if (branchPathEndInst == NULL && fallThroughPathEndInst != NULL) {
+	    LLVM_DEBUG(dbgs() << "Triangle conditional branch shape\n");
+	    ++NumTrianglePPaths;
+	  } else if (branchPathEndInst != NULL && fallThroughPathEndInst != NULL) {
 	    LLVM_DEBUG(dbgs() << "Diamond conditional branch shape\n");
 	    //   newInst = new branchEPPathInst(Type:: , 0, "brepp");
 	    //   ReplaceInstWithInst(fallThroughPathEndInst, newInst);
 	    ++NumDiamondPPaths;
 	    ++NumEndPPaths;
 	  } else {
-	    LLVM_DEBUG(dbgs() << "Triangle conditional branch shape\n");
-	    ++NumTrianglePPaths;	  
+	    llvm_unreachable("Invalid branch should have been detected before ...\n");
 	  }
 	
 	  // For display purpose (BB can have no names ...)
@@ -226,7 +242,11 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	  OS << ") merging ";
 	  joinBlock->printAsOperand(OS,false);
 	  OS << ", last (";
-	  branchPathEndBlock->printAsOperand(OS,false);
+	  if (branchPathEndBlock != NULL) {
+	    branchPathEndBlock->printAsOperand(OS,false);
+	  } else {
+	    OS << "TR-shape";
+	  }
 	  OS << ",";
 	  fallThroughPathEndBlock->printAsOperand(OS,false);
 	  LLVM_DEBUG(dbgs() << "Branch from: " << OS.str() << ")\n");

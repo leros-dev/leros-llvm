@@ -1,28 +1,29 @@
-; ModuleID = 'ifthen.c'
-source_filename = "ifthen.c"
+; ModuleID = 'PPath/c/ifthen.c'
+source_filename = "PPath/c/ifthen.c"
 target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
 target triple = "leros32-unknown-unknown-elf"
 
 ; Function Attrs: noinline nounwind optnone
 define dso_local i32 @main() #0 {
-  %1 = alloca i32, align 4
-  %2 = alloca i32, align 4
-  store i32 0, i32* %1, align 4
-  %3 = call i32 @rand() #2
-  store i32 %3, i32* %2, align 4
-  %4 = load i32, i32* %2, align 4
-  %5 = icmp sgt i32 %4, 200
-  br i1 %5, label %6, label %9
+entry:
+  %retval = alloca i32, align 4
+  %x = alloca i32, align 4
+  store i32 0, i32* %retval, align 4
+  %call = call i32 @rand() #2
+  store i32 %call, i32* %x, align 4
+  %0 = load i32, i32* %x, align 4
+  %cmp = icmp sgt i32 %0, 200
+  br i1 %cmp, label %if.then, label %if.end
 
-; <label>:6:                                      ; preds = %0
-  %7 = load i32, i32* %2, align 4
-  %8 = add nsw i32 %7, 1
-  store i32 %8, i32* %2, align 4
-  br label %9
+if.then:                                          ; preds = %entry
+  %1 = load i32, i32* %x, align 4
+  %inc = add nsw i32 %1, 1
+  store i32 %inc, i32* %x, align 4
+  br label %if.end
 
-; <label>:9:                                      ; preds = %6, %0
-  %10 = load i32, i32* %2, align 4
-  ret i32 %10
+if.end:                                           ; preds = %if.then, %entry
+  %2 = load i32, i32* %x, align 4
+  ret i32 %2
 }
 
 ; Function Attrs: nounwind
@@ -36,4 +37,4 @@ attributes #2 = { nounwind }
 !llvm.ident = !{!1}
 
 !0 = !{i32 1, !"wchar_size", i32 4}
-!1 = !{!"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git 7ea1af6a830f9ec7969d7347feaffeca60a0770f)"}
+!1 = !{!"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git d76786d5cf81a937bb119537768b22a68884ca05)"}

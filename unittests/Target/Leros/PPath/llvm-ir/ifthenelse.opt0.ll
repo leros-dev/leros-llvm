@@ -1,36 +1,37 @@
-; ModuleID = 'ifthenelse.c'
-source_filename = "ifthenelse.c"
+; ModuleID = 'PPath/c/ifthenelse.c'
+source_filename = "PPath/c/ifthenelse.c"
 target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
 target triple = "leros32-unknown-unknown-elf"
 
 ; Function Attrs: noinline nounwind optnone
 define dso_local i32 @main() #0 {
-  %1 = alloca i32, align 4
-  %2 = alloca i32, align 4
-  %3 = alloca i32, align 4
-  store i32 0, i32* %1, align 4
-  %4 = call i32 @rand() #2
-  store i32 %4, i32* %2, align 4
-  store i32 0, i32* %3, align 4
-  %5 = load i32, i32* %2, align 4
-  %6 = icmp sgt i32 %5, 200
-  br i1 %6, label %7, label %10
+entry:
+  %retval = alloca i32, align 4
+  %x = alloca i32, align 4
+  %y = alloca i32, align 4
+  store i32 0, i32* %retval, align 4
+  %call = call i32 @rand() #2
+  store i32 %call, i32* %x, align 4
+  store i32 0, i32* %y, align 4
+  %0 = load i32, i32* %x, align 4
+  %cmp = icmp sgt i32 %0, 200
+  br i1 %cmp, label %if.then, label %if.else
 
-; <label>:7:                                      ; preds = %0
-  %8 = load i32, i32* %2, align 4
-  %9 = add nsw i32 %8, 1
-  store i32 %9, i32* %2, align 4
-  br label %13
+if.then:                                          ; preds = %entry
+  %1 = load i32, i32* %x, align 4
+  %inc = add nsw i32 %1, 1
+  store i32 %inc, i32* %x, align 4
+  br label %if.end
 
-; <label>:10:                                     ; preds = %0
-  %11 = load i32, i32* %2, align 4
-  %12 = add nsw i32 %11, -1
-  store i32 %12, i32* %2, align 4
-  br label %13
+if.else:                                          ; preds = %entry
+  %2 = load i32, i32* %x, align 4
+  %dec = add nsw i32 %2, -1
+  store i32 %dec, i32* %x, align 4
+  br label %if.end
 
-; <label>:13:                                     ; preds = %10, %7
-  %14 = load i32, i32* %2, align 4
-  ret i32 %14
+if.end:                                           ; preds = %if.else, %if.then
+  %3 = load i32, i32* %x, align 4
+  ret i32 %3
 }
 
 ; Function Attrs: nounwind
@@ -44,4 +45,4 @@ attributes #2 = { nounwind }
 !llvm.ident = !{!1}
 
 !0 = !{i32 1, !"wchar_size", i32 4}
-!1 = !{!"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git 7ea1af6a830f9ec7969d7347feaffeca60a0770f)"}
+!1 = !{!"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git d76786d5cf81a937bb119537768b22a68884ca05)"}
