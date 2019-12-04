@@ -66,6 +66,8 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "Function: " << MF.getName() << "\n");
   // Did we modified a BB?
   bool Modified = false;
+
+  std::set<int> modifiedBranchBlock;
   
   if (ParallelPathOpts) {
     TII = static_cast<const LerosInstrInfo *>(MF.getSubtarget().getInstrInfo());    
@@ -82,7 +84,7 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
     // If we want to work before Instruction Selection    
     for (MachineBasicBlock &block : MF) {
       MachineLoop *loopInfo;
-      
+      Modified = false;
       
       LLVM_DEBUG(dbgs() << "bb." << block.getNumber() << "." << block.getName());
       LLVM_DEBUG(dbgs() << ": " << block.size() << " instructions \n");
@@ -103,8 +105,8 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	   MBBI != block.rend(); ++MBBI) {
 	MachineInstr *instr = &*MBBI;
 
-	// NOTE: start path instruction should be marked as conditional branches!
-	// so there is a need to distinguish !!!
+	// NOTE: start path instruction are marked as conditional branches,
+	// so there is a need to distinguish from classical one?
 	if (instr->isConditionalBranch()) {
 	  LLVM_DEBUG(dbgs() << "Instruction:" << *instr);
 
@@ -178,7 +180,7 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 		break;
 	      }
 	      if (predLastInst == NULL || predLastInst->isConditionalBranch()) {
-		LLVM_DEBUG(dbgs() << "Last instruction should not be an unconditional branch\n");
+		LLVM_DEBUG(dbgs() << "Last instruction should not be a conditional branch\n");
 		continue;
 	      }
 
@@ -209,24 +211,75 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	  }
 	  
 	  LLVM_DEBUG(dbgs() << "Going to insert parallel path instructions ...\n");
-	  // Now let's modify the LLVM IR for parallel path instructions
-	  // TODO: we must add information from the initial instructions
-	  // auto *newInst = new branchSPPathInst(Type:: , 0, "brspp");
-	  // ReplaceInstWithInst(brFrom, newInst);
+	  unsigned opcode = instr->getOpcode();
+	  switch (opcode) {
+	    OPCASEPP(Leros::BRLT)
+	    OPCASEPP(Leros::BRGTE)
+	    OPCASEPP(Leros::BREQ)
+	    OPCASEPP(Leros::BRNEQ)
+	    OPCASEPP(Leros::BRNZ)
+	    OPCASEPP(Leros::BRZ)
+	    OPCASEPP(Leros::BRP)
+	    OPCASEPP(Leros::BRN)		
+	  }
+	  // TODO: we should be able to know which registers are alive and use that
+	  // to set a register to tell the parallel path HW extension which registers
+	  // should be sent to the other core
+	  instr->setDesc(TII->get(opcode));	    
+	  instr = &*(--MBBI);
+	  // We erase the next instruction which is BR_MI
+	  if (MBBI->getOpcode() == Leros::BR_MI) {
+	    LLVM_DEBUG(dbgs() << "Removing previous instruction: " << *MBBI);	    
+	    MBBI->eraseFromParent();
+	  } else {
+	    LLVM_DEBUG(dbgs() << "Strange previous instruction: " << *MBBI);
+	  }
+	  Modified = true;
+
+	  DebugLoc DL;
+
+	  // TODO: incorrect as we could reach a block which has already been modified.
 	  ++NumBranchPPaths;
 	  if (++currentNbPPaths > MaxPPaths) MaxPPaths = currentNbPPaths;
-	  // newInst = new branchEPPathInst(Type:: , 0, "brepp");	  
-	  // ReplaceInstWithInst(branchPathEndInst, newInst);
 	  ++NumEndPPaths;
+	  
 	  if (branchPathEndInst == NULL && fallThroughPathEndInst != NULL) {
 	    LLVM_DEBUG(dbgs() << "Triangle conditional branch shape\n");
+	    
+	    if (fallThroughPathEndInst->getOpcode() == Leros::BREPP_MI) {
+	      LLVM_DEBUG(dbgs() << "In fall through, already an end path instruction\n");
+	      BuildMI(fallThroughPathEndBlock, DL, TII->get(Leros::BREPP_MI)).addMBB(joinBlock);
+	    } else fallThroughPathEndInst->setDesc(TII->get(Leros::BREPP_MI));
+	    
 	    ++NumTrianglePPaths;
+	    
 	  } else if (branchPathEndInst != NULL && fallThroughPathEndInst != NULL) {
 	    LLVM_DEBUG(dbgs() << "Diamond conditional branch shape\n");
-	    //   newInst = new branchEPPathInst(Type:: , 0, "brepp");
-	    //   ReplaceInstWithInst(fallThroughPathEndInst, newInst);
+	    
+	    if (fallThroughPathEndInst->getOpcode() == Leros::BREPP_MI) {
+	      LLVM_DEBUG(dbgs() << "In fall through, already an end path instruction\n");
+	      BuildMI(fallThroughPathEndBlock, DL, TII->get(Leros::BREPP_MI)).addMBB(joinBlock);  
+	    } else fallThroughPathEndInst->setDesc(TII->get(Leros::BREPP_MI));
+	    
+	    // If the branch block targets an branch block already analyze then
+	    // we should simply do nothing (a single end of path instruction is correct)	  
+	    if (modifiedBranchBlock.find(branchBlock->getNumber()) == modifiedBranchBlock.end()) {	    	  
+	      if (branchPathEndInst->getOpcode() == Leros::BREPP_MI) {
+		LLVM_DEBUG(dbgs() << "In branch, already an end path instruction\n");
+		BuildMI(branchPathEndBlock, DL, TII->get(Leros::BREPP_MI)).addMBB(joinBlock);
+	      } else branchPathEndInst->setDesc(TII->get(Leros::BREPP_MI));
+
+	      modifiedBranchBlock.insert(branchBlock->getNumber());
+	      LLVM_DEBUG(dbgs() << "Inserting bb number: " << branchBlock->getNumber() << "\n");
+
+	      ++NumEndPPaths;	      
+	      
+	    } else {
+	      LLVM_DEBUG(dbgs() << "Branch block already modified, no need for an additional end path instruction\n");
+
+	      
+	    
 	    ++NumDiamondPPaths;
-	    ++NumEndPPaths;
 	  } else {
 	    llvm_unreachable("Invalid branch should have been detected before ...\n");
 	  }
@@ -250,57 +303,19 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	  OS << ",";
 	  fallThroughPathEndBlock->printAsOperand(OS,false);
 	  LLVM_DEBUG(dbgs() << "Branch from: " << OS.str() << ")\n");
+
+	  // We break as we have mess up the iterator ...
+	  break;
 	  
 	} else if (instr->isUnconditionalBranch()) {
 	  LLVM_DEBUG(dbgs() << "Unconditional branch instruction, skipping\n");
 	} else {
 	  LLVM_DEBUG(dbgs() << "No more branch instructions, skipping\n");
 	  break;
-	}
+	}	
       }
-      
-      //LLVM_DEBUG(dbgs()  << "After PPath:\n" << &block);
+      if (Modified) LLVM_DEBUG(dbgs()  << "After PPath:\n" << block);
     }
-    
-	//   if (!parallelPathEna) {
-	//     MachineBasicBlock::iterator NMBBI = std::next(MBBI);	    	    
-	//     // We switch to the path instruction
-	//     unsigned opcode = MBBI->getOpcode();
-	//     switch (opcode) {
-	//       OPCASEPP(Leros::BRLT)
-	//       OPCASEPP(Leros::BRGTE)
-	//       OPCASEPP(Leros::BREQ)
-	//       OPCASEPP(Leros::BRNEQ)
-	//       OPCASEPP(Leros::BRNZ)
-	//       OPCASEPP(Leros::BRZ)
-	//       OPCASEPP(Leros::BRP)
-	//       OPCASEPP(Leros::BRN)		
-	//     }
-	//     // TODO: we should be able to know which registers are alive and use that
-	//     // to set a register to tell the parallel path HW extension which registers
-	//     // should be sent to the other core
-	//     MBBI->setDesc(TII->get(opcode));	    
-	//     MBBI = NMBBI;
-	//     NMBBI = std::next(MBBI);	    	    	    
-	//     // We erase the next instruction which is BR_MI (we should check it)
-	//     if (MBBI->getOpcode() == Leros::BR_MI) {
-	//       MBBI->eraseFromParent();
-	//     } else {
-	//       LLVM_DEBUG(dbgs() << "Strange pattern, next instruction: " << *MBBI);
-	//     }
-	//     MBBI = NMBBI;	    
-	//     Modified = true;
-	//     parallelPathEna = true;
-	//     ++NumPPaths;
-	//   } else {
-	//     LLVM_DEBUG(dbgs() << "We are already in a parallel path and a depth higher than 1 is not supported currently!\n");
-	//     // TODO: allow parallel paths of depth higher than 1 (as in switch) 
-	//   }
-	//   break;
-	// default:
-	//   break;
-	// }
-	// MBBI++;
   }
   return Modified;
 }

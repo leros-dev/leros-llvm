@@ -375,6 +375,11 @@ let isBarrier = 1, isBranch = 1, isTerminator = 1 in
 def BR_MI: LerosBranchInst<OPC_BR, (outs), (ins simm13_lsb0:$imm12), "br", "$imm12", [(br bb:$imm12)]>{
                 let Inst{10-0} = imm12;
 }
+// End path instruction
+let isBarrier = 1, isBranch = 1, isTerminator = 1 in
+def BREPP_MI: LerosBranchInst<OPC_BREPP, (outs), (ins simm13_lsb0:$imm12), "brepp", "$imm12", [(br bb:$imm12)]>{
+                let Inst{10-0} = imm12;
+}
 
 // Leros branch instructions - Defined as Implement_BrRs for:
 //  - 2 operand pseudo-instruction (Register and basic block)
@@ -395,8 +400,7 @@ defm BRNZP           : Implement_BrRs<OPC_BRNZP,   "brnzp"   >;
 defm BRZP            : Implement_BrRs<OPC_BRZP,    "brzp"    >;
 defm BRPP            : Implement_BrRs<OPC_BRPP,    "brnpp"   >;
 defm BRNP            : Implement_BrRs<OPC_BRNP,    "brnp"    >;
-// End path
-defm BREPP           : Implement_BrRs<OPC_BREPP,   "brepp"   >;
+
 def  BRGTEP_PSEUDO   : Pseudo_BrCmpRs1Rs2;
 def  BRLTP_PSEUDO    : Pseudo_BrCmpRs1Rs2;
 def  BREQP_PSEUDO    : Pseudo_BrCmpRs1Rs2;

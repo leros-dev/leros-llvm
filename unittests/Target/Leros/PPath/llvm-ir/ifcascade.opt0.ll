@@ -1,48 +1,49 @@
-; ModuleID = 'ifcascade.c'
-source_filename = "ifcascade.c"
+; ModuleID = 'PPath/c/ifcascade.c'
+source_filename = "PPath/c/ifcascade.c"
 target datalayout = "e-m:e-p:32:32-i64:64-n32-S128"
 target triple = "leros32-unknown-unknown-elf"
 
 ; Function Attrs: noinline nounwind optnone
 define dso_local i32 @main() #0 {
-  %1 = alloca i32, align 4
-  %2 = alloca i32, align 4
-  store i32 0, i32* %1, align 4
-  %3 = call i32 @rand() #2
-  store i32 %3, i32* %2, align 4
-  %4 = load i32, i32* %2, align 4
-  %5 = icmp sgt i32 %4, 200
-  br i1 %5, label %6, label %9
+entry:
+  %retval = alloca i32, align 4
+  %x = alloca i32, align 4
+  store i32 0, i32* %retval, align 4
+  %call = call i32 @rand() #2
+  store i32 %call, i32* %x, align 4
+  %0 = load i32, i32* %x, align 4
+  %cmp = icmp sgt i32 %0, 200
+  br i1 %cmp, label %if.then, label %if.else
 
-; <label>:6:                                      ; preds = %0
-  %7 = load i32, i32* %2, align 4
-  %8 = add nsw i32 %7, 1
-  store i32 %8, i32* %2, align 4
-  br label %19
+if.then:                                          ; preds = %entry
+  %1 = load i32, i32* %x, align 4
+  %inc = add nsw i32 %1, 1
+  store i32 %inc, i32* %x, align 4
+  br label %if.end4
 
-; <label>:9:                                      ; preds = %0
-  %10 = load i32, i32* %2, align 4
-  %11 = icmp slt i32 %10, 100
-  br i1 %11, label %12, label %15
+if.else:                                          ; preds = %entry
+  %2 = load i32, i32* %x, align 4
+  %cmp1 = icmp slt i32 %2, 100
+  br i1 %cmp1, label %if.then2, label %if.else3
 
-; <label>:12:                                     ; preds = %9
-  %13 = load i32, i32* %2, align 4
-  %14 = add nsw i32 %13, -1
-  store i32 %14, i32* %2, align 4
-  br label %18
+if.then2:                                         ; preds = %if.else
+  %3 = load i32, i32* %x, align 4
+  %dec = add nsw i32 %3, -1
+  store i32 %dec, i32* %x, align 4
+  br label %if.end
 
-; <label>:15:                                     ; preds = %9
-  %16 = load i32, i32* %2, align 4
-  %17 = add nsw i32 %16, 2
-  store i32 %17, i32* %2, align 4
-  br label %18
+if.else3:                                         ; preds = %if.else
+  %4 = load i32, i32* %x, align 4
+  %add = add nsw i32 %4, 2
+  store i32 %add, i32* %x, align 4
+  br label %if.end
 
-; <label>:18:                                     ; preds = %15, %12
-  br label %19
+if.end:                                           ; preds = %if.else3, %if.then2
+  br label %if.end4
 
-; <label>:19:                                     ; preds = %18, %6
-  %20 = load i32, i32* %2, align 4
-  ret i32 %20
+if.end4:                                          ; preds = %if.end, %if.then
+  %5 = load i32, i32* %x, align 4
+  ret i32 %5
 }
 
 ; Function Attrs: nounwind
@@ -56,4 +57,4 @@ attributes #2 = { nounwind }
 !llvm.ident = !{!1}
 
 !0 = !{i32 1, !"wchar_size", i32 4}
-!1 = !{!"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git 7ea1af6a830f9ec7969d7347feaffeca60a0770f)"}
+!1 = !{!"clang version 8.0.0 (https://github.com/leros-dev/leros-clang.git ba93d76b060e90d82b2f3f3ccc6488c308790562) (https://github.com/leros-dev/leros-llvm.git d76786d5cf81a937bb119537768b22a68884ca05)"}
