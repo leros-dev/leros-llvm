@@ -112,12 +112,15 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 
 	  // Retrieve the immediate post dominator, i.e. where the paths join/merge
 	  assert(MPDT->getNode(&block) &&
-		 MPDT->getNode(&block)->getIDom());// &&
-		 //MPDT->getNode(&block)->getIDom()->getBlock());
-	  // TODO: store a list of join blocks. If the new join block
-	  // is found in this list, this means that several end path
-	  // instructions will follow in predecessors of this join
-	  // block
+		 MPDT->getNode(&block)->getIDom());
+	  // We cannot assert that this join path exist!
+	  // A break if a condition state within a loop will continue to the next
+	  // iteration of the loop => no merging point.
+	  // We cannot support this case ...
+	  if (MPDT->getNode(&block)->getIDom()->getBlock() == NULL) {
+	    LLVM_DEBUG(dbgs() << "IDom: no merging point found\n");
+	    continue;
+	  }
 	  MachineBasicBlock* joinBlock = MPDT->getNode(&block)->getIDom()->getBlock();
 	  LLVM_DEBUG(dbgs() << "Join block: bb." << joinBlock->getNumber()
 		     << "." << joinBlock->getName() << "\n");
@@ -225,14 +228,18 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	  // TODO: we should be able to know which registers are alive and use that
 	  // to set a register to tell the parallel path HW extension which registers
 	  // should be sent to the other core
-	  instr->setDesc(TII->get(opcode));	    
-	  instr = &*(--MBBI);
-	  // We erase the next instruction which is BR_MI
-	  if (MBBI->getOpcode() == Leros::BR_MI) {
-	    LLVM_DEBUG(dbgs() << "Removing previous instruction: " << *MBBI);	    
-	    MBBI->eraseFromParent();
-	  } else {
-	    LLVM_DEBUG(dbgs() << "Strange previous instruction: " << *MBBI);
+	  instr->setDesc(TII->get(opcode));
+	  LLVM_DEBUG(dbgs() << "Changing a branch instruction to a parallel path\n");
+	  --MBBI;
+	  // Sometime there is no unconditional instruction after instr ...
+	  if (MBBI != block.rend()) {
+	    // We erase the next instruction which is BR_MI
+	    if (MBBI->getOpcode() == Leros::BR_MI) {
+	      LLVM_DEBUG(dbgs() << "Removing previous instruction: " << *MBBI);	    
+	      MBBI->eraseFromParent();
+	    } else {
+	      LLVM_DEBUG(dbgs() << "Strange previous instruction: " << *MBBI);
+	    }
 	  }
 	  Modified = true;
 
@@ -276,8 +283,7 @@ bool LerosParallelPath::runOnMachineFunction(MachineFunction &MF) {
 	      
 	    } else {
 	      LLVM_DEBUG(dbgs() << "Branch block already modified, no need for an additional end path instruction\n");
-
-	      
+	    }
 	    
 	    ++NumDiamondPPaths;
 	  } else {
