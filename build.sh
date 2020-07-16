@@ -31,6 +31,7 @@ ARGS="${ARGS} -DLLVM_TARGETS_TO_BUILD=''"     # Disable all upstream backends (x
 ARGS="${ARGS} -DLLVM_DEFAULT_TARGET_TRIPLE='leros32-unknown-elf'" # Unless specified, clang and the other llvm tools should default to building leros 32 binaries
 ARGS="${ARGS} -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='Leros'" # Leros is listed as an experimental target, given that it is not upstream
 ARGS="${ARGS} -DCMAKE_BUILD_TYPE='Release'"
+ARGS="${ARGS} -DCLANG_ANALYZER_ENABLE_Z3_SOLVER=0" # Disable Z3 library (Z3 development headers on some systems are deprecated)
 
 # Run CMake configuration of leros-llvm inside build directory
 cmake ${ARGS} $SOURCE_ROOT
